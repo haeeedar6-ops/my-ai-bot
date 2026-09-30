@@ -141,8 +141,8 @@ def ask_gemini(contents):
                     ),
                 )
                 return resp.text  # ممكن None إذا انحظر الرد
-            except errors.APIError as e:
-[30/09/26 06:06 ص] انا سوري جديد: last_err = e
+             except errors.APIError as e:
+                last_err = e 
                 code = getattr(e, "code", None)
                 log.error("Gemini [%s] code=%s attempt=%s: %s", model, code, attempt + 1, e)
                 if code in (404, 400):      # موديل غير موجود/غير مدعوم -> جرب التالي
