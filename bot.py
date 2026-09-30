@@ -5,7 +5,7 @@ import telebot
 from google import genai
 
 # إعداد تطبيق Flask لإبقاء السيرفر حياً على Render
-app = Flask(name)
+app = Flask(__name__)
 
 @app.route('/')
 def home():
@@ -31,7 +31,7 @@ def handle_message(message):
         print(f"--- ERROR IN BOT ---: {e}")  # لطباعة الخطأ بدقة في Render
         bot.reply_to(message, f"حدث خطأ أثناء المعالجة: {e}")
 
-if name == "main":
+if __name__ == "__main__":
     # تشغيل البوت في خيط خلفي (Thread)
     threading.Thread(target=lambda: bot.infinity_polling(skip_pending=True), daemon=True).start()
     
