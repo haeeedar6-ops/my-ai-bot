@@ -23,10 +23,76 @@ MODELS = [
     "gemini-3.8-flash",
 ]
 
-SYSTEM_PROMPT = (
-    "أنت مساعد ذكي ومحترف. جاوب باللغة اللي كتب فيها المستخدم، "
-    "وإذا كتب عربي جاوب بلهجة بسيطة ومفهومة. خلي الأجوبة مختصرة وواضحة."
-)
+SYSTEM_PROMPT = """أنت "Craftland AI"، مساعد ذكي متخصص بـ Free Fire Craftland وأداة Craftland Studio، وبنفس الوقت بتجاوب على أي سؤال تاني بالحياة العامة بشكل ممتاز.
+
+أسلوبك:
+- جاوب باللغة اللي كتب فيها المستخدم. إذا كتب عربي، جاوب بلهجة شامية بسيطة وواضحة.
+- خلي الأجوبة مختصرة وعملية ومرتبة، وخطوات قصيرة لما يكون السؤال "كيف".
+- استخدم أسماء البلوكات بالعربي متل ما بتظهر بالمحرر (مثال: "حدث عالمي"، "منطق"، "عامل"، "وظيفة").
+
+تخصصك بكرافتلاند:
+- تصميم الخرائط وبرمجتها بالبلوكات (Craftland Studio)، وبتفهم التبويبات: كيان، إعدادات، منطق، عامل (متغيرات)، وظيفة، وحساب، وقوائم، وفكتور، وسلاسل، وتحويل، وتعداد.
+- أحداث عالمية (بدء اللعبة، بدء/نهاية الجولة والمرحلة، القضاء على اللاعب، دخول اللاعب...) وأحداث خاصة بالكيانات (تدمير، تفعيل، إلحاق الضرر، دخول المركبة...).
+- المراحل والجولات، الفرق، الاقتصاد والمحفظة، المتاجر، واجهة المستخدم (HUD)، الذكاء الاصطناعي والوحوش، الكاميرا المخصصة، الرسوم المتحركة، الأزياء والمظاهر.
+- نصائح النشر وبرنامج شراكة صناع المحتوى.
+
+ملاحظات تقنية معروفة لازم تاخدها بعين الاعتبار:
+- البوتات ما بتقدر تتبع مسار مخصص (Custom Path).
+- بلوكات الرسوم المتحركة ممكن يتغلب عليها متحكم اللاعب.
+- متغيرات منطقة الزناد (Trigger Zone) بتتصفّر لما اللاعب يموت.
+- انتبه للفرق بين "تدمير" و"إخفاء" عند إغلاق واجهة المستخدم (HUD) من ناحية التوقيت.
+- كتير مستخدمين بيشتغلوا من الموبايل، ومحرر الموبايل بلوكاته أقل من نسخة الكمبيوتر.
+- الدليل الرسمي: https://ffcraftland.garena.com/en/tutorial/fe/1-8/
+
+قواعد مهمة:
+- لما يجيك سؤال عن كرافتلاند، اعتمد أولاً على "قاعدة المعرفة" اللي بآخر التعليمات (أسماء البلوكات والملاحظات).
+- إذا ما كنت متأكد 100% من اسم بلوك أو طريقة عمله، قول هيك بصراحة وما تخترع أسماء أو خصائص مو موجودة. وجّه المستخدم للدليل الرسمي أو اقترح طريقة يجرّب فيها.
+- لما تشرح منطق برمجة، اذكر البلوكات المطلوبة بالترتيب (حدث ← شرط ← إجراء).
+- الأسئلة العامة (علوم، دراسة، صحة، برمجة، ترجمة، نصائح...) جاوب عليها عادي وبشكل كامل، بدون ما تربطها بكرافتلاند.
+"""
+
+# ============ قاعدة المعرفة (ملفات كرافتلاند) ============
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge")
+_knowledge_cache = {"sig": None, "text": ""}
+
+
+def load_knowledge():
+    """يقرأ كل ملفات .md و .txt من مجلد knowledge ويرجعها نص واحد.
+    بيعيد القراءة تلقائياً إذا تعدّل أي ملف."""
+    if not os.path.isdir(KNOWLEDGE_DIR):
+        return ""
+    files = sorted(
+        f for f in os.listdir(KNOWLEDGE_DIR) if f.lower().endswith((".md", ".txt"))
+    )
+    sig = tuple((f, os.path.getmtime(os.path.join(KNOWLEDGE_DIR, f))) for f in files)
+    if sig == _knowledge_cache["sig"]:
+        return _knowledge_cache["text"]
+    parts = []
+    for f in files:
+        try:
+            with open(os.path.join(KNOWLEDGE_DIR, f), encoding="utf-8") as fh:
+                parts.append(f"##### ملف: {f}\n{fh.read().strip()}")
+        except Exception as e:
+            log.warning("تعذر قراءة %s: %s", f, e)
+    text = "\n\n".join(parts)
+    _knowledge_cache.update(sig=sig, text=text)
+    log.info("Knowledge loaded: %s files, %s chars", len(files), len(text))
+    return text
+
+
+def get_system_prompt():
+    knowledge = load_knowledge()
+    if not knowledge:
+        return SYSTEM_PROMPT
+    return (
+        SYSTEM_PROMPT
+        + "\n\n=== قاعدة المعرفة الخاصة بكرافتلاند (مرجعك الأساسي) ===\n"
+        "اقرأ هالمرجع قبل ما تجاوب على أي سؤال عن كرافتلاند. "
+        "استخدم أسماء البلوكات بالضبط متل ما هي مكتوبة هون، "
+        "وإذا بلوك مو موجود بالقائمة قول هيك بصراحة وما تخترعه.\n\n"
+        + knowledge
+    )
 
 MAX_HISTORY = 20          # عدد الرسائل المحفوظة لكل مستخدم (سؤال + جواب)
 COOLDOWN_SECONDS = 1.5    # حماية من السبام
@@ -137,7 +203,7 @@ def ask_gemini(contents, rounds=2):
                     model=model,
                     contents=contents,
                     config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
+                        system_instruction=get_system_prompt(),
                     ),
                 )
                 if resp.text:
