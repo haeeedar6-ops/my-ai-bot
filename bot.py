@@ -18,88 +18,90 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 bot = telebot.TeleBot(BOT_TOKEN)
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# قاموس لتخزين جلسات المحادثة لكل مستخدم لضمان حفظ الذاكرة
-user_chats = {}
+# قاموس لتخزين الذاكرة النصية لكل مستخدم
+user_histories = {}
 
 try:
     bot.remove_webhook()
 except Exception as e:
     print(f"Webhook cleanup: {e}")
 
-def get_user_chat(chat_id, model_name="gemini-2.0-flash"):
-    if chat_id not in user_chats:
-        user_chats[chat_id] = client.chats.create(model=model_name)
-    return user_chats[chat_id]
+def get_history(chat_id):
+    if chat_id not in user_histories:
+        user_histories[chat_id] = []
+    return user_histories[chat_id]
 
-def send_message_with_fallback(chat_id, contents):
-    models = ["gemini-2.0-flash", "gemini-1.5-flash"]
-    
-    for model in models:
-        try:
-            chat = get_user_chat(chat_id, model_name=model)
-            response = chat.send_message(contents)
-            if response and response.text:
-                return response.text
-        except Exception as e:
-            print(f"Error with {model}: {e}")
-            # في حال حدوث خطأ بالجلسة، نعيد إنشاء الجلسة بالنموذج التالي
-            try:
-                user_chats[chat_id] = client.chats.create(model=model)
-                response = user_chats[chat_id].send_message(contents)
-                if response and response.text:
-                    return response.text
-            except Exception as ex:
-                print(f"Retry failed with {model}: {ex}")
-    return None
+def update_history(chat_id, user_text, bot_text):
+    history = get_history(chat_id)
+    history.append(f"المستخدم: {user_text}")
+    history.append(f"البوت: {bot_text}")
+    if len(history) > 10:  # الاحتفاظ بآخر 5 محادثات
+        user_histories[chat_id] = history[-10:]
 
-# 1. معالجة النصوص مع تذكر كامل المحادثة
+# 1. معالجة النصوص مع الذاكرة
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     try:
         chat_id = message.chat.id
-        reply_text = send_message_with_fallback(chat_id, message.text)
+        user_text = message.text
         
-        if reply_text:
-            bot.reply_to(message, reply_text)
+        # دمج الذاكرة مع السؤال الجديد
+        history = get_history(chat_id)
+        prompt = "\n".join(history) + f"\nالمستخدم: {user_text}\nالبوت:"
+        
+        # استخدام النموذج المستقر
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt
+        )
+        
+        if response and response.text:
+            bot.reply_to(message, response.text)
+            update_history(chat_id, user_text, response.text)
         else:
-            bot.reply_to(message, "عذراً، الخادم مشغول حالياً. يرجى المحاولة بعد لحظات.")
+            bot.reply_to(message, "حدث خطأ غير متوقع في المعالجة.")
+            
     except Exception as e:
-        print(f"Error handling text: {e}")
-        bot.reply_to(message, "حدث خطأ أثناء معالجة الرسالة.")
+        print(f"Text Error: {e}")
+        bot.reply_to(message, "عذراً، حدث خطأ أثناء المعالجة.")
 
-# 2. استقبال الصور وتحليل محتواها
+# 2. معالجة الصور
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     try:
         chat_id = message.chat.id
         
-        # تنزيل أعلى دقة للصورة
+        # تنزيل الصورة
         file_info = bot.get_file(message.photo[-1].file_id)
         downloaded_file = bot.download_file(file_info.file_path)
         
-        caption = message.caption if message.caption else "شاهد هذه الصورة واشرحها بالتفصيل."
+        caption = message.caption if message.caption else "اشرح هذه الصورة."
         
-        # تجهيز ملف الصورة للنموذج
         image_part = types.Part.from_bytes(data=downloaded_file, mime_type="image/jpeg")
-        contents = [image_part, caption]
         
-        reply_text = send_message_with_fallback(chat_id, contents)
+        # نرسل الصورة مع النص مباشرة للنموذج
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=[image_part, caption]
+        )
         
-        if reply_text:
-            bot.reply_to(message, reply_text)
+        if response and response.text:
+            bot.reply_to(message, response.text)
+            update_history(chat_id, f"[أرسل صورة: {caption}]", response.text)
         else:
-            bot.reply_to(message, "لم أستطع تحليل الصورة حالياً.")
+             bot.reply_to(message, "لم أستطع قراءة الصورة.")
+             
     except Exception as e:
-        print(f"Error handling photo: {e}")
-        bot.reply_to(message, "حدث خطأ أثناء استلام الصورة.")
+        print(f"Photo Error: {e}")
+        bot.reply_to(message, "حدث خطأ أثناء معالجة الصورة.")
 
 def run_polling():
     while True:
         try:
-            bot.infinity_polling(skip_pending=True, timeout=20, long_polling_timeout=20)
+            bot.infinity_polling(skip_pending=True)
         except Exception as e:
             print(f"Polling error: {e}")
-            time.sleep(5)
+            time.sleep(3)
 
 if __name__ == "__main__":
     threading.Thread(target=run_polling, daemon=True).start()
