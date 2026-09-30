@@ -17,9 +17,10 @@ PORT = int(os.environ.get("PORT", 10000))
 
 # أول موديل هو الأساسي، والباقي احتياطي إذا الأساسي ما اشتغل
 MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
+    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    "gemini-3.5-flash",
+    "gemini-2.5-flash-lite",
     "gemini-3.8-flash",
-    "gemini-2.5-flash",
 ]
 
 SYSTEM_PROMPT = (
@@ -126,11 +127,11 @@ def typing(chat_id):
         stop.set()
 
 
-def ask_gemini(contents):
-    """يجرب الموديلات بالترتيب، ويعيد المحاولة عند أخطاء الضغط."""
+def ask_gemini(contents, rounds=2):
+    """يجرب الموديلات بالترتيب. إذا موديل مضغوط (503/429) ينتقل للتالي فوراً."""
     last_err = None
-    for model in MODELS:
-        for attempt in range(3):
+    for rnd in range(rounds):
+        for model in MODELS:
             try:
                 resp = client.models.generate_content(
                     model=model,
@@ -139,21 +140,20 @@ def ask_gemini(contents):
                         system_instruction=SYSTEM_PROMPT,
                     ),
                 )
-                return resp.text  # ممكن None إذا انحظر الرد
+                if resp.text:
+                    return resp.text
+                return None  # الرد انحظر
             except errors.APIError as e:
                 last_err = e
                 code = getattr(e, "code", None)
-                log.error("Gemini [%s] code=%s attempt=%s: %s", model, code, attempt + 1, e)
-                if code in (404, 400):      # موديل غير موجود/غير مدعوم -> جرب التالي
-                    break
-                if code in (429, 500, 503): # ضغط -> انتظر وأعد
-                    time.sleep(2 * (attempt + 1))
-                    continue
+                log.error("Gemini [%s] code=%s round=%s: %s", model, code, rnd + 1, e)
+                if code in (404, 400, 429, 500, 503):
+                    continue  # جرب الموديل التالي
                 raise
             except Exception as e:
                 last_err = e
                 log.exception("Gemini unexpected error")
-                time.sleep(1)
+        time.sleep(2)  # استراحة قصيرة قبل الجولة التانية
     raise last_err or RuntimeError("كل الموديلات فشلت")
 
 
