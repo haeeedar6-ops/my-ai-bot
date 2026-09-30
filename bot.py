@@ -41,7 +41,7 @@ logging.basicConfig(
 log = logging.getLogger("bot")
 
 # ============ التهيئة ============
-app = Flask(name)
+app = Flask(__name__)
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, parse_mode=None)
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -141,8 +141,8 @@ def ask_gemini(contents):
                     ),
                 )
                 return resp.text  # ممكن None إذا انحظر الرد
-             except errors.APIError as e:
-                last_err = e 
+            except errors.APIError as e:
+                last_err = e
                 code = getattr(e, "code", None)
                 log.error("Gemini [%s] code=%s attempt=%s: %s", model, code, attempt + 1, e)
                 if code in (404, 400):      # موديل غير موجود/غير مدعوم -> جرب التالي
@@ -261,7 +261,9 @@ def handle_voice(message):
 @bot.message_handler(content_types=["sticker", "video", "document", "audio"])
 def handle_unsupported(message):
     bot.reply_to(message, "حالياً بدعم النص والصور والرسائل الصوتية بس 🙂")
-[30/09/26 06:06 ص] انا سوري جديد: # ============ التشغيل ============
+
+
+# ============ التشغيل ============
 def run_polling():
     while True:
         try:
