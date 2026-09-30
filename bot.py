@@ -64,7 +64,7 @@ def handle_text(message):
         bot.reply_to(message, "حدث خطأ في المعالجة، يرجى المحاولة لاحقاً.")
         print(f"Error in text handler: {e}")
 
-if name == "main":
+if __name__ == "__main__":
     # تشغيل خادم Flask في الخلفية
     threading.Thread(target=run_flask, daemon=True).start()
     print("البوت يعمل الآن بنجاح على Render...")
