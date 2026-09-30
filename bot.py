@@ -7,7 +7,7 @@ from google import genai
 from PIL import Image
 
 # 1. خادم وهمي لإبقاء Render سعيداً ولا يغلق الخدمة
-app = Flask(name)
+app = Flask(__name__)
 
 @app.route('/')
 def home():
