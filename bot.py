@@ -4,7 +4,7 @@ from flask import Flask
 import telebot
 from google import genai
 
-# إعداد تطبيق Flask لإبقاء السيرفر حياً على Render
+# إعداد تطبيق Flask
 app = Flask(__name__)
 
 @app.route('/')
@@ -21,20 +21,17 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     try:
-        # استدعاء أحدث نموذج من جيميناي
+        # تحديث اسم النموذج إلى gemini-3.8-flash
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=message.text
         )
         bot.reply_to(message, response.text)
     except Exception as e:
-        print(f"--- ERROR IN BOT ---: {e}")  # لطباعة الخطأ بدقة في Render
+        print(f"--- ERROR IN BOT ---: {e}")
         bot.reply_to(message, f"حدث خطأ أثناء المعالجة: {e}")
 
 if __name__ == "__main__":
-    # تشغيل البوت في خيط خلفي (Thread)
     threading.Thread(target=lambda: bot.infinity_polling(skip_pending=True), daemon=True).start()
-    
-    # تشغيل Flask على المنفذ المخصص من Render
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
