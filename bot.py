@@ -1,18 +1,28 @@
 import os
 import io
+import threading
+from flask import Flask
 import telebot
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 
-# قراءة المفاتيح من المتغيرات البيئية
+# 1. خادم وهمي لإبقاء Render سعيداً ولا يغلق الخدمة
+app = Flask(name)
+
+@app.route('/')
+def home():
+    return "Bot is alive and running!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+# 2. قراءة المفاتيح من المتغيرات البيئية
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# إعداد نموذج Gemini (يدعم النصوص والصور تلقائياً)
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
-
-# إعداد بوت التلغرام
+# إعداد العميل الجديد لـ Gemini
+client = genai.Client(api_key=GEMINI_API_KEY)
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # الرد على أمر /start
@@ -20,41 +30,42 @@ bot = telebot.TeleBot(BOT_TOKEN)
 def send_welcome(message):
     bot.reply_to(message, "أهلاً بك! أنا بوت الذكاء الاصطناعي الخاص بك.\nيمكنك إرسال نصوص أو صور لأقوم بتحليلها والإجابة عليها فوراً.")
 
-# 1. معالجة الصور
+# معالجة الصور
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     try:
         bot.send_chat_action(message.chat.id, 'typing')
-        
-        # جلب أعلى دقة للصورة المرفوعة
         file_info = bot.get_file(message.photo[-1].file_id)
         downloaded_file = bot.download_file(file_info.file_path)
-        
-        # تحويل الملف إلى صورة يفهمها نموذج الذكاء الاصطناعي
         image = Image.open(io.BytesIO(downloaded_file))
         
-        # أخذ النص المرفق مع الصورة إن وجد، أو استخدام نص افتراضي
         prompt = message.caption if message.caption else "اشرح هذه الصورة بالتفصيل."
         
-        # إرسال الصورة والنص إلى Gemini
-        response = model.generate_content([prompt, image])
-        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[prompt, image]
+        )
         bot.reply_to(message, response.text)
     except Exception as e:
         bot.reply_to(message, "حدث خطأ أثناء تحليل الصورة، يرجى المحاولة لاحقاً.")
         print(f"Error in photo handler: {e}")
 
-# 2. معالجة الرسائل النصية العادية
+# معالجة النصوص
 @bot.message_handler(func=lambda message: True)
 def handle_text(message):
     try:
         bot.send_chat_action(message.chat.id, 'typing')
-        response = model.generate_content(message.text)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=message.text
+        )
         bot.reply_to(message, response.text)
     except Exception as e:
         bot.reply_to(message, "حدث خطأ في المعالجة، يرجى المحاولة لاحقاً.")
         print(f"Error in text handler: {e}")
 
 if name == "main":
-    print("البوت يعمل الآن ويدعم تحليل الصور والنصوص...")
+    # تشغيل خادم Flask في الخلفية
+    threading.Thread(target=run_flask, daemon=True).start()
+    print("البوت يعمل الآن بنجاح على Render...")
     bot.infinity_polling()
