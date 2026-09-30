@@ -17,9 +17,9 @@ PORT = int(os.environ.get("PORT", 10000))
 
 # أول موديل هو الأساسي، والباقي احتياطي إذا الأساسي ما اشتغل
 MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
-    "gemini-flash-latest",
-    "gemini-2.0-flash",
+    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
+    "gemini-3.8-flash",
+    "gemini-2.5-flash",
 ]
 
 SYSTEM_PROMPT = (
@@ -137,7 +137,6 @@ def ask_gemini(contents):
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_PROMPT,
-                        temperature=0.7,
                     ),
                 )
                 return resp.text  # ممكن None إذا انحظر الرد
