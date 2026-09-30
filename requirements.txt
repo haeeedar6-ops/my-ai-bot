@@ -1,4 +1,4 @@
 pyTelegramBotAPI
-google-generativeai
-python-dotenv
+google-genai
 Pillow
+flask
