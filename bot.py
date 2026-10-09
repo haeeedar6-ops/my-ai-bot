@@ -385,10 +385,11 @@ def github_catalog_ids(force=False):
 
 def github_models_for(match, deep):
     ids = [i for i in github_catalog_ids() if match in i.lower()] or GH_STATIC.get(match, [])
-    heavy = [i for i in ids if any(k in i.lower() for k in ("r1", "pro", "reason", "70b", "72b", "gpt-4o")) and "mini" not in i.lower()]
-    light = [i for i in ids if i not in heavy]
-    order = (heavy + light) if deep else (light + heavy)
-    return order
+    # اختيار موديل أخف وأكثر استقراراً لتجنب مشاكل الاستجابة
+    light = [i for i in ids if any(k in i.lower() for k in ("mini", "8b", "v3", "flash", "instruct"))]
+    heavy = [i for i in ids if i not in light]
+    order = (light + heavy) if not deep else (heavy + light)
+    return order or GH_STATIC.get(match, [])
 
 def _compact_prompt():
     notes = ""
