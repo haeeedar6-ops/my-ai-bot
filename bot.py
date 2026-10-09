@@ -307,7 +307,27 @@ PROVIDER_NAMES = {
     "qwen": "Qwen"
 }
 
-GH_BASE = os.environ.get("GITHUB_MODELS_BASE", "https://models.github.ai")
+GH_BASE = os.environ.get("GITHUB_MODELS_BASE", "https://models.github.ai").strip().rstrip("/")
+if GH_BASE.endswith("/inference"):  # لو انحط معها /inference بالغلط
+    GH_BASE = GH_BASE[: -len("/inference")]
+
+
+def _gh_token():
+    """التوكن بدون مسافات أو علامات تنصيص لو انحطت بالغلط بـ Render."""
+    return os.environ.get("GITHUB_MODELS_TOKEN", "").strip().strip('"').strip("'").strip()
+
+
+def _diag(r):
+    """معلومات تشخيص عن رد HTTP (الرابط النهائي، التحويلات، نوع المحتوى)."""
+    try:
+        hist = [h.status_code for h in (getattr(r, "history", None) or [])]
+        hd = getattr(r, "headers", None) or {}
+        return (f"url={getattr(r, 'url', '?')} | redirects={hist} | "
+                f"type={hd.get('content-type')} | server={hd.get('server')}")
+    except Exception:
+        return "diag?"
+
+
 GH_BACKEND = {
     "name": "GitHub Models",
     "base": GH_BASE.rstrip("/") + "/inference",
@@ -361,7 +381,7 @@ def _text_only(contents):
     return True
 
 def github_catalog_ids(force=False):
-    token = os.environ.get("GITHUB_MODELS_TOKEN")
+    token = _gh_token()
     now = time.time()
     if not force and _gh_cache["ids"] and now - _gh_cache["t"] < 6 * 3600:
         return _gh_cache["ids"]
@@ -375,7 +395,12 @@ def github_catalog_ids(force=False):
                 timeout=20,
             )
             if r.status_code == 200:
-                data = r.json()
+                try:
+                    data = r.json()
+                except ValueError:
+                    _gh_cache["err"] = f"HTTP 200 بس الرد مو JSON: {r.text[:80]!r} | {_diag(r)}"
+                    log.error("GitHub catalog: %s", _gh_cache["err"])
+                    return _gh_cache["ids"]
                 items = data if isinstance(data, list) else (data.get("models") or data.get("data") or [])
                 ids = [i.get("id") for i in items if isinstance(i, dict) and i.get("id")]
                 _gh_cache["err"] = "" if ids else "الكتالوج رجع فاضي"
@@ -441,7 +466,7 @@ def _merge_system(messages):
     return rest
 
 def _call_backend(b, contents, deep, json_mode):
-    key = os.environ.get(b["key_env"], "")
+    key = _gh_token() if b.get("key_env") == "GITHUB_MODELS_TOKEN" else os.environ.get(b["key_env"], "")
     messages = _build_messages(b, contents)
     models = github_models_for(b["match"], deep)
     headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
@@ -470,8 +495,8 @@ def _call_backend(b, contents, deep, json_mode):
             try:
                 text = (r.json()["choices"][0]["message"].get("content") or "")
             except Exception:
-                last = ProviderError(502, f"{model}: رد غير مفهوم من السيرفر")
-                log.error("GitHub [%s] bad response: %s", model, r.text[:200])
+                last = ProviderError(502, f"{model}: HTTP 200 بس الرد مو JSON: {r.text[:80]!r} | {_diag(r)}")
+                log.error("GitHub [%s] bad response: %s | %s", model, r.text[:200], _diag(r))
                 continue
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
             return text or None
@@ -831,23 +856,29 @@ def cmd_ghmodels(message):
 
 @bot.message_handler(commands=["ghtest"])
 def cmd_ghtest(message):
-    """تجربة مباشرة لموديل: /ghtest deepseek/DeepSeek-R1 (بيعرض رد GitHub الخام)."""
-    token = os.environ.get("GITHUB_MODELS_TOKEN")
+    """تشخيص: /ghtest [model]  ← بيجرب الطلب بطريقتين وبيعرض الرد الخام."""
+    token = _gh_token()
     if not token:
         bot.reply_to(message, "GITHUB_MODELS_TOKEN مو مضاف على Render.")
         return
     model = (message.text or "").partition(" ")[2].strip() or GH_STATIC["deepseek"][0]
-    try:
-        r = requests.post(
-            GH_BASE.rstrip("/") + "/inference/chat/completions",
-            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json",
-                     "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"},
-            json={"model": model, "messages": [{"role": "user", "content": "قول مرحبا بكلمة وحدة"}], "stream": False},
-            timeout=60,
-        )
-        bot.reply_to(message, f"الموديل: {model}\nHTTP {r.status_code}\n{r.text[:600]}")
-    except Exception as e:
-        bot.reply_to(message, f"الموديل: {model}\nخطأ شبكة: {type(e).__name__}: {str(e)[:300]}")
+    url = GH_BASE + "/inference/chat/completions"
+    lines = [f"الموديل: {model}", f"الرابط: {url}",
+             f"التوكن: يبدأ بـ {token[:11]}… طوله {len(token)}"]
+    body = {"model": model, "messages": [{"role": "user", "content": "قول مرحبا بكلمة وحدة"}], "stream": False}
+    variants = [
+        ("مع X-GitHub-Api-Version", {"Authorization": "Bearer " + token, "Content-Type": "application/json",
+                                     "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}),
+        ("بدون X-GitHub-Api-Version", {"Authorization": "Bearer " + token, "Content-Type": "application/json",
+                                       "Accept": "application/json"}),
+    ]
+    for label, headers in variants:
+        try:
+            r = requests.post(url, headers=headers, json=body, timeout=60)
+            lines.append(f"\n[{label}]\nHTTP {r.status_code} | {_diag(r)}\nالرد: {r.text[:250]!r}")
+        except Exception as e:
+            lines.append(f"\n[{label}]\nخطأ شبكة: {type(e).__name__}: {str(e)[:200]}")
+    bot.reply_to(message, "\n".join(lines)[:3900])
 
 
 @bot.message_handler(commands=["reset"])
