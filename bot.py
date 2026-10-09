@@ -333,14 +333,14 @@ COMPACT_PROMPT = (
     "إذا مو متأكد من اسم بلوك أو طريقة عمله قول هيك وما تخترع."
 )
 
-GH_STATIC = {
-    "deepseek": ["DeepSeek-R1", "DeepSeek-V3"],
-    "gpt": ["gpt-4o", "gpt-4o-mini"],
-    "llama": ["Meta-Llama-3.1-70B-Instruct", "Meta-Llama-3.1-8B-Instruct"],
-    "qwen": ["Qwen2.5-72B-Instruct", "Qwen2.5-Coder-32B-Instruct"],
-    "claude": []
+GH_STATIC = {  # احتياطي بس إذا فشل جلب الكتالوج. الصيغة لازم publisher/model
+    "deepseek": ["deepseek/DeepSeek-V3-0324", "deepseek/DeepSeek-R1"],
+    "gpt": ["openai/gpt-4o-mini", "openai/gpt-4o"],
+    "llama": ["meta/Meta-Llama-3.1-8B-Instruct", "meta/Meta-Llama-3.1-70B-Instruct"],
+    "qwen": [],
+    "claude": [],
 }
-_gh_cache = {"t": 0.0, "ids": []}
+_gh_cache = {"t": 0.0, "ids": [], "err": ""}
 
 class ProviderError(Exception):
     def __init__(self, code, msg=""):
@@ -374,11 +374,19 @@ def github_catalog_ids(force=False):
                          "X-GitHub-Api-Version": "2022-11-28"},
                 timeout=20,
             )
-            data = r.json() if r.status_code == 200 else []
-            items = data if isinstance(data, list) else (data.get("models") or data.get("data") or [])
-            ids = [i.get("id") for i in items if isinstance(i, dict) and i.get("id")]
+            if r.status_code == 200:
+                data = r.json()
+                items = data if isinstance(data, list) else (data.get("models") or data.get("data") or [])
+                ids = [i.get("id") for i in items if isinstance(i, dict) and i.get("id")]
+                _gh_cache["err"] = "" if ids else "الكتالوج رجع فاضي"
+            else:
+                _gh_cache["err"] = f"HTTP {r.status_code}: {r.text[:200]}"
+                log.error("GitHub catalog %s", _gh_cache["err"])
         except Exception as e:
+            _gh_cache["err"] = f"{type(e).__name__}: {e}"
             log.error("GitHub catalog error: %s", e)
+    else:
+        _gh_cache["err"] = "GITHUB_MODELS_TOKEN مو مضاف"
     if ids:
         _gh_cache.update(t=now, ids=ids)
     return ids or _gh_cache["ids"]
@@ -455,17 +463,20 @@ def _call_backend(b, contents, deep, json_mode):
                 timeout=b["timeout_deep"] if deep else b["timeout_fast"],
             )
         except requests.RequestException as e:
-            last = ProviderError(None, str(e))
+            last = ProviderError(None, f"{model}: {type(e).__name__}: {str(e)[:150]}")
+            log.error("GitHub [%s] network error: %s", model, e)
             continue
         if r.status_code == 200:
             try:
                 text = (r.json()["choices"][0]["message"].get("content") or "")
             except Exception:
-                last = ProviderError(502, "bad response")
+                last = ProviderError(502, f"{model}: رد غير مفهوم من السيرفر")
+                log.error("GitHub [%s] bad response: %s", model, r.text[:200])
                 continue
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
             return text or None
-        last = ProviderError(r.status_code, r.text[:300])
+        last = ProviderError(r.status_code, f"{model}: {r.text[:200]}")
+        log.error("GitHub [%s] code=%s: %s", model, r.status_code, r.text[:300])
         if r.status_code in (401, 403):
             raise last
     raise last or ProviderError(None, "no models")
@@ -501,13 +512,13 @@ def ask_model(chat_id, contents, deep=False, json_mode=False):
                 return ans, None
         except Exception as e:
             code = getattr(e, "code", None)
-            raise ProviderError(code, f"الموديل {PROVIDER_NAMES[prov]} فشل بالرد.")
+            raise ProviderError(code, f"{PROVIDER_NAMES[prov]} ← {e}")
             
     raise ValueError(f"الموديل {PROVIDER_NAMES.get(prov, prov)} مو متاح.")
 
 def friendly_error(e):
     code = getattr(e, "code", None)
-    tag = f"\n(الخطأ: {e})" if isinstance(e, ProviderError) else (f"\n(رمز: {code})" if code else f"\n({type(e).__name__})")
+    tag = f"\n(الخطأ: {str(e)[:350]})" if isinstance(e, ProviderError) else (f"\n(رمز: {code})" if code else f"\n({type(e).__name__})")
     if code == 429:
         msg = "⏳ السيرفرات مضغوطة حالياً أو خلص الحد المجاني للطلب، جرّب بعد شوي."
     elif code in (500, 502, 503, 504):
@@ -812,10 +823,32 @@ def cmd_ghmodels(message):
         return
     ids = github_catalog_ids(force=True)
     if not ids:
-        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات GitHub. تأكد إن التوكن فيه صلاحية Models: read.")
+        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات GitHub.\nالسبب: " + (_gh_cache.get("err") or "مجهول"))
         return
     pick = [i for i in ids if any(k in i.lower() for k in ("deepseek", "qwen", "gpt", "llama", "claude"))] or ids[:30]
     bot.reply_to(message, "موديلات GitHub Models المتاحة:\n" + "\n".join(pick[:40]))
+
+
+@bot.message_handler(commands=["ghtest"])
+def cmd_ghtest(message):
+    """تجربة مباشرة لموديل: /ghtest deepseek/DeepSeek-R1 (بيعرض رد GitHub الخام)."""
+    token = os.environ.get("GITHUB_MODELS_TOKEN")
+    if not token:
+        bot.reply_to(message, "GITHUB_MODELS_TOKEN مو مضاف على Render.")
+        return
+    model = (message.text or "").partition(" ")[2].strip() or GH_STATIC["deepseek"][0]
+    try:
+        r = requests.post(
+            GH_BASE.rstrip("/") + "/inference/chat/completions",
+            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json",
+                     "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"},
+            json={"model": model, "messages": [{"role": "user", "content": "قول مرحبا بكلمة وحدة"}], "stream": False},
+            timeout=60,
+        )
+        bot.reply_to(message, f"الموديل: {model}\nHTTP {r.status_code}\n{r.text[:600]}")
+    except Exception as e:
+        bot.reply_to(message, f"الموديل: {model}\nخطأ شبكة: {type(e).__name__}: {str(e)[:300]}")
+
 
 @bot.message_handler(commands=["reset"])
 def cmd_reset(message):
