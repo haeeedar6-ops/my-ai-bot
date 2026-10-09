@@ -309,7 +309,7 @@ PROVIDER_NAMES = {
     "qwen": "Qwen"
 }
 
-GH_BASE = os.environ.get("GITHUB_MODELS_BASE", "[https://models.github.ai](https://models.github.ai)")
+GH_BASE = os.environ.get("GITHUB_MODELS_BASE", "https://models.github.ai")
 GH_BACKEND = {
     "name": "GitHub Models",
     "base": GH_BASE.rstrip("/") + "/inference",
