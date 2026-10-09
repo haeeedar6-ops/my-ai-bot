@@ -43,7 +43,7 @@ MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
 DEEP_TIMEOUT_MS = 75000
 
-SYSTEM_PROMPT =SYSTEM_PROMPT = """أنت "Astra AI"، مساعد ذكي شامل ومتقدم، مستعد للإجابة عن أي سؤال في شتى المجالات.
+SYSTEM_PROMPT = """أنت "Astra AI"، مساعد ذكي شامل ومتقدم، مستعد للإجابة عن أي سؤال في شتى المجالات.
 
 هويتك وصانعك (مهم جداً):
 - تم تطويرك وبرمجتك بواسطة المطور "haydar_xe".
