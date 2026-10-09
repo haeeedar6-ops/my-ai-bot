@@ -28,7 +28,6 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 PORT = int(os.environ.get("PORT", 10000))
 
 # موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
-# إذا موديل ضغط أو ما اشتغل، بينتقل للتالي تلقائياً.
 FAST_MODELS = [
     os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
     "gemini-3.5-flash-lite",
@@ -84,7 +83,7 @@ def _knowledge_files():
     """يدور على ملفات المعرفة بمجلد knowledge، وإذا ما لقاه بياخدها من نفس مجلد bot.py."""
     skip = {"readme.md", "requirements.txt"}
     found = {}
-    for folder in (BASE_DIR, KNOWLEDGE_DIR):  # مجلد knowledge بيغلب إذا في اسم مكرر
+    for folder in (BASE_DIR, KNOWLEDGE_DIR):
         if not os.path.isdir(folder):
             continue
         for f in os.listdir(folder):
@@ -94,7 +93,6 @@ def _knowledge_files():
 
 
 def load_knowledge():
-    """يقرأ ملفات المعرفة ويرجعها نص واحد، وبيعيد القراءة إذا تعدّل أي ملف."""
     files = _knowledge_files()
     sig = tuple((name, os.path.getmtime(path)) for name, path in files)
     if sig == _knowledge_cache["sig"]:
@@ -161,11 +159,9 @@ except Exception as e:
 def home():
     return "Bot is running!"
 
-
 @app.route("/health")
 def health():
     return {"status": "ok", "models": MODELS}
-
 
 # ============ أدوات مساعدة ============
 def build_contents(chat_id):
@@ -176,12 +172,10 @@ def build_contents(chat_id):
         for role, text in items
     ]
 
-
 def save_turn(chat_id, user_text, bot_text):
     with lock:
         histories[chat_id].append(("user", user_text))
         histories[chat_id].append(("model", bot_text))
-
 
 def is_spam(chat_id):
     now = time.time()
@@ -190,11 +184,8 @@ def is_spam(chat_id):
         last_request[chat_id] = now
     return now - prev < COOLDOWN_SECONDS
 
-
 def clean(text):
-    # تيليجرام بدون parse_mode ما بيعرض ** فنشيلها
     return text.replace("**", "").replace("__", "").strip()
-
 
 def send_long(message, text):
     text = clean(text)
@@ -205,12 +196,9 @@ def send_long(message, text):
         else:
             bot.send_message(message.chat.id, chunk)
 
-
 @contextmanager
 def typing(chat_id):
-    """يبعت 'يكتب...' طول ما Gemini عم يفكر."""
     stop = threading.Event()
-
     def loop():
         while not stop.is_set():
             try:
@@ -218,14 +206,12 @@ def typing(chat_id):
             except Exception:
                 pass
             stop.wait(4)
-
     t = threading.Thread(target=loop, daemon=True)
     t.start()
     try:
         yield
     finally:
         stop.set()
-
 
 DEEP_WORDS = {
     "كيف", "كيفية", "ليش", "لماذا", "شلون", "ازاي", "ليه",
@@ -236,15 +222,12 @@ DEEP_WORDS = {
     "حلل", "تحليل", "افضل", "أفضل", "قارنلي", "اقترح", "خطة",
 }
 
-
 def is_deep_question(text):
-    """قرار بسيط وسريع (بدون طلب API): هل السؤال محتاج تفكير عميق؟"""
     t = (text or "").strip()
     if len(t) >= 110 or "```" in t or "def " in t:
         return True
     tokens = set(re.findall(r"[\w\u0600-\u06FF]+", t.lower()))
     return bool(tokens & DEEP_WORDS)
-
 
 def make_config(deep, system, use_thinking=True, json_mode=False):
     kwargs = {
@@ -261,13 +244,10 @@ def make_config(deep, system, use_thinking=True, json_mode=False):
                 thinking_level="high" if deep else "low"
             )
         except Exception:
-            pass  # نسخة المكتبة ما بتدعم thinking_level
+            pass
     return types.GenerateContentConfig(**kwargs)
 
-
 def ask_gemini(contents, deep=False, system=None, json_mode=False):
-    """يجرب الموديلات بالترتيب. إذا موديل ضغط أو ما اشتغل ينتقل للتالي.
-    إذا فشلت الموديلات العميقة، بيرجع للموديلات السريعة."""
     models = DEEP_MODELS if deep else FAST_MODELS
     system = system or get_system_prompt()
     last_err = None
@@ -279,44 +259,35 @@ def ask_gemini(contents, deep=False, system=None, json_mode=False):
                     contents=contents,
                     config=make_config(deep, system, use_thinking, json_mode),
                 )
-                return resp.text or None  # None إذا انحظر الرد
+                return resp.text or None
             except errors.APIError as e:
                 last_err = e
                 code = getattr(e, "code", None)
-                log.error("Gemini [%s] deep=%s thinking=%s code=%s: %s",
-                          model, deep, use_thinking, code, e)
                 if code in (401, 403):
-                    raise  # مشكلة بمفتاح Gemini، ما بينفع نكمل
+                    raise
                 if code == 400 and use_thinking:
-                    continue  # جرب نفس الموديل بدون إعداد التفكير
-                break  # أي خطأ تاني (404، 429، 500، 503، 504...) ← الموديل التالي
+                    continue
+                break
             except Exception as e:
                 last_err = e
-                log.exception("Gemini unexpected error [%s]", model)
                 break
     if deep:
         log.warning("كل الموديلات العميقة فشلت، برجع للسريعة")
         return ask_gemini(contents, deep=False, system=system, json_mode=json_mode)
     raise last_err or RuntimeError("كل الموديلات فشلت")
 
-
 REVIEW_PROMPT = """راجع جوابك قبل ما ينرسل للمستخدم.
-
 سؤال المستخدم:
 {question}
-
 جوابك المبدئي:
 {answer}
-
 المطلوب:
 1. كل اسم بلوك مذكور لازم يكون مكتوب بالضبط بقاعدة المعرفة. إذا في اسم مو موجود، بدّله بأقرب بلوك موجود، أو احذفه وقول إنك مو متأكد منه.
 2. صحّح أي خطأ بالمنطق أو أي خطوة ناقصة بالترتيب.
 3. إذا الجواب سليم، رجّعه كما هو.
 رجّع الجواب النهائي فقط، بدون أي كلام عن المراجعة."""
 
-
 def review_answer(chat_id, question, answer):
-    """مراجعة ذاتية: يتأكد من أسماء البلوكات ومنطق الجواب."""
     try:
         prompt = REVIEW_PROMPT.format(question=question, answer=answer)
         contents = [types.Content(role="user", parts=[types.Part(text=prompt)])]
@@ -327,91 +298,69 @@ def review_answer(chat_id, question, answer):
         log.exception("Review failed, using original answer")
     return answer
 
-
-# ============ DeepSeek و Qwen (OpenAI-compatible) + GitHub Models ============
+# ============ GitHub Models ============
 DEFAULT_PROVIDER = os.environ.get("DEFAULT_PROVIDER", "gemini").lower()
-PROVIDER_NAMES = {"gemini": "Gemini", "deepseek": "DeepSeek", "qwen": "Qwen"}
-GH_BASE = os.environ.get("GITHUB_MODELS_BASE", "https://models.github.ai")
-FILE_PROVIDERS = [p.strip().lower() for p in os.environ.get("FILE_PROVIDERS", "qwen,deepseek").split(",") if p.strip()]
-ESCALATE_ORDER = ["deepseek", "qwen"]
+PROVIDER_NAMES = {
+    "gemini": "Gemini",
+    "chatgpt": "ChatGPT",
+    "llama": "Llama 3",
+    "claude": "Claude",
+    "deepseek": "DeepSeek",
+    "qwen": "Qwen"
+}
+
+GH_BASE = os.environ.get("GITHUB_MODELS_BASE", "[https://models.github.ai](https://models.github.ai)")
+GH_BACKEND = {
+    "name": "GitHub Models",
+    "base": GH_BASE.rstrip("/") + "/inference",
+    "key_env": "GITHUB_MODELS_TOKEN",
+    "compact": True, 
+    "max_chars": 9000,
+    "timeout_fast": 60, 
+    "timeout_deep": 120,
+}
 
 PROVIDERS = {
-    "deepseek": {"backends": [
-        {   # DeepSeek الرسمي (رخيص، بده رصيد صغير)
-            "name": "DeepSeek API",
-            "base": os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-            "key_env": "DEEPSEEK_API_KEY",
-            "fast": [os.environ.get("DEEPSEEK_FAST_MODEL", "deepseek-v4-flash")],
-            "deep": [os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro"), "deepseek-v4-flash"],
-            "timeout_fast": 45, "timeout_deep": 120,
-        },
-        {   # GitHub Models: توكن fine-grained بصلاحية Models: read، حدود صغيرة
-            "name": "GitHub Models",
-            "base": GH_BASE.rstrip("/") + "/inference",
-            "key_env": "GITHUB_MODELS_TOKEN",
-            "match": "deepseek", "compact": True, "max_chars": 9000,
-            "timeout_fast": 60, "timeout_deep": 120,
-        },
-    ]},
-    "qwen": {"backends": [
-        {
-            "name": "Alibaba Model Studio",
-            "base": os.environ.get("QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"),
-            "key_env": "DASHSCOPE_API_KEY",
-            "fast": [os.environ.get("QWEN_FAST_MODEL", "qwen3.6-flash"), "qwen3.7-plus"],
-            "deep": [os.environ.get("QWEN_MODEL", "qwen3.8-max"), "qwen3.7-plus"],
-            "timeout_fast": 45, "timeout_deep": 120,
-        },
-    ]},
+    "chatgpt": {"backends": [{**GH_BACKEND, "match": "gpt"}]},
+    "llama": {"backends": [{**GH_BACKEND, "match": "llama"}]},
+    "claude": {"backends": [{**GH_BACKEND, "match": "claude"}]},
+    "deepseek": {"backends": [{**GH_BACKEND, "match": "deepseek"}]},
+    "qwen": {"backends": [{**GH_BACKEND, "match": "qwen"}]},
 }
-chat_provider = {}  # chat_id -> المزوّد اللي اختاره المستخدم بـ /model
+chat_provider = {}
 
 COMPACT_PROMPT = (
     "أنت Craftland AI، مساعد ذكي متخصص بـ Free Fire Craftland وCraftland Studio، وبتجاوب على أي سؤال تاني. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة ومختصرة ومرتبة. "
     "إذا مو متأكد من اسم بلوك أو طريقة عمله قول هيك وما تخترع."
 )
-ESCALATE_RULE = (
-    "\n\nقاعدة تحويل: إذا كان السؤال مشكلة معقدة (منطق أو برمجة أو تحليل عميق) وما قدرت توصل لحل مؤكد، "
-    "ردّ بكلمة وحدة فقط: ESCALATE (بدون أي شي تاني). أما إذا قدرت تحلّه جاوب عادي."
-)
 
-GH_STATIC = {"deepseek": ["deepseek/DeepSeek-V3-0324", "deepseek/DeepSeek-R1"]}
+GH_STATIC = {
+    "deepseek": ["DeepSeek-R1", "DeepSeek-V3"],
+    "gpt": ["gpt-4o", "gpt-4o-mini"],
+    "llama": ["Meta-Llama-3.1-70B-Instruct", "Meta-Llama-3.1-8B-Instruct"],
+    "qwen": ["Qwen2.5-72B-Instruct", "Qwen2.5-Coder-32B-Instruct"],
+    "claude": []
+}
 _gh_cache = {"t": 0.0, "ids": []}
-
 
 class ProviderError(Exception):
     def __init__(self, code, msg=""):
         self.code = code
         super().__init__(msg)
 
-
 def _backend_ready(b):
     return bool(os.environ.get(b["key_env"]))
-
 
 def provider_ready(name):
     return name == "gemini" or any(_backend_ready(b) for b in PROVIDERS.get(name, {}).get("backends", []))
 
-
-def _key_hint(name):
-    return " أو ".join(b["key_env"] for b in PROVIDERS[name]["backends"])
-
-
-def _backends_label(name):
-    if name == "gemini":
-        return "Gemini API"
-    return " + ".join(b["name"] for b in PROVIDERS[name]["backends"] if _backend_ready(b)) or "—"
-
-
 def _text_only(contents):
-    """الصور والـ PDF الخام والصوت بتروح لـ Gemini دايماً، لأنو هو اللي بيشوفها."""
     for c in contents:
         for p in c.parts:
             if getattr(p, "inline_data", None) is not None or getattr(p, "file_data", None) is not None:
                 return False
     return True
-
 
 def github_catalog_ids(force=False):
     token = os.environ.get("GITHUB_MODELS_TOKEN")
@@ -436,17 +385,12 @@ def github_catalog_ids(force=False):
         _gh_cache.update(t=now, ids=ids)
     return ids or _gh_cache["ids"]
 
-
 def github_models_for(match, deep):
     ids = [i for i in github_catalog_ids() if match in i.lower()] or GH_STATIC.get(match, [])
-    heavy = [i for i in ids if any(k in i.lower() for k in ("r1", "pro", "reason"))]
+    heavy = [i for i in ids if any(k in i.lower() for k in ("r1", "pro", "reason", "70b", "72b", "gpt-4o")) and "mini" not in i.lower()]
     light = [i for i in ids if i not in heavy]
     order = (heavy + light) if deep else (light + heavy)
-    override = os.environ.get("GITHUB_DEEPSEEK_MODEL") if match == "deepseek" else None
-    if override:
-        order = [override] + [i for i in order if i != override]
     return order
-
 
 def _compact_prompt():
     notes = ""
@@ -459,7 +403,6 @@ def _compact_prompt():
                 pass
     return COMPACT_PROMPT + (("\n\nملاحظات مرجعية:\n" + notes) if notes else "")
 
-
 def _build_messages(b, contents):
     system = _compact_prompt() if b.get("compact") else get_system_prompt()
     msgs = []
@@ -468,7 +411,7 @@ def _build_messages(b, contents):
         if text:
             msgs.append({"role": "assistant" if c.role == "model" else "user", "content": text})
     cap = b.get("max_chars")
-    if cap:  # موديلات GitHub المجانية سقفها صغير: بنقصّ المحادثة القديمة، وبعدين نص الملف من النص
+    if cap:
         def total():
             return len(system) + sum(len(m["content"]) for m in msgs)
         while total() > cap and len(msgs) > 1:
@@ -482,9 +425,7 @@ def _build_messages(b, contents):
             msgs.pop(0)
     return [{"role": "system", "content": system}] + msgs
 
-
 def _merge_system(messages):
-    """بعض موديلات التفكير (R1) ما بتحب رسالة system، فبندمجها مع أول رسالة مستخدم."""
     sys_txt, rest = messages[0]["content"], [dict(m) for m in messages[1:]]
     if rest and rest[0]["role"] == "user":
         rest[0]["content"] = sys_txt + "\n\n" + rest[0]["content"]
@@ -492,11 +433,10 @@ def _merge_system(messages):
         rest.insert(0, {"role": "user", "content": sys_txt})
     return rest
 
-
 def _call_backend(b, contents, deep, json_mode):
     key = os.environ.get(b["key_env"], "")
     messages = _build_messages(b, contents)
-    models = github_models_for(b["match"], deep) if b.get("match") else (b["deep"] if deep else b["fast"])
+    models = github_models_for(b["match"], deep)
     headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
     if b.get("match"):
         headers.update({"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"})
@@ -517,23 +457,19 @@ def _call_backend(b, contents, deep, json_mode):
             )
         except requests.RequestException as e:
             last = ProviderError(None, str(e))
-            log.error("%s [%s] network error: %s", b["name"], model, e)
             continue
         if r.status_code == 200:
             try:
                 text = (r.json()["choices"][0]["message"].get("content") or "")
             except Exception:
                 last = ProviderError(502, "bad response")
-                log.error("%s [%s] bad response: %s", b["name"], model, r.text[:200])
                 continue
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
             return text or None
         last = ProviderError(r.status_code, r.text[:300])
-        log.error("%s [%s] code=%s: %s", b["name"], model, r.status_code, r.text[:300])
         if r.status_code in (401, 403):
-            raise last  # مشكلة بالمفتاح، ما بينفع نكمل بهالـ backend
+            raise last
     raise last or ProviderError(None, "no models")
-
 
 def ask_openai_compat(prov, contents, deep=False, json_mode=False):
     last = None
@@ -544,91 +480,46 @@ def ask_openai_compat(prov, contents, deep=False, json_mode=False):
             return _call_backend(b, contents, deep, json_mode)
         except ProviderError as e:
             last = e
-            log.error("Backend %s failed (%s), trying next", b["name"], e.code)
     raise last or ProviderError(None, "no backend ready")
 
-
-def _try_providers(order, contents, deep, json_mode):
-    """بيجرّب المزوّدين بالترتيب. بيرجّع (جواب، اسم المزوّد، آخر رمز خطأ)."""
-    code = None
-    for p in order:
-        try:
-            ans = ask_openai_compat(p, contents, deep=deep, json_mode=json_mode)
-            if ans:
-                return ans, p, None
-        except Exception as e:
-            code = getattr(e, "code", None) or code
-            log.error("Provider %s failed (%s)", p, getattr(e, "code", None))
-    return None, None, code
-
-
-def file_route(chat_id):
-    """مزوّدين الملفات: Qwen ثم DeepSeek (إلا إذا اخترت موديل بإيدك)."""
-    if chat_id in chat_provider:
-        p = chat_provider[chat_id]
-        return [p] if p in PROVIDERS and provider_ready(p) else None
-    order = [p for p in FILE_PROVIDERS if p in PROVIDERS and provider_ready(p)]
-    return order or None
-
-
-def ask_model(chat_id, contents, deep=False, json_mode=False, prefer=None):
-    """بيرجّع (الجواب، ملاحظة).
-    - مزوّد مختار أو مفضّل للملفات ← بيجرّبه، وإذا فشل بيرجع لـ Gemini.
-    - Gemini للأسئلة المعقدة: إذا ما قدر يحلها، بيحوّلها لـ DeepSeek ثم Qwen.
-    - إذا Gemini كله وقع: بيجرّب DeepSeek ثم Qwen."""
-    explicit = chat_id in chat_provider
+def ask_model(chat_id, contents, deep=False, json_mode=False):
+    """بيرجّع (الجواب، ملاحظة). البوت بيجبر الموديل المختار فقط وبدون تبديل تلقائي."""
     prov = chat_provider.get(chat_id, DEFAULT_PROVIDER)
     text_only = _text_only(contents)
-    note = None
-    if text_only:
-        if prefer:
-            order = [p for p in prefer if provider_ready(p)]
-        elif prov in PROVIDERS and provider_ready(prov):
-            order = [prov]
-        else:
-            order = []
-        if order:
-            ans, used, code = _try_providers(order, contents, deep, json_mode)
-            if ans:
-                return ans, (f"(جاوب {PROVIDER_NAMES[used]})" if (prefer and not explicit) else None)
-            note = f"(جاوب Gemini لأنو {PROVIDER_NAMES[order[0]]} ما اشتغل" + (f"، رمز {code})" if code else ")")
-    alts = [p for p in ESCALATE_ORDER if provider_ready(p)] if text_only else []
-    escalate_ok = deep and not json_mode and bool(alts) and note is None
-    try:
-        if escalate_ok:
-            answer = ask_gemini(contents, deep=True, system=get_system_prompt() + ESCALATE_RULE)
-        else:
-            answer = ask_gemini(contents, deep=deep, json_mode=json_mode)
-    except Exception:
-        if alts:  # Gemini كله وقع
-            ans, used, _ = _try_providers(alts, contents, deep, json_mode)
-            if ans:
-                return ans, f"(Gemini ما اشتغل، جاوب {PROVIDER_NAMES[used]})"
-        raise
-    if escalate_ok and answer and len(answer.strip()) < 40 and answer.strip().upper().startswith("ESCALATE"):
-        ans, used, _ = _try_providers(alts, contents, True, False)
-        if ans:
-            return ans, f"(حوّلت السؤال لـ {PROVIDER_NAMES[used]} لأنو معقّد)"
-        answer = ask_gemini(contents, deep=True)  # البدائل فشلت، جاوب Gemini عادي
-    return answer, note
+    
+    if not text_only and prov != "gemini":
+        ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+        return ans, f"(استخدمت Gemini لأن {PROVIDER_NAMES[prov]} ما بيقدر يقرأ صور/صوت)"
 
+    if prov == "gemini":
+        ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+        return ans, None
+
+    if prov in PROVIDERS and provider_ready(prov):
+        try:
+            ans = ask_openai_compat(prov, contents, deep=deep, json_mode=json_mode)
+            if ans:
+                return ans, None
+        except Exception as e:
+            code = getattr(e, "code", None)
+            raise ProviderError(code, f"الموديل {PROVIDER_NAMES[prov]} فشل بالرد.")
+            
+    raise ValueError(f"الموديل {PROVIDER_NAMES.get(prov, prov)} مو متاح.")
 
 def friendly_error(e):
     code = getattr(e, "code", None)
-    tag = f"\n(رمز الخطأ: {code})" if code else f"\n({type(e).__name__})"
+    tag = f"\n(الخطأ: {e})" if isinstance(e, ProviderError) else (f"\n(رمز: {code})" if code else f"\n({type(e).__name__})")
     if code == 429:
-        msg = "⏳ وصلنا لحد الاستخدام عند جوجل، جرّب بعد شوي."
+        msg = "⏳ السيرفرات مضغوطة حالياً أو خلص الحد المجاني للطلب، جرّب بعد شوي."
     elif code in (500, 502, 503, 504):
-        msg = "⏳ سيرفرات جوجل مضغوطة حالياً، جرّب مرة تانية بعد شوي."
+        msg = "⏳ السيرفرات تبع الذكاء الاصطناعي مو مستقرة، جرّب تاني."
     elif code in (401, 403):
-        msg = "🔑 في مشكلة بمفتاح Gemini، لازم يتحقق منه صاحب البوت."
+        msg = "🔑 في مشكلة بالمفتاح السري بالـ Environment Variables."
     else:
         msg = "⚠️ صار خطأ أثناء المعالجة، جرّب مرة تانية."
     return msg + tag
 
-
-def process(message, user_parts, history_label, deep=False, prefer=None):
-    """المعالجة المشتركة: نص / صورة / صوت."""
+def process(message, user_parts, history_label, deep=False):
     chat_id = message.chat.id
     if is_spam(chat_id):
         bot.reply_to(message, "استنى شوي وأرسل تاني 🙂")
@@ -643,7 +534,7 @@ def process(message, user_parts, history_label, deep=False, prefer=None):
         with typing(chat_id):
             contents = build_contents(chat_id)
             contents.append(types.Content(role="user", parts=user_parts))
-            answer, note = ask_model(chat_id, contents, deep=deep, prefer=prefer)
+            answer, note = ask_model(chat_id, contents, deep=deep)
             if deep and answer and len(answer) > 150 and load_knowledge() and not note:
                 answer = review_answer(chat_id, history_label, answer)
         if answer:
@@ -661,7 +552,6 @@ def process(message, user_parts, history_label, deep=False, prefer=None):
             except Exception:
                 pass
 
-
 # ============ سكربتات بصورة ============
 SCRIPT_PROMPT = """صمّم سكربت كرافتلاند للطلب التالي، ورجّع JSON فقط (بدون أي كلام ولا علامات ```)، بهالشكل:
 {{
@@ -676,23 +566,13 @@ SCRIPT_PROMPT = """صمّم سكربت كرافتلاند للطلب التال�
   ],
   "tips": ["نصيحة قصيرة"]
 }}
-
-القواعد:
-- أسماء البلوكات (event و name) لازم تكون مكتوبة بالضبط متل ما هي بقاعدة المعرفة، وممنوع تخترع اسم. إذا احتجت شي ما بتلاقيه بالقائمة، اوصفه بوضوح واكتب بالـ note إنه "غير مؤكد".
-- kind: condition للشرط (إذا / إذا-آخر)، loop للحلقات، variable لإنشاء أو تعديل عامل، function لاستدعاء وظيفة، action لباقي البلوكات.
-- البلوكات اللي جوا الشرط أو الحلقة بتنحط بـ children.
-- رتّب منطقياً (حدث ثم شروط ثم إجراءات)، بحد أقصى 3 سكربتات و16 بلوك لكل سكربت، وراعي القيود التقنية المكتوبة بالملاحظات.
-- note وtips بالعربي وقصيرة.
-
 الطلب: {request}"""
 
 SCRIPT_WORDS = ("سكربت", "سكريبت", "نظام", "بلوكات")
 IMG_WORDS = ("صورة", "صوره", "ارسم", "رسم", "مخطط")
 
-
 def wants_script_image(text):
     return any(w in text for w in SCRIPT_WORDS) and any(w in text for w in IMG_WORDS)
-
 
 def send_script(message, request_text):
     chat_id = message.chat.id
@@ -738,9 +618,8 @@ def send_script(message, request_text):
             except Exception:
                 pass
 
-
 # ============ قراءة الملفات ============
-DOC_TTL = 30 * 60                      # الملف بيضل مرفق بالمحادثة 30 دقيقة
+DOC_TTL = 30 * 60
 MAX_FILE_BYTES = 15 * 1024 * 1024
 
 MIME_BY_EXT = {
@@ -750,8 +629,7 @@ MIME_BY_EXT = {
 TEXT_EXT = {".txt", ".md", ".csv", ".json", ".py", ".js", ".ts", ".html", ".css", ".xml",
             ".log", ".ini", ".yaml", ".yml", ".lua", ".java", ".c", ".cpp", ".cs", ".sql", ".tsv"}
 
-doc_ctx = {}       # chat_id -> {"name", "parts", "exp"}
-
+doc_ctx = {}
 
 def _docx_text(data):
     with zipfile.ZipFile(io.BytesIO(data)) as z:
@@ -759,9 +637,7 @@ def _docx_text(data):
     xml = xml.replace("</w:p>", "\n").replace("<w:tab/>", "\t")
     return html.unescape(re.sub(r"<[^>]+>", "", xml))
 
-
 def build_doc_parts(name, data):
-    """يحوّل الملف لأجزاء بيفهمها Gemini. بيرمي ValueError إذا النوع مو مدعوم أو الملف فاضي."""
     ext = os.path.splitext(name.lower())[1]
     if ext in MIME_BY_EXT:
         return [types.Part.from_bytes(data=data, mime_type=MIME_BY_EXT[ext])]
@@ -787,9 +663,7 @@ def build_doc_parts(name, data):
         text = text[:150_000] + "\n...[انقطع الملف لأنه طويل]"
     return [types.Part(text=f"[محتوى الملف: {name}]\n{text}")]
 
-
 def pdf_alt_parts(name, data):
-    """نص الـ PDF (إذا مكتبة pypdf موجودة والملف مو ممسوح صورة) حتى يقراه DeepSeek وQwen."""
     try:
         from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(data))
@@ -802,10 +676,8 @@ def pdf_alt_parts(name, data):
         text = text[:150_000] + "\n...[انقطع الملف لأنه طويل]"
     return [types.Part(text=f"[محتوى الملف: {name}]\n{text}")]
 
-
 def set_doc(chat_id, name, parts, alt=None):
     doc_ctx[chat_id] = {"name": name, "parts": parts, "alt": alt, "exp": time.time() + DOC_TTL}
-
 
 def get_doc(chat_id):
     ctx = doc_ctx.get(chat_id)
@@ -813,7 +685,6 @@ def get_doc(chat_id):
         doc_ctx.pop(chat_id, None)
         return None
     return ctx
-
 
 # ============ الأوامر ============
 @bot.message_handler(commands=["start"])
@@ -824,7 +695,6 @@ def cmd_start(message):
         "/reset لمسح الذاكرة\n/help للمساعدة",
     )
 
-
 @bot.message_handler(commands=["help"])
 def cmd_help(message):
     lines = [
@@ -833,13 +703,12 @@ def cmd_help(message):
         "• ابعت ملف (PDF / Word / نص) مع سؤال، وبضل مرفق 30 دقيقة",
         "• ابعت رسالة صوتية",
         "• /deep سؤالك  ←  تفكير عميق + مراجعة الجواب",
-        "• /model  ←  تبديل الموديل (Gemini / DeepSeek / Qwen)",
+        "• /model  ←  تبديل الموديل (Gemini / ChatGPT / Llama / Claude...)",
     ]
     if visual is not None:
         lines += ["• /script فكرتك  ←  سكربت بصورة بلوكات", "• /scripts  ←  مكتبة السكربتات الجاهزة"]
     lines += ["• /clearfile لحذف الملف المرفق", "• /reset لبدء محادثة جديدة"]
     bot.reply_to(message, "\n".join(lines))
-
 
 @bot.message_handler(commands=["deep"])
 def cmd_deep(message):
@@ -849,7 +718,6 @@ def cmd_deep(message):
         return
     process(message, [types.Part(text=text)], text, deep=True)
 
-
 @bot.message_handler(commands=["script"])
 def cmd_script(message):
     text = (message.text or "").partition(" ")[2].strip()
@@ -857,7 +725,6 @@ def cmd_script(message):
         bot.reply_to(message, "اكتب فكرة السكربت بعد الأمر، مثال:\n/script نظام محفظة ومتجر")
         return
     send_script(message, text)
-
 
 @bot.message_handler(commands=["scripts"])
 def cmd_scripts(message):
@@ -869,7 +736,6 @@ def cmd_scripts(message):
     for i, f in enumerate(files[:40]):
         kb.add(telebot.types.InlineKeyboardButton(visual.library_title(f), callback_data=f"lib:{i}"))
     bot.send_message(message.chat.id, "📚 مكتبة السكربتات الجاهزة، اختار واحد:", reply_markup=kb)
-
 
 @bot.callback_query_handler(func=lambda c: (c.data or "").startswith("lib:"))
 def cb_library(call):
@@ -886,41 +752,46 @@ def cb_library(call):
         except Exception:
             pass
 
-
 @bot.message_handler(commands=["clearfile"])
 def cmd_clearfile(message):
     doc_ctx.pop(message.chat.id, None)
     bot.reply_to(message, "🗑️ تم حذف الملف من المحادثة.")
 
-
 @bot.message_handler(commands=["model"])
 def cmd_model(message):
     arg = (message.text or "").partition(" ")[2].strip().lower()
-    aliases = {"gemini": "gemini", "جيميني": "gemini", "deepseek": "deepseek", "ديب سيك": "deepseek",
-               "ديبسيك": "deepseek", "qwen": "qwen", "كوين": "qwen"}
+    aliases = {
+        "gemini": "gemini", "جيميني": "gemini", 
+        "deepseek": "deepseek", "ديب سيك": "deepseek", "ديبسيك": "deepseek",
+        "qwen": "qwen", "كوين": "qwen",
+        "chatgpt": "chatgpt", "gpt": "chatgpt", "شات جي بي تي": "chatgpt",
+        "claude": "claude", "كلود": "claude",
+        "llama": "llama", "لاما": "llama"
+    }
     chat_id = message.chat.id
+    
     if arg in aliases:
         name = aliases[arg]
         if not provider_ready(name):
-            bot.reply_to(message, f"مفتاح {PROVIDER_NAMES[name]} مو مضاف على Render ({_key_hint(name)}).")
+            bot.reply_to(message, f"مفتاح GITHUB_MODELS_TOKEN مو مضاف على Render.")
             return
         chat_provider[chat_id] = name
         bot.reply_to(message, f"✅ صرت أجاوب بـ {PROVIDER_NAMES[name]}.")
         return
+        
     cur = chat_provider.get(chat_id, DEFAULT_PROVIDER)
     kb = telebot.types.InlineKeyboardMarkup()
     lines = []
     for name, label in PROVIDER_NAMES.items():
         mark = "✅ " if name == cur else ("" if provider_ready(name) else "⚠️ ")
         kb.add(telebot.types.InlineKeyboardButton(mark + label, callback_data=f"mdl:{name}"))
-        lines.append(f"• {label}: {_backends_label(name)}")
+        lines.append(f"• {label}")
+    
     bot.send_message(
         chat_id,
         f"الموديل الحالي: {PROVIDER_NAMES.get(cur, cur)}\n" + "\n".join(lines) +
-        "\n\n• الصور والصوت بتروح لـ Gemini دايماً.\n• الملفات النصية بتروح لـ Qwen ثم DeepSeek تلقائياً.\n"
-        "• المشاكل المعقدة اللي Gemini ما بيحلها بتتحوّل لـ DeepSeek.",
+        "\n\n• تم إيقاف التبديل التلقائي.\n• النماذج بتشتغل حصراً عن طريق GitHub Models باستثناء Gemini.",
         reply_markup=kb)
-
 
 @bot.callback_query_handler(func=lambda c: (c.data or "").startswith("mdl:"))
 def cb_model(call):
@@ -935,7 +806,6 @@ def cb_model(call):
     except Exception:
         log.exception("Model switch error")
 
-
 @bot.message_handler(commands=["ghmodels"])
 def cmd_ghmodels(message):
     if not os.environ.get("GITHUB_MODELS_TOKEN"):
@@ -943,11 +813,10 @@ def cmd_ghmodels(message):
         return
     ids = github_catalog_ids(force=True)
     if not ids:
-        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات GitHub. تأكد إن التوكن fine-grained وفيه صلاحية Models: read.")
+        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات GitHub. تأكد إن التوكن فيه صلاحية Models: read.")
         return
-    pick = [i for i in ids if any(k in i.lower() for k in ("deepseek", "qwen"))] or ids[:30]
-    bot.reply_to(message, "موديلات GitHub Models:\n" + "\n".join(pick[:40]))
-
+    pick = [i for i in ids if any(k in i.lower() for k in ("deepseek", "qwen", "gpt", "llama", "claude"))] or ids[:30]
+    bot.reply_to(message, "موديلات GitHub Models المتاحة:\n" + "\n".join(pick[:40]))
 
 @bot.message_handler(commands=["reset"])
 def cmd_reset(message):
@@ -955,7 +824,6 @@ def cmd_reset(message):
     with lock:
         histories.pop(message.chat.id, None)
     bot.reply_to(message, "🧹 تم مسح الذاكرة.")
-
 
 # ============ الرسائل ============
 @bot.message_handler(content_types=["text"])
@@ -967,16 +835,13 @@ def handle_text(message):
         send_script(message, text)
         return
     ctx = get_doc(message.chat.id)
-    prefer = None
     if ctx:
-        prefer = file_route(message.chat.id)
-        base = ctx["alt"] if (prefer and ctx.get("alt")) else ctx["parts"]
+        base = ctx["alt"] if ctx.get("alt") else ctx["parts"]
         parts = base + [types.Part(text=text)]
         label = f"[بخصوص الملف {ctx['name']}] {text}"
     else:
         parts, label = [types.Part(text=text)], text
-    process(message, parts, label, deep=is_deep_question(text), prefer=prefer)
-
+    process(message, parts, label, deep=is_deep_question(text))
 
 @bot.message_handler(content_types=["photo"])
 def handle_photo(message):
@@ -994,7 +859,6 @@ def handle_photo(message):
     ]
     process(message, parts, f"[صورة: {caption}]", deep=bool(message.caption) and is_deep_question(caption))
 
-
 @bot.message_handler(content_types=["voice"])
 def handle_voice(message):
     try:
@@ -1009,7 +873,6 @@ def handle_voice(message):
         types.Part(text="افهم هالرسالة الصوتية وجاوب عليها."),
     ]
     process(message, parts, "[رسالة صوتية]")
-
 
 @bot.message_handler(content_types=["document"])
 def handle_document(message):
@@ -1030,7 +893,7 @@ def handle_document(message):
     except ValueError as e:
         reason = str(e)
         if reason == "unsupported":
-            msg = "نوع الملف مو مدعوم حالياً. المدعوم: PDF، Word (docx)، صور، وملفات نصية (txt, md, csv, json, py...)."
+            msg = "نوع الملف مو مدعوم حالياً. المدعوم: PDF، Word (docx)، صور، وملفات نصية."
         elif reason == "empty":
             msg = "الملف فاضي أو ما قدرت أقرأ نصه."
         else:
@@ -1041,20 +904,17 @@ def handle_document(message):
     alt = pdf_alt_parts(name, data) if name.lower().endswith(".pdf") else None
     set_doc(chat_id, name, parts, alt)
     question = (message.caption or "").strip() or "لخّصلي هالملف واذكر أهم النقاط."
-    prefer = file_route(chat_id)
-    base = alt if (prefer and alt) else parts
+    base = alt if alt else parts
     process(message, base + [types.Part(text=question)],
-            f"[ملف: {name}] {question}", deep=is_deep_question(question), prefer=prefer)
+            f"[ملف: {name}] {question}", deep=is_deep_question(question))
     try:
         bot.send_message(chat_id, "📎 الملف مرفق بالمحادثة 30 دقيقة، اسأل عنه براحتك. /clearfile لحذفه.")
     except Exception:
         pass
 
-
 @bot.message_handler(content_types=["sticker", "video", "audio"])
 def handle_unsupported(message):
     bot.reply_to(message, "حالياً بدعم النص والصور والملفات والرسائل الصوتية بس 🙂")
-
 
 # ============ التشغيل ============
 def run_polling():
@@ -1065,7 +925,6 @@ def run_polling():
         except Exception as e:
             log.error("Polling crashed: %s", e)
             time.sleep(5)
-
 
 if __name__ == "__main__":
     threading.Thread(target=run_polling, daemon=True).start()
