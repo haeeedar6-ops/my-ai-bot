@@ -296,7 +296,7 @@ def review_answer(chat_id, question, answer):
         log.exception("Review failed, using original answer")
     return answer
 
-# ============ GitHub Models ============
+# ============ OpenRouter (مفتاح واحد لعدة موديلات) ============
 DEFAULT_PROVIDER = os.environ.get("DEFAULT_PROVIDER", "gemini").lower()
 PROVIDER_NAMES = {
     "gemini": "Gemini",
@@ -307,14 +307,13 @@ PROVIDER_NAMES = {
     "qwen": "Qwen"
 }
 
-GH_BASE = os.environ.get("GITHUB_MODELS_BASE", "https://models.github.ai").strip().rstrip("/")
-if GH_BASE.endswith("/inference"):  # لو انحط معها /inference بالغلط
-    GH_BASE = GH_BASE[: -len("/inference")]
+OR_BASE = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").strip().rstrip("/")
+OR_ALLOW_PAID = os.environ.get("OPENROUTER_ALLOW_PAID", "0") == "1"  # 1 = اسمح بالموديلات المدفوعة (بده رصيد)
 
 
-def _gh_token():
-    """التوكن بدون مسافات أو علامات تنصيص لو انحطت بالغلط بـ Render."""
-    return os.environ.get("GITHUB_MODELS_TOKEN", "").strip().strip('"').strip("'").strip()
+def _or_key():
+    """المفتاح بدون مسافات أو علامات تنصيص لو انحطت بالغلط بـ Render."""
+    return os.environ.get("OPENROUTER_API_KEY", "").strip().strip('"').strip("'").strip()
 
 
 def _diag(r):
@@ -328,22 +327,20 @@ def _diag(r):
         return "diag?"
 
 
-GH_BACKEND = {
-    "name": "GitHub Models",
-    "base": GH_BASE.rstrip("/") + "/inference",
-    "key_env": "GITHUB_MODELS_TOKEN",
-    "compact": True, 
-    "max_chars": 9000,
-    "timeout_fast": 60, 
-    "timeout_deep": 120,
+OR_BACKEND = {
+    "name": "OpenRouter",
+    "base": OR_BASE,
+    "key_env": "OPENROUTER_API_KEY",
+    "timeout_fast": 60,
+    "timeout_deep": 150,
 }
 
 PROVIDERS = {
-    "chatgpt": {"backends": [{**GH_BACKEND, "match": "gpt"}]},
-    "llama": {"backends": [{**GH_BACKEND, "match": "llama"}]},
-    "claude": {"backends": [{**GH_BACKEND, "match": "claude"}]},
-    "deepseek": {"backends": [{**GH_BACKEND, "match": "deepseek"}]},
-    "qwen": {"backends": [{**GH_BACKEND, "match": "qwen"}]},
+    "chatgpt": {"backends": [{**OR_BACKEND, "prov": "chatgpt", "match": ("openai/",)}]},
+    "llama": {"backends": [{**OR_BACKEND, "prov": "llama", "match": ("llama",)}]},
+    "claude": {"backends": [{**OR_BACKEND, "prov": "claude", "match": ("anthropic/",)}]},
+    "deepseek": {"backends": [{**OR_BACKEND, "prov": "deepseek", "match": ("deepseek",)}]},
+    "qwen": {"backends": [{**OR_BACKEND, "prov": "qwen", "match": ("qwen",)}]},
 }
 chat_provider = {}
 
@@ -353,14 +350,15 @@ COMPACT_PROMPT = (
     "إذا مو متأكد من اسم بلوك أو طريقة عمله قول هيك وما تخترع."
 )
 
-GH_STATIC = {  # احتياطي بس إذا فشل جلب الكتالوج. الصيغة لازم publisher/model
-    "deepseek": ["deepseek/DeepSeek-V3-0324", "deepseek/DeepSeek-R1"],
-    "gpt": ["openai/gpt-4o-mini", "openai/gpt-4o"],
-    "llama": ["meta/Meta-Llama-3.1-8B-Instruct", "meta/Meta-Llama-3.1-70B-Instruct"],
-    "qwen": [],
+# احتياطي بس إذا فشل جلب قائمة الموديلات (أسماء ممكن تتغير)
+OR_STATIC = {
+    "deepseek": ["deepseek/deepseek-chat-v3-0324:free", "deepseek/deepseek-r1:free"],
+    "qwen": ["qwen/qwen3-235b-a22b:free", "qwen/qwen3-coder:free"],
+    "llama": ["meta-llama/llama-3.3-70b-instruct:free"],
+    "chatgpt": ["openai/gpt-oss-120b:free"],
     "claude": [],
 }
-_gh_cache = {"t": 0.0, "ids": [], "err": ""}
+_or_cache = {"t": 0.0, "items": [], "err": ""}
 
 class ProviderError(Exception):
     def __init__(self, code, msg=""):
@@ -380,49 +378,72 @@ def _text_only(contents):
                 return False
     return True
 
-def github_catalog_ids(force=False):
-    token = _gh_token()
-    now = time.time()
-    if not force and _gh_cache["ids"] and now - _gh_cache["t"] < 6 * 3600:
-        return _gh_cache["ids"]
-    ids = []
-    if token:
-        try:
-            r = requests.get(
-                GH_BASE.rstrip("/") + "/catalog/models",
-                headers={"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json",
-                         "X-GitHub-Api-Version": "2022-11-28"},
-                timeout=20,
-            )
-            if r.status_code == 200:
-                try:
-                    data = r.json()
-                except ValueError:
-                    _gh_cache["err"] = f"HTTP 200 بس الرد مو JSON: {r.text[:80]!r} | {_diag(r)}"
-                    log.error("GitHub catalog: %s", _gh_cache["err"])
-                    return _gh_cache["ids"]
-                items = data if isinstance(data, list) else (data.get("models") or data.get("data") or [])
-                ids = [i.get("id") for i in items if isinstance(i, dict) and i.get("id")]
-                _gh_cache["err"] = "" if ids else "الكتالوج رجع فاضي"
-            else:
-                _gh_cache["err"] = f"HTTP {r.status_code}: {r.text[:200]}"
-                log.error("GitHub catalog %s", _gh_cache["err"])
-        except Exception as e:
-            _gh_cache["err"] = f"{type(e).__name__}: {e}"
-            log.error("GitHub catalog error: %s", e)
-    else:
-        _gh_cache["err"] = "GITHUB_MODELS_TOKEN مو مضاف"
-    if ids:
-        _gh_cache.update(t=now, ids=ids)
-    return ids or _gh_cache["ids"]
+def _is_free(item):
+    iid = str(item.get("id", ""))
+    if iid.endswith(":free"):
+        return True
+    pr = item.get("pricing") or {}
+    try:
+        return float(pr.get("prompt", 1)) == 0 and float(pr.get("completion", 1)) == 0
+    except Exception:
+        return False
 
-def github_models_for(match, deep):
-    ids = [i for i in github_catalog_ids() if match in i.lower()] or GH_STATIC.get(match, [])
-    # اختيار موديل أخف وأكثر استقراراً لتجنب مشاكل الاستجابة
-    light = [i for i in ids if any(k in i.lower() for k in ("mini", "8b", "v3", "flash", "instruct"))]
-    heavy = [i for i in ids if i not in light]
-    order = (light + heavy) if not deep else (heavy + light)
-    return order or GH_STATIC.get(match, [])
+
+def openrouter_catalog(force=False):
+    """قائمة موديلات OpenRouter: [{id, free, ctx}]، بتتخزن 6 ساعات."""
+    now = time.time()
+    if not force and _or_cache["items"] and now - _or_cache["t"] < 6 * 3600:
+        return _or_cache["items"]
+    items = []
+    try:
+        key = _or_key()
+        r = requests.get(OR_BASE + "/models", headers=({"Authorization": "Bearer " + key} if key else {}), timeout=25)
+        if r.status_code == 200:
+            try:
+                data = r.json()
+            except ValueError:
+                _or_cache["err"] = f"HTTP 200 بس الرد مو JSON: {r.text[:80]!r} | {_diag(r)}"
+                log.error("OpenRouter catalog: %s", _or_cache["err"])
+                return _or_cache["items"]
+            for i in (data.get("data") or []):
+                if isinstance(i, dict) and i.get("id"):
+                    items.append({"id": i["id"], "free": _is_free(i), "ctx": int(i.get("context_length") or 0)})
+            _or_cache["err"] = "" if items else "القائمة رجعت فاضية"
+        else:
+            _or_cache["err"] = f"HTTP {r.status_code}: {r.text[:200]}"
+            log.error("OpenRouter catalog %s", _or_cache["err"])
+    except Exception as e:
+        _or_cache["err"] = f"{type(e).__name__}: {e}"
+        log.error("OpenRouter catalog error: %s", e)
+    if items:
+        _or_cache.update(t=now, items=items)
+    return items or _or_cache["items"]
+
+
+_EXCLUDE = ("embed", "guard", "moderation", "whisper", "tts", "image", "audio", "vision", "-vl", "ocr", "rerank")
+_HEAVY = ("r1", "pro", "reason", "think", "235b", "480b", "120b", "80b", "maverick", "70b", "max", "v4", "large", "opus")
+_LIGHT = ("flash", "mini", "small", "lite", "8b", "7b", "4b", "3b", "nano", "instruct")
+
+
+def or_models_for(prov, match, deep):
+    """أفضل موديلات (مجانية افتراضياً) للمزوّد، مرتبة: الثقيلة للأسئلة المعقدة والخفيفة للعادية."""
+    catalog = openrouter_catalog()
+    if not catalog:  # فشل جلب القائمة، استخدم الأسماء الاحتياطية
+        return list(OR_STATIC.get(prov, []))
+    items = [i for i in catalog
+             if any(k in i["id"].lower() for k in match) and not any(x in i["id"].lower() for x in _EXCLUDE)]
+    if not OR_ALLOW_PAID:
+        items = [i for i in items if i["free"]]
+
+    def score(i):
+        iid = i["id"].lower()
+        heavy = any(k in iid for k in _HEAVY)
+        light = any(k in iid for k in _LIGHT)
+        pref = (2 if heavy else 0) if deep else (2 if (light and not heavy) else 0)
+        return (pref, i["ctx"])
+    items.sort(key=score, reverse=True)
+    return [i["id"] for i in items][:5]
+
 
 def _compact_prompt():
     notes = ""
@@ -466,12 +487,18 @@ def _merge_system(messages):
     return rest
 
 def _call_backend(b, contents, deep, json_mode):
-    key = _gh_token() if b.get("key_env") == "GITHUB_MODELS_TOKEN" else os.environ.get(b["key_env"], "")
+    key = _or_key()
     messages = _build_messages(b, contents)
-    models = github_models_for(b["match"], deep)
-    headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
-    if b.get("match"):
-        headers.update({"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"})
+    models = or_models_for(b["prov"], b["match"], deep)
+    if not models:
+        raise ProviderError(404, f"ما لقيت موديل مجاني لـ {PROVIDER_NAMES[b['prov']]} على OpenRouter. "
+                                 "جرّب /models. وللمدفوع حط OPENROUTER_ALLOW_PAID=1 مع رصيد.")
+    headers = {
+        "Authorization": "Bearer " + key,
+        "Content-Type": "application/json",
+        "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://my-ai-bot-vmf4.onrender.com"),
+        "X-Title": "Craftland AI",
+    }
     last = None
     for model in models:
         body = {
@@ -489,22 +516,36 @@ def _call_backend(b, contents, deep, json_mode):
             )
         except requests.RequestException as e:
             last = ProviderError(None, f"{model}: {type(e).__name__}: {str(e)[:150]}")
-            log.error("GitHub [%s] network error: %s", model, e)
+            log.error("OpenRouter [%s] network error: %s", model, e)
             continue
         if r.status_code == 200:
             try:
-                text = (r.json()["choices"][0]["message"].get("content") or "")
-            except Exception:
-                last = ProviderError(502, f"{model}: HTTP 200 بس الرد مو JSON: {r.text[:80]!r} | {_diag(r)}")
-                log.error("GitHub [%s] bad response: %s | %s", model, r.text[:200], _diag(r))
+                data = r.json()
+            except ValueError:
+                last = ProviderError(502, f"{model}: الرد مو JSON: {r.text[:80]!r} | {_diag(r)}")
+                log.error("OpenRouter [%s] bad response: %s", model, r.text[:200])
                 continue
+            if not data.get("choices"):
+                err = data.get("error") or {}
+                try:
+                    code = int(err.get("code"))
+                except Exception:
+                    code = 502
+                last = ProviderError(code, f"{model}: {str(err.get('message') or data)[:200]}")
+                log.error("OpenRouter [%s] error body: %s", model, str(data)[:300])
+                continue
+            text = (data["choices"][0].get("message", {}).get("content") or "")
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
-            return text or None
+            if text:
+                return text
+            last = ProviderError(502, f"{model}: رد فاضي")
+            continue
         last = ProviderError(r.status_code, f"{model}: {r.text[:200]}")
-        log.error("GitHub [%s] code=%s: %s", model, r.status_code, r.text[:300])
+        log.error("OpenRouter [%s] code=%s: %s", model, r.status_code, r.text[:300])
         if r.status_code in (401, 403):
             raise last
     raise last or ProviderError(None, "no models")
+
 
 def ask_openai_compat(prov, contents, deep=False, json_mode=False):
     last = None
@@ -808,7 +849,7 @@ def cmd_model(message):
     if arg in aliases:
         name = aliases[arg]
         if not provider_ready(name):
-            bot.reply_to(message, f"مفتاح GITHUB_MODELS_TOKEN مو مضاف على Render.")
+            bot.reply_to(message, "مفتاح OPENROUTER_API_KEY مو مضاف على Render.")
             return
         chat_provider[chat_id] = name
         bot.reply_to(message, f"✅ صرت أجاوب بـ {PROVIDER_NAMES[name]}.")
@@ -825,7 +866,7 @@ def cmd_model(message):
     bot.send_message(
         chat_id,
         f"الموديل الحالي: {PROVIDER_NAMES.get(cur, cur)}\n" + "\n".join(lines) +
-        "\n\n• تم إيقاف التبديل التلقائي.\n• النماذج بتشتغل حصراً عن طريق GitHub Models باستثناء Gemini.",
+        "\n\n• تم إيقاف التبديل التلقائي.\n• كل الموديلات (غير Gemini) بتشتغل عن طريق OpenRouter، والمجاني منها بس. /models لشوف المتاح.",
         reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: (c.data or "").startswith("mdl:"))
@@ -841,43 +882,47 @@ def cb_model(call):
     except Exception:
         log.exception("Model switch error")
 
-@bot.message_handler(commands=["ghmodels"])
-def cmd_ghmodels(message):
-    if not os.environ.get("GITHUB_MODELS_TOKEN"):
-        bot.reply_to(message, "GITHUB_MODELS_TOKEN مو مضاف على Render.")
+@bot.message_handler(commands=["models", "ghmodels"])
+def cmd_models(message):
+    if not _or_key():
+        bot.reply_to(message, "OPENROUTER_API_KEY مو مضاف على Render.")
         return
-    ids = github_catalog_ids(force=True)
-    if not ids:
-        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات GitHub.\nالسبب: " + (_gh_cache.get("err") or "مجهول"))
+    items = openrouter_catalog(force=True)
+    if not items:
+        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات OpenRouter.\nالسبب: " + (_or_cache.get("err") or "مجهول"))
         return
-    pick = [i for i in ids if any(k in i.lower() for k in ("deepseek", "qwen", "gpt", "llama", "claude"))] or ids[:30]
-    bot.reply_to(message, "موديلات GitHub Models المتاحة:\n" + "\n".join(pick[:40]))
+    lines = [f"موديلات OpenRouter ({'مجاني + مدفوع' if OR_ALLOW_PAID else 'مجاني فقط'}):"]
+    for name in ("chatgpt", "llama", "claude", "deepseek", "qwen"):
+        b = PROVIDERS[name]["backends"][0]
+        ids = or_models_for(name, b["match"], True)
+        lines.append(f"• {PROVIDER_NAMES[name]}: " + (", ".join(i.replace(":free", "") for i in ids[:3]) or "ما في مجاني حالياً"))
+    bot.reply_to(message, "\n".join(lines)[:3900])
 
 
-@bot.message_handler(commands=["ghtest"])
-def cmd_ghtest(message):
-    """تشخيص: /ghtest [model]  ← بيجرب الطلب بطريقتين وبيعرض الرد الخام."""
-    token = _gh_token()
-    if not token:
-        bot.reply_to(message, "GITHUB_MODELS_TOKEN مو مضاف على Render.")
+@bot.message_handler(commands=["ortest", "ghtest"])
+def cmd_ortest(message):
+    """تشخيص: /ortest [model]  ← بيجرب طلب واحد وبيعرض رد OpenRouter الخام."""
+    key = _or_key()
+    if not key:
+        bot.reply_to(message, "OPENROUTER_API_KEY مو مضاف على Render.")
         return
-    model = (message.text or "").partition(" ")[2].strip() or GH_STATIC["deepseek"][0]
-    url = GH_BASE + "/inference/chat/completions"
-    lines = [f"الموديل: {model}", f"الرابط: {url}",
-             f"التوكن: يبدأ بـ {token[:11]}… طوله {len(token)}"]
-    body = {"model": model, "messages": [{"role": "user", "content": "قول مرحبا بكلمة وحدة"}], "stream": False}
-    variants = [
-        ("مع X-GitHub-Api-Version", {"Authorization": "Bearer " + token, "Content-Type": "application/json",
-                                     "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}),
-        ("بدون X-GitHub-Api-Version", {"Authorization": "Bearer " + token, "Content-Type": "application/json",
-                                       "Accept": "application/json"}),
-    ]
-    for label, headers in variants:
-        try:
-            r = requests.post(url, headers=headers, json=body, timeout=60)
-            lines.append(f"\n[{label}]\nHTTP {r.status_code} | {_diag(r)}\nالرد: {r.text[:250]!r}")
-        except Exception as e:
-            lines.append(f"\n[{label}]\nخطأ شبكة: {type(e).__name__}: {str(e)[:200]}")
+    model = (message.text or "").partition(" ")[2].strip()
+    if not model:
+        ids = or_models_for("deepseek", PROVIDERS["deepseek"]["backends"][0]["match"], False)
+        model = ids[0] if ids else "deepseek/deepseek-chat-v3-0324:free"
+    url = OR_BASE + "/chat/completions"
+    lines = [f"الموديل: {model}", f"الرابط: {url}", f"المفتاح: يبدأ بـ {key[:8]}… طوله {len(key)}"]
+    try:
+        r = requests.post(
+            url,
+            headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
+                     "X-Title": "Craftland AI"},
+            json={"model": model, "messages": [{"role": "user", "content": "قول مرحبا بكلمة وحدة"}], "stream": False},
+            timeout=90,
+        )
+        lines.append(f"\nHTTP {r.status_code} | {_diag(r)}\nالرد: {r.text[:400]!r}")
+    except Exception as e:
+        lines.append(f"\nخطأ شبكة: {type(e).__name__}: {str(e)[:200]}")
     bot.reply_to(message, "\n".join(lines)[:3900])
 
 
