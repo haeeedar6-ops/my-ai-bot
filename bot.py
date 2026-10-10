@@ -307,6 +307,13 @@ PROVIDER_NAMES = {
     "qwen": "Qwen"
 }
 
+def _pname(prov):
+    """اسم العرض للمزوّد، وللموديل المختار يدوياً (or:<id>)."""
+    return PROVIDER_NAMES.get(prov) or (prov[3:] if str(prov).startswith("or:") else str(prov))
+
+
+last_models = {}  # chat_id -> آخر قائمة موديلات انعرضت (للاختيار بالرقم)
+
 OR_BASE = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").strip().rstrip("/")
 OR_ALLOW_PAID = os.environ.get("OPENROUTER_ALLOW_PAID", "0") == "1"  # 1 = اسمح بالموديلات المدفوعة (بده رصيد)
 
@@ -350,14 +357,6 @@ COMPACT_PROMPT = (
     "إذا مو متأكد من اسم بلوك أو طريقة عمله قول هيك وما تخترع."
 )
 
-# احتياطي بس إذا فشل جلب قائمة الموديلات (أسماء ممكن تتغير)
-OR_STATIC = {
-    "deepseek": ["deepseek/deepseek-chat-v3-0324:free", "deepseek/deepseek-r1:free"],
-    "qwen": ["qwen/qwen3-235b-a22b:free", "qwen/qwen3-coder:free"],
-    "llama": ["meta-llama/llama-3.3-70b-instruct:free"],
-    "chatgpt": ["openai/gpt-oss-120b:free"],
-    "claude": [],
-}
 _or_cache = {"t": 0.0, "items": [], "err": ""}
 
 class ProviderError(Exception):
@@ -420,16 +419,33 @@ def openrouter_catalog(force=False):
     return items or _or_cache["items"]
 
 
-_EXCLUDE = ("embed", "guard", "moderation", "whisper", "tts", "image", "audio", "vision", "-vl", "ocr", "rerank")
+_EXCLUDE = ("embed", "guard", "moderation", "whisper", "tts", "image", "audio", "vision", "-vl", "ocr", "rerank",
+            "lyria", "clip", "veo", "imagen", "sora", "safeguard")
 _HEAVY = ("r1", "pro", "reason", "think", "235b", "480b", "120b", "80b", "maverick", "70b", "max", "v4", "large", "opus")
 _LIGHT = ("flash", "mini", "small", "lite", "8b", "7b", "4b", "3b", "nano", "instruct")
+
+
+_FAMILY_ORDER = ("openrouter/free", "deepseek", "qwen", "gpt-oss", "llama", "gemma", "glm", "nemotron", "minimax", "trinity")
+
+
+def free_chat_models(limit=40):
+    """كل الموديلات المجانية الصالحة للمحادثة، مرتبة (العائلات المعروفة أول)."""
+    items = [i for i in openrouter_catalog()
+             if i["free"] and not any(x in i["id"].lower() for x in _EXCLUDE)]
+
+    def key(i):
+        iid = i["id"].lower()
+        fam = next((n for n, f in enumerate(_FAMILY_ORDER) if f in iid), len(_FAMILY_ORDER))
+        return (fam, -i["ctx"])
+    items.sort(key=key)
+    return [i["id"] for i in items][:limit]
 
 
 def or_models_for(prov, match, deep):
     """أفضل موديلات (مجانية افتراضياً) للمزوّد، مرتبة: الثقيلة للأسئلة المعقدة والخفيفة للعادية."""
     catalog = openrouter_catalog()
-    if not catalog:  # فشل جلب القائمة، استخدم الأسماء الاحتياطية
-        return list(OR_STATIC.get(prov, []))
+    if not catalog:  # فشل جلب القائمة
+        return []
     items = [i for i in catalog
              if any(k in i["id"].lower() for k in match) and not any(x in i["id"].lower() for x in _EXCLUDE)]
     if not OR_ALLOW_PAID:
@@ -486,13 +502,15 @@ def _merge_system(messages):
         rest.insert(0, {"role": "user", "content": sys_txt})
     return rest
 
-def _call_backend(b, contents, deep, json_mode):
+def _call_backend(b, contents, deep, json_mode, models=None):
     key = _or_key()
     messages = _build_messages(b, contents)
-    models = or_models_for(b["prov"], b["match"], deep)
+    if models is None:
+        models = or_models_for(b["prov"], b["match"], deep)
     if not models:
-        raise ProviderError(404, f"ما لقيت موديل مجاني لـ {PROVIDER_NAMES[b['prov']]} على OpenRouter. "
-                                 "جرّب /models. وللمدفوع حط OPENROUTER_ALLOW_PAID=1 مع رصيد.")
+        why = _or_cache.get("err") or "ما في موديل مجاني متاح حالياً من هالعائلة"
+        raise ProviderError(404, f"ما لقيت موديل لـ {_pname(b['prov'])} على OpenRouter ({why}). "
+                                 "جرّب /models واختار موديل مجاني تاني.")
     headers = {
         "Authorization": "Bearer " + key,
         "Content-Type": "application/json",
@@ -565,7 +583,19 @@ def ask_model(chat_id, contents, deep=False, json_mode=False):
     
     if not text_only and prov != "gemini":
         ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
-        return ans, f"(استخدمت Gemini لأن {PROVIDER_NAMES[prov]} ما بيقدر يقرأ صور/صوت)"
+        return ans, f"(استخدمت Gemini لأن {_pname(prov)} ما بيقدر يقرأ صور/صوت)"
+
+    if prov.startswith("or:"):
+        try:
+            if not _or_key():
+                raise ProviderError(401, "OPENROUTER_API_KEY مو مضاف على Render")
+            b = {**OR_BACKEND, "prov": "custom", "match": ()}
+            ans = _call_backend(b, contents, deep, json_mode, models=[prov[3:]])
+            if ans:
+                return ans, None
+        except Exception as e:
+            raise ProviderError(getattr(e, "code", None), f"{_pname(prov)} ← {e}")
+        raise ProviderError(502, f"{_pname(prov)} ← رد فاضي")
 
     if prov == "gemini":
         ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
@@ -578,9 +608,9 @@ def ask_model(chat_id, contents, deep=False, json_mode=False):
                 return ans, None
         except Exception as e:
             code = getattr(e, "code", None)
-            raise ProviderError(code, f"{PROVIDER_NAMES[prov]} ← {e}")
+            raise ProviderError(code, f"{_pname(prov)} ← {e}")
             
-    raise ValueError(f"الموديل {PROVIDER_NAMES.get(prov, prov)} مو متاح.")
+    raise ValueError(f"الموديل {_pname(prov)} مو متاح.")
 
 def friendly_error(e):
     code = getattr(e, "code", None)
@@ -591,6 +621,8 @@ def friendly_error(e):
         msg = "⏳ السيرفرات تبع الذكاء الاصطناعي مو مستقرة، جرّب تاني."
     elif code in (401, 403):
         msg = "🔑 في مشكلة بالمفتاح السري بالـ Environment Variables."
+    elif code == 404:
+        msg = "⚠️ هالموديل مو متاح هلأ (ممكن شالوا المجاني منو). جرّب /models واختار غيرو."
     else:
         msg = "⚠️ صار خطأ أثناء المعالجة، جرّب مرة تانية."
     return msg + tag
@@ -845,7 +877,43 @@ def cmd_model(message):
         "llama": "llama", "لاما": "llama"
     }
     chat_id = message.chat.id
-    
+
+    if arg and arg not in aliases:
+        # اختيار موديل مجاني من OpenRouter: برقم (من /models) أو بجزء من اسمه أو free
+        if not _or_key():
+            bot.reply_to(message, "OPENROUTER_API_KEY مو مضاف على Render.")
+            return
+        free = free_chat_models()
+        pick = None
+        if arg.isdigit():
+            lst = last_models.get(chat_id) or free
+            idx = int(arg) - 1
+            pick = lst[idx] if 0 <= idx < len(lst) else None
+            if not pick:
+                bot.reply_to(message, "الرقم مو بالقائمة. ابعت /models وشوف الأرقام.")
+                return
+        elif arg in ("free", "auto", "مجاني"):
+            pick = "openrouter/free" if "openrouter/free" in free else None
+            if not pick:
+                bot.reply_to(message, "راوتر المجاني (openrouter/free) مو متاح حالياً. جرّب /models.")
+                return
+        else:
+            q = arg.replace(" ", "-")
+            hits = [i for i in free if q in i.lower()]
+            if not hits:
+                bot.reply_to(message, f"ما لقيت موديل مجاني فيه «{arg}». جرّب /models.")
+                return
+            if len(hits) > 1:
+                last_models[chat_id] = hits[:10]
+                bot.reply_to(message, "لقيت أكتر من واحد، اختار رقم:\n" +
+                             "\n".join(f"{n}) {h.replace(':free', '')}" for n, h in enumerate(hits[:10], 1)) +
+                             "\n\nمثال: /model 1")
+                return
+            pick = hits[0]
+        chat_provider[chat_id] = "or:" + pick
+        bot.reply_to(message, f"✅ صرت أجاوب بـ {pick.replace(':free', '')}، وكملنا بنفس المحادثة.")
+        return
+
     if arg in aliases:
         name = aliases[arg]
         if not provider_ready(name):
@@ -865,8 +933,8 @@ def cmd_model(message):
     
     bot.send_message(
         chat_id,
-        f"الموديل الحالي: {PROVIDER_NAMES.get(cur, cur)}\n" + "\n".join(lines) +
-        "\n\n• تم إيقاف التبديل التلقائي.\n• كل الموديلات (غير Gemini) بتشتغل عن طريق OpenRouter، والمجاني منها بس. /models لشوف المتاح.",
+        f"الموديل الحالي: {_pname(cur)}\n" + "\n".join(lines) +
+        "\n\n• تم إيقاف التبديل التلقائي.\n• كل الموديلات (غير Gemini) بتشتغل عن طريق OpenRouter، والمجاني منها بس.\n• /models بيعرض المتاح، و/model 3 بيختار رقم 3.",
         reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: (c.data or "").startswith("mdl:"))
@@ -891,11 +959,20 @@ def cmd_models(message):
     if not items:
         bot.reply_to(message, "ما قدرت أجيب قائمة موديلات OpenRouter.\nالسبب: " + (_or_cache.get("err") or "مجهول"))
         return
-    lines = [f"موديلات OpenRouter ({'مجاني + مدفوع' if OR_ALLOW_PAID else 'مجاني فقط'}):"]
+    free = free_chat_models()
+    last_models[message.chat.id] = free
+    lines = [f"OpenRouter: {len(items)} موديل، منهم {len(free_chat_models(limit=10**6))} مجاني للمحادثة."]
+    fam = []
     for name in ("chatgpt", "llama", "claude", "deepseek", "qwen"):
         b = PROVIDERS[name]["backends"][0]
         ids = or_models_for(name, b["match"], True)
-        lines.append(f"• {PROVIDER_NAMES[name]}: " + (", ".join(i.replace(":free", "") for i in ids[:3]) or "ما في مجاني حالياً"))
+        fam.append(f"{PROVIDER_NAMES[name]}: " + (ids[0].replace(":free", "") if ids else "ما في مجاني"))
+    lines.append("• " + " | ".join(fam))
+    if free:
+        lines.append("\nالمجاني الصالح للمحادثة (اختار برقم: /model 3):")
+        lines += [f"{n}) {i.replace(':free', '')}" for n, i in enumerate(free[:30], 1)]
+    else:
+        lines.append("\nما في موديلات مجانية متاحة حالياً. ممكن OpenRouter شالها، أو لازم رصيد (OPENROUTER_ALLOW_PAID=1).")
     bot.reply_to(message, "\n".join(lines)[:3900])
 
 
@@ -908,8 +985,8 @@ def cmd_ortest(message):
         return
     model = (message.text or "").partition(" ")[2].strip()
     if not model:
-        ids = or_models_for("deepseek", PROVIDERS["deepseek"]["backends"][0]["match"], False)
-        model = ids[0] if ids else "deepseek/deepseek-chat-v3-0324:free"
+        ids = free_chat_models()
+        model = ids[0] if ids else "openrouter/free"
     url = OR_BASE + "/chat/completions"
     lines = [f"الموديل: {model}", f"الرابط: {url}", f"المفتاح: يبدأ بـ {key[:8]}… طوله {len(key)}"]
     try:
