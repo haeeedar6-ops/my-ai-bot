@@ -323,6 +323,11 @@ def _or_key():
     return os.environ.get("OPENROUTER_API_KEY", "").strip().strip('"').strip("'").strip()
 
 
+def _env_key(name):
+    """قيمة متغير بيئة بدون مسافات أو علامات تنصيص."""
+    return os.environ.get(name, "").strip().strip('"').strip("'").strip()
+
+
 def _diag(r):
     """معلومات تشخيص عن رد HTTP (الرابط النهائي، التحويلات، نوع المحتوى)."""
     try:
@@ -473,7 +478,7 @@ def _compact_prompt():
     return COMPACT_PROMPT + (("\n\nملاحظات مرجعية:\n" + notes) if notes else "")
 
 def _build_messages(b, contents):
-    system = _compact_prompt() if b.get("compact") else get_system_prompt()
+    system = b.get("system") or (_compact_prompt() if b.get("compact") else get_system_prompt())
     msgs = []
     for c in contents:
         text = "\n".join(p.text for p in c.parts if getattr(p, "text", None))
@@ -502,8 +507,8 @@ def _merge_system(messages):
         rest.insert(0, {"role": "user", "content": sys_txt})
     return rest
 
-def _call_backend(b, contents, deep, json_mode, models=None):
-    key = _or_key()
+def _call_backend(b, contents, deep, json_mode, models=None, out=None):
+    key = _env_key(b["key_env"])
     messages = _build_messages(b, contents)
     if models is None:
         models = or_models_for(b["prov"], b["match"], deep)
@@ -511,12 +516,10 @@ def _call_backend(b, contents, deep, json_mode, models=None):
         why = _or_cache.get("err") or "ما في موديل مجاني متاح حالياً من هالعائلة"
         raise ProviderError(404, f"ما لقيت موديل لـ {_pname(b['prov'])} على OpenRouter ({why}). "
                                  "جرّب /models واختار موديل مجاني تاني.")
-    headers = {
-        "Authorization": "Bearer " + key,
-        "Content-Type": "application/json",
-        "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://my-ai-bot-vmf4.onrender.com"),
-        "X-Title": "Craftland AI",
-    }
+    headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
+    if b["name"] == "OpenRouter":
+        headers["HTTP-Referer"] = os.environ.get("OPENROUTER_REFERER", "https://my-ai-bot-vmf4.onrender.com")
+        headers["X-Title"] = "Craftland AI"
     last = None
     for model in models:
         body = {
@@ -526,6 +529,8 @@ def _call_backend(b, contents, deep, json_mode, models=None):
         }
         if json_mode:
             body["response_format"] = {"type": "json_object"}
+        if b.get("max_tokens"):
+            body["max_tokens"] = b["max_tokens"]
         try:
             r = requests.post(
                 b["base"].rstrip("/") + "/chat/completions",
@@ -534,14 +539,14 @@ def _call_backend(b, contents, deep, json_mode, models=None):
             )
         except requests.RequestException as e:
             last = ProviderError(None, f"{model}: {type(e).__name__}: {str(e)[:150]}")
-            log.error("OpenRouter [%s] network error: %s", model, e)
+            log.error("%s [%s] network error: %s", b["name"], model, e)
             continue
         if r.status_code == 200:
             try:
                 data = r.json()
             except ValueError:
                 last = ProviderError(502, f"{model}: الرد مو JSON: {r.text[:80]!r} | {_diag(r)}")
-                log.error("OpenRouter [%s] bad response: %s", model, r.text[:200])
+                log.error("%s [%s] bad response: %s", b["name"], model, r.text[:200])
                 continue
             if not data.get("choices"):
                 err = data.get("error") or {}
@@ -550,19 +555,108 @@ def _call_backend(b, contents, deep, json_mode, models=None):
                 except Exception:
                     code = 502
                 last = ProviderError(code, f"{model}: {str(err.get('message') or data)[:200]}")
-                log.error("OpenRouter [%s] error body: %s", model, str(data)[:300])
+                log.error("%s [%s] error body: %s", b["name"], model, str(data)[:300])
                 continue
             text = (data["choices"][0].get("message", {}).get("content") or "")
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
             if text:
+                if out is not None:
+                    out["model"] = model
                 return text
             last = ProviderError(502, f"{model}: رد فاضي")
             continue
         last = ProviderError(r.status_code, f"{model}: {r.text[:200]}")
-        log.error("OpenRouter [%s] code=%s: %s", model, r.status_code, r.text[:300])
+        log.error("%s [%s] code=%s: %s", b["name"], model, r.status_code, r.text[:300])
         if r.status_code in (401, 403):
             raise last
     raise last or ProviderError(None, "no models")
+
+
+# ============ Groq: كود برمجي تلقائي ============
+GROQ_BASE = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1").strip().rstrip("/")
+CODE_SYSTEM_PROMPT = (
+    "أنت مبرمج خبير. اكتب كود صحيح ونظيف وجاهز للتشغيل، وحطه داخل ``` مع اسم اللغة. "
+    "بعد الكود اشرح بشكل قصير ومرتب بلغة المستخدم (إذا كتب عربي استعمل لهجة شامية بسيطة)، "
+    "واذكر أي مكتبة لازم تتثبت وأي افتراض افترضته. ما تخترع مكتبات أو دوال مو موجودة، "
+    "وإذا مو متأكد من شي قول هيك بصراحة."
+)
+GROQ_BACKEND = {
+    "name": "Groq", "base": GROQ_BASE, "key_env": "GROQ_API_KEY",
+    "timeout_fast": 60, "timeout_deep": 120,
+    "system": CODE_SYSTEM_PROMPT, "max_chars": 14000, "max_tokens": 3500,  # حدود Groq المجانية صغيرة
+}
+# موديلات Llama 3 القديمة (llama3-70b-8192 و llama-3.1-70b-versatile وحتى llama-3.3-70b-versatile) انسكّرت عند Groq
+GROQ_CODE_PREF = ("openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b")
+_GROQ_SKIP = ("whisper", "tts", "guard", "safeguard", "vision", "embed", "compound", "orpheus", "playai")
+_groq_cache = {"t": 0.0, "ids": [], "err": ""}
+code_route_off = set()  # محادثات طفّت التوجيه التلقائي للكود بـ /code off
+
+
+def _groq_ready():
+    return bool(_env_key("GROQ_API_KEY"))
+
+
+def groq_catalog(force=False):
+    now = time.time()
+    if not force and _groq_cache["ids"] and now - _groq_cache["t"] < 6 * 3600:
+        return _groq_cache["ids"]
+    ids = []
+    try:
+        r = requests.get(GROQ_BASE + "/models", headers={"Authorization": "Bearer " + _env_key("GROQ_API_KEY")}, timeout=20)
+        if r.status_code == 200:
+            try:
+                data = r.json()
+            except ValueError:
+                _groq_cache["err"] = f"HTTP 200 بس الرد مو JSON: {r.text[:80]!r}"
+                return _groq_cache["ids"]
+            ids = [i["id"] for i in (data.get("data") or []) if isinstance(i, dict) and i.get("id")]
+            _groq_cache["err"] = "" if ids else "القائمة رجعت فاضية"
+        else:
+            _groq_cache["err"] = f"HTTP {r.status_code}: {r.text[:200]}"
+            log.error("Groq catalog %s", _groq_cache["err"])
+    except Exception as e:
+        _groq_cache["err"] = f"{type(e).__name__}: {e}"
+        log.error("Groq catalog error: %s", e)
+    if ids:
+        _groq_cache.update(t=now, ids=ids)
+    return ids or _groq_cache["ids"]
+
+
+def groq_code_models():
+    """أفضل موديلات الكود المتاحة فعلاً عند Groq، بالترتيب (الأسماء الميتة بتنتخطى)."""
+    ids = groq_catalog()
+    order = []
+    env = os.environ.get("GROQ_CODE_MODEL", "").strip()
+    if env:
+        order.append(env)
+    for p in GROQ_CODE_PREF:
+        if (not ids or p in ids) and p not in order:
+            order.append(p)
+    for i in ids:
+        low = i.lower()
+        if i not in order and any(k in low for k in ("gpt-oss", "qwen", "llama", "kimi")) and not any(x in low for x in _GROQ_SKIP):
+            order.append(i)
+    return order[:4]
+
+
+_CODE_STRONG = re.compile(
+    r"(```|\bdef \w+\(|\bimport \w+|#include|console\.log|\bSELECT\b.+\bFROM\b|<\s*(div|html|script)\b|"
+    r"\b(python|javascript|typescript|java|c\+\+|c#|php|html|css|sql|bash|react|flask|django|node\.?js|kotlin|swift|rust|golang|regex)\b|"
+    r"بايثون|جافاسكربت|جافا سكربت|\bجافا\b)",
+    re.I | re.S,
+)
+_CODE_WEAK = ("كود", "كودات", "برمج", "برمجة", "دالة", "دوال", "خوارزمية", "debug", "bug", "كلاس", "function", "algorithm")
+_CRAFT_MARKERS = ("كرافتلاند", "craftland", "بلوك", "ستوديو", "خريطة", "ماب", "سكربت")
+
+
+def is_code_request(text):
+    """طلب كود برمجي؟ (بيتجاهل أسئلة كرافتلاند لأنها بلوكات مو كود)."""
+    t = (text or "").lower()
+    if _CODE_STRONG.search(text or ""):
+        return True
+    if any(m in t for m in _CRAFT_MARKERS):
+        return False
+    return any(w in t for w in _CODE_WEAK)
 
 
 def ask_openai_compat(prov, contents, deep=False, json_mode=False):
@@ -576,7 +670,25 @@ def ask_openai_compat(prov, contents, deep=False, json_mode=False):
             last = e
     raise last or ProviderError(None, "no backend ready")
 
-def ask_model(chat_id, contents, deep=False, json_mode=False):
+def ask_model(chat_id, contents, deep=False, json_mode=False, code=False):
+    """طلبات الكود بتروح تلقائياً لـ Groq، وإذا فشل بيجاوب Gemini. (إلا إذا اخترت موديل بإيدك أو طفّيت /code)."""
+    pre_note = None
+    if (code and not json_mode and _groq_ready() and chat_id not in code_route_off
+            and chat_id not in chat_provider and _text_only(contents)):
+        try:
+            out = {}
+            ans = _call_backend(GROQ_BACKEND, contents, deep, False, models=groq_code_models(), out=out)
+            if ans:
+                return ans, f"(الكود من Groq: {out.get('model')})"
+        except Exception as e:
+            c = getattr(e, "code", None)
+            log.error("Groq code route failed (%s): %s", c, e)
+            pre_note = "(Groq ما اشتغل" + (f"، رمز {c}" if c else "") + "، جاوب Gemini)"
+    ans, note = _ask_model_core(chat_id, contents, deep=deep, json_mode=json_mode)
+    return ans, (note or pre_note)
+
+
+def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
     """بيرجّع (الجواب، ملاحظة). البوت بيجبر الموديل المختار فقط وبدون تبديل تلقائي."""
     prov = chat_provider.get(chat_id, DEFAULT_PROVIDER)
     text_only = _text_only(contents)
@@ -642,7 +754,7 @@ def process(message, user_parts, history_label, deep=False):
         with typing(chat_id):
             contents = build_contents(chat_id)
             contents.append(types.Content(role="user", parts=user_parts))
-            answer, note = ask_model(chat_id, contents, deep=deep)
+            answer, note = ask_model(chat_id, contents, deep=deep, code=is_code_request(history_label))
             if deep and answer and len(answer) > 150 and load_knowledge() and not note:
                 answer = review_answer(chat_id, history_label, answer)
         if answer:
@@ -812,6 +924,7 @@ def cmd_help(message):
         "• ابعت رسالة صوتية",
         "• /deep سؤالك  ←  تفكير عميق + مراجعة الجواب",
         "• /model  ←  تبديل الموديل (Gemini / ChatGPT / Llama / Claude...)",
+        "• طلبات الكود البرمجي بتروح تلقائياً لـ Groq  (/code on|off)",
     ]
     if visual is not None:
         lines += ["• /script فكرتك  ←  سكربت بصورة بلوكات", "• /scripts  ←  مكتبة السكربتات الجاهزة"]
@@ -1001,6 +1114,36 @@ def cmd_ortest(message):
     except Exception as e:
         lines.append(f"\nخطأ شبكة: {type(e).__name__}: {str(e)[:200]}")
     bot.reply_to(message, "\n".join(lines)[:3900])
+
+
+@bot.message_handler(commands=["code"])
+def cmd_code(message):
+    arg = (message.text or "").partition(" ")[2].strip().lower()
+    cid = message.chat.id
+    if arg in ("off", "اطفاء", "إطفاء", "طفي"):
+        code_route_off.add(cid)
+        bot.reply_to(message, "🔕 طفّيت توجيه الكود التلقائي. الكود هلأ بيجاوب فيه الموديل الحالي.")
+        return
+    if arg in ("on", "تشغيل", "شغل"):
+        code_route_off.discard(cid)
+    state = "شغّال ✅" if (cid not in code_route_off) else "مطفّي 🔕"
+    key = "المفتاح موجود" if _groq_ready() else "GROQ_API_KEY مو مضاف على Render"
+    bot.reply_to(message, f"توجيه الكود التلقائي لـ Groq: {state}\n({key})\n"
+                          "الأوامر: /code on ، /code off ، /groqmodels")
+
+
+@bot.message_handler(commands=["groqmodels"])
+def cmd_groqmodels(message):
+    if not _groq_ready():
+        bot.reply_to(message, "GROQ_API_KEY مو مضاف على Render.")
+        return
+    ids = groq_catalog(force=True)
+    if not ids:
+        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات Groq.\nالسبب: " + (_groq_cache.get("err") or "مجهول"))
+        return
+    chosen = groq_code_models()
+    bot.reply_to(message, "موديلات الكود المستعملة (بالترتيب):\n" + "\n".join(f"{n}) {m}" for n, m in enumerate(chosen, 1)) +
+                 f"\n\nكل موديلات Groq ({len(ids)}):\n" + "\n".join(ids[:40]))
 
 
 @bot.message_handler(commands=["reset"])
