@@ -1,6 +1,7 @@
 import io
 import os
 import re
+import sys
 import html
 import json
 import time
@@ -15,6 +16,12 @@ import requests
 from flask import Flask
 from google import genai
 from google.genai import types, errors
+
+try:
+    import webapp  # الموقع (واجهة ويب خاصة)
+except Exception as _e:  # اختياري
+    webapp = None
+    print(f'webapp.py غير متاح: {_e}')
 
 try:
     import visual  # رسم السكربتات كصور + مكتبة السكربتات الجاهزة
@@ -153,9 +160,10 @@ except Exception as e:
 
 
 # ============ Flask ============
-@app.route("/")
-def home():
-    return "Bot is running!"
+if webapp is None:
+    @app.route("/")
+    def home():
+        return "Bot is running!"
 
 @app.route("/health")
 def health():
@@ -1255,5 +1263,13 @@ def run_polling():
             time.sleep(5)
 
 if __name__ == "__main__":
-    threading.Thread(target=run_polling, daemon=True).start()
+    if webapp is not None:
+        try:
+            webapp.register(app, sys.modules[__name__])
+        except Exception:
+            log.exception("تعذر تفعيل الموقع")
+    if os.environ.get("DISABLE_TELEGRAM", "0") != "1":
+        threading.Thread(target=run_polling, daemon=True).start()
+    else:
+        log.info("تيليجرام مطفّي (DISABLE_TELEGRAM=1)، الموقع بس شغّال")
     app.run(host="0.0.0.0", port=PORT)
