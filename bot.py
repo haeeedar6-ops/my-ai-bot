@@ -132,8 +132,11 @@ MAX_HISTORY = 20          # عدد الرسائل المحفوظة لكل مست
 COOLDOWN_SECONDS = 1.5    # حماية من السبام
 TG_LIMIT = 4000           # حد تيليجرام 4096
 
-if not BOT_TOKEN or not GEMINI_API_KEY:
-    raise SystemExit("❌ BOT_TOKEN أو GEMINI_API_KEY ناقصين بالـ Environment Variables")
+if not GEMINI_API_KEY:
+    raise SystemExit("❌ GEMINI_API_KEY ناقص بالـ Environment Variables")
+
+# تيليجرام مطفّي افتراضياً (الموقع هو الواجهة). لتشغيله: ENABLE_TELEGRAM=1 مع BOT_TOKEN
+ENABLE_TELEGRAM = os.environ.get("ENABLE_TELEGRAM", "0") == "1" and bool(BOT_TOKEN)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -143,7 +146,7 @@ log = logging.getLogger("bot")
 
 # ============ التهيئة ============
 app = Flask(__name__)
-bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=6, parse_mode=None)
+bot = telebot.TeleBot(BOT_TOKEN if ENABLE_TELEGRAM else "000000:disabled", threaded=True, num_threads=6, parse_mode=None)
 client = genai.Client(
     api_key=GEMINI_API_KEY,
     http_options=types.HttpOptions(timeout=25000),  # 25 ثانية كحد أقصى لكل محاولة
@@ -153,10 +156,11 @@ histories = defaultdict(lambda: deque(maxlen=MAX_HISTORY))  # chat_id -> (role, 
 last_request = {}
 lock = threading.Lock()
 
-try:
-    bot.remove_webhook()
-except Exception as e:
-    log.warning("Webhook cleanup: %s", e)
+if ENABLE_TELEGRAM:
+    try:
+        bot.remove_webhook()
+    except Exception as e:
+        log.warning("Webhook cleanup: %s", e)
 
 
 # ============ Flask ============
@@ -1268,8 +1272,8 @@ if __name__ == "__main__":
             webapp.register(app, sys.modules[__name__])
         except Exception:
             log.exception("تعذر تفعيل الموقع")
-    if os.environ.get("DISABLE_TELEGRAM", "0") != "1":
+    if ENABLE_TELEGRAM:
         threading.Thread(target=run_polling, daemon=True).start()
     else:
-        log.info("تيليجرام مطفّي (DISABLE_TELEGRAM=1)، الموقع بس شغّال")
+        log.info("تيليجرام مطفّي، الموقع بس شغّال")
     app.run(host="0.0.0.0", port=PORT)
