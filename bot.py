@@ -18,14 +18,14 @@ from google import genai
 from google.genai import types, errors
 
 try:
-    import webapp
-except Exception as _e:
+    import webapp  # الموقع (واجهة ويب خاصة)
+except Exception as _e:  # اختياري
     webapp = None
     print(f'webapp.py غير متاح: {_e}')
 
 try:
-    import visual
-except Exception as _e:
+    import visual  # رسم السكربتات كصور + مكتبة السكربتات الجاهزة
+except Exception as _e:  # الميزة اختيارية، البوت بيشتغل بدونها
     visual = None
     print(f'visual.py غير متاح: {_e}')
 
@@ -34,27 +34,28 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 PORT = int(os.environ.get("PORT", 10000))
 
-# ⚠️ أسماء موديلات حقيقية وشغالة (كانت gemini-3.x وهي وهمية)
+# موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
 FAST_MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
+    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3.8-flash",
 ]
 DEEP_MODELS = [
-    os.environ.get("GEMINI_DEEP_MODEL", "gemini-2.5-pro"),
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
+    os.environ.get("GEMINI_DEEP_MODEL", "gemini-3.8-flash"),
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
 ]
-MODELS = FAST_MODELS + DEEP_MODELS
+MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
 DEEP_TIMEOUT_MS = 75000
 
-SYSTEM_PROMPT = """أنت "Ryn AI"، مساعد ذكي شامل ومتقدم، مستعد للإجابة عن أي سؤال في شتى المجالات.
+SYSTEM_PROMPT = """أنت "Astra AI"، مساعد ذكي شامل ومتقدم، مستعد للإجابة عن أي سؤال في شتى المجالات.
 
 هويتك وصانعك (مهم جداً):
 - تم تطويرك وبرمجتك بواسطة المطور "haydar_xe".
 - أنت مشروع ذكاء اصطناعي مستقل بالكامل، ولست تابعاً لشركة غارينا (Garena) أو أي شركة أخرى.
-- إذا سُئلت "مين برمجك؟" أو "من صنعك؟" أو "لمين تتبع؟"، أجب دائماً وبكل فخر: "أنا Ryn AI، من تطوير وبرمجة haydar_xe".
+- إذا سُئلت "مين برمجك؟" أو "من صنعك؟" أو "لمين تتبع؟"، أجب دائماً وبكل فخر: "أنا مساعد ذكي من تطوير وبرمجة haydar_xe".
 
 أسلوبك:
 - جاوب بلغة المستخدم. إذا كان السؤال بالعربي، استخدم لهجة شامية بسيطة، ودية، وواضحة.
@@ -72,19 +73,19 @@ SYSTEM_PROMPT = """أنت "Ryn AI"، مساعد ذكي شامل ومتقدم، �
 - الدليل الرسمي: https://ffcraftland.garena.com/en/tutorial/fe/1-8/
 
 قواعد عامة:
-- يمكنك قراءة وتحليل الصور والملفات (PDF، Word، نصوص) المرفقة للإجابة عن محتواها.
-- توليد الصور متاح عبر موديل "Ryn Mix" (يستخدم FLUX من Pollinations مجاناً).
+- يمكنك قراءة وتحليل الصور والملفات (PDF، Word، نصوص) المرفقة للإجابة عن محتواها، لكن لا يمكنك توليد صور.
 - إذا طلب المستخدم سكربت كرافتلاند بصورة، وجّهه لاستخدام أمر /script. والسكربتات الجاهزة بأمر /scripts.
 - إذا لم تكن متأكداً من معلومة، اعترف بذلك ولا تخترع معلومات غير موجودة.
 """
 
-# ============ قاعدة المعرفة ============
+# ============ قاعدة المعرفة (ملفات كرافتلاند) ============
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge")
 _knowledge_cache = {"sig": None, "text": ""}
 
 
 def _knowledge_files():
+    """يدور على ملفات المعرفة بمجلد knowledge، وإذا ما لقاه بياخدها من نفس مجلد bot.py."""
     skip = {"readme.md", "requirements.txt"}
     found = {}
     for folder in (BASE_DIR, KNOWLEDGE_DIR):
@@ -127,16 +128,20 @@ def get_system_prompt():
         + knowledge
     )
 
-MAX_HISTORY = 20
-COOLDOWN_SECONDS = 1.5
-TG_LIMIT = 4000
+MAX_HISTORY = 20          # عدد الرسائل المحفوظة لكل مستخدم (سؤال + جواب)
+COOLDOWN_SECONDS = 1.5    # حماية من السبام
+TG_LIMIT = 4000           # حد تيليجرام 4096
 
 if not GEMINI_API_KEY:
     raise SystemExit("❌ GEMINI_API_KEY ناقص بالـ Environment Variables")
 
+# تيليجرام مطفّي افتراضياً (الموقع هو الواجهة). لتشغيله: ENABLE_TELEGRAM=1 مع BOT_TOKEN
 ENABLE_TELEGRAM = os.environ.get("ENABLE_TELEGRAM", "0") == "1" and bool(BOT_TOKEN)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+)
 log = logging.getLogger("bot")
 
 # ============ التهيئة ============
@@ -144,10 +149,10 @@ app = Flask(__name__)
 bot = telebot.TeleBot(BOT_TOKEN if ENABLE_TELEGRAM else "000000:disabled", threaded=True, num_threads=6, parse_mode=None)
 client = genai.Client(
     api_key=GEMINI_API_KEY,
-    http_options=types.HttpOptions(timeout=25000),
+    http_options=types.HttpOptions(timeout=25000),  # 25 ثانية كحد أقصى لكل محاولة
 )
 
-histories = defaultdict(lambda: deque(maxlen=MAX_HISTORY))
+histories = defaultdict(lambda: deque(maxlen=MAX_HISTORY))  # chat_id -> (role, text)
 last_request = {}
 lock = threading.Lock()
 
@@ -162,17 +167,20 @@ if ENABLE_TELEGRAM:
 if webapp is None:
     @app.route("/")
     def home():
-        return "Ryn AI is running!"
+        return "Bot is running!"
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "name": "Ryn AI", "models": MODELS}
+    return {"status": "ok", "models": MODELS}
 
 # ============ أدوات مساعدة ============
 def build_contents(chat_id):
     with lock:
         items = list(histories[chat_id])
-    return [types.Content(role=role, parts=[types.Part(text=text)]) for role, text in items]
+    return [
+        types.Content(role=role, parts=[types.Part(text=text)])
+        for role, text in items
+    ]
 
 def save_turn(chat_id, user_text, bot_text):
     with lock:
@@ -226,9 +234,7 @@ DEEP_WORDS = {
 
 def is_deep_question(text):
     t = (text or "").strip()
-    if len(t) >= 110 or "```" in t:
-        return True
-    if re.search(r"\b(def|function|class|const|let|var|fn)\s+\w+", t):
+    if len(t) >= 110 or "```" in t or "def " in t:
         return True
     tokens = set(re.findall(r"[\w\u0600-\u06FF]+", t.lower()))
     return bool(tokens & DEEP_WORDS)
@@ -236,13 +242,17 @@ def is_deep_question(text):
 def make_config(deep, system, use_thinking=True, json_mode=False):
     kwargs = {
         "system_instruction": system,
-        "http_options": types.HttpOptions(timeout=DEEP_TIMEOUT_MS if deep else FAST_TIMEOUT_MS),
+        "http_options": types.HttpOptions(
+            timeout=DEEP_TIMEOUT_MS if deep else FAST_TIMEOUT_MS
+        ),
     }
     if json_mode:
         kwargs["response_mime_type"] = "application/json"
     if use_thinking:
         try:
-            kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="high" if deep else "low")
+            kwargs["thinking_config"] = types.ThinkingConfig(
+                thinking_level="high" if deep else "low"
+            )
         except Exception:
             pass
     return types.GenerateContentConfig(**kwargs)
@@ -255,14 +265,11 @@ def ask_gemini(contents, deep=False, system=None, json_mode=False):
         for use_thinking in (True, False):
             try:
                 resp = client.models.generate_content(
-                    model=model, contents=contents,
+                    model=model,
+                    contents=contents,
                     config=make_config(deep, system, use_thinking, json_mode),
                 )
-                try:
-                    txt = resp.text
-                except Exception:
-                    txt = None
-                return txt or None
+                return resp.text or None
             except errors.APIError as e:
                 last_err = e
                 code = getattr(e, "code", None)
@@ -301,32 +308,40 @@ def review_answer(chat_id, question, answer):
         log.exception("Review failed, using original answer")
     return answer
 
-# ============ OpenRouter ============
+# ============ OpenRouter (مفتاح واحد لعدة موديلات) ============
 DEFAULT_PROVIDER = os.environ.get("DEFAULT_PROVIDER", "gemini").lower()
 PROVIDER_NAMES = {
-    "gemini": "Gemini", "chatgpt": "ChatGPT", "llama": "Llama 3",
-    "claude": "Claude", "deepseek": "DeepSeek", "qwen": "Qwen",
-    "ryn_mix": "Ryn Mix ⚡",
+    "gemini": "Gemini",
+    "chatgpt": "ChatGPT",
+    "llama": "Llama 3",
+    "claude": "Claude",
+    "deepseek": "DeepSeek",
+    "qwen": "Qwen"
 }
 
 def _pname(prov):
+    """اسم العرض للمزوّد، وللموديل المختار يدوياً (or:<id>)."""
     return PROVIDER_NAMES.get(prov) or (prov[3:] if str(prov).startswith("or:") else str(prov))
 
-last_models = {}
+
+last_models = {}  # chat_id -> آخر قائمة موديلات انعرضت (للاختيار بالرقم)
 
 OR_BASE = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").strip().rstrip("/")
-OR_ALLOW_PAID = os.environ.get("OPENROUTER_ALLOW_PAID", "0") == "1"
+OR_ALLOW_PAID = os.environ.get("OPENROUTER_ALLOW_PAID", "0") == "1"  # 1 = اسمح بالموديلات المدفوعة (بده رصيد)
 
 
 def _or_key():
+    """المفتاح بدون مسافات أو علامات تنصيص لو انحطت بالغلط بـ Render."""
     return os.environ.get("OPENROUTER_API_KEY", "").strip().strip('"').strip("'").strip()
 
 
 def _env_key(name):
+    """قيمة متغير بيئة بدون مسافات أو علامات تنصيص."""
     return os.environ.get(name, "").strip().strip('"').strip("'").strip()
 
 
 def _diag(r):
+    """معلومات تشخيص عن رد HTTP (الرابط النهائي، التحويلات، نوع المحتوى)."""
     try:
         hist = [h.status_code for h in (getattr(r, "history", None) or [])]
         hd = getattr(r, "headers", None) or {}
@@ -337,8 +352,11 @@ def _diag(r):
 
 
 OR_BACKEND = {
-    "name": "OpenRouter", "base": OR_BASE, "key_env": "OPENROUTER_API_KEY",
-    "timeout_fast": 60, "timeout_deep": 150,
+    "name": "OpenRouter",
+    "base": OR_BASE,
+    "key_env": "OPENROUTER_API_KEY",
+    "timeout_fast": 60,
+    "timeout_deep": 150,
 }
 
 PROVIDERS = {
@@ -350,23 +368,10 @@ PROVIDERS = {
 }
 chat_provider = {}
 
-# ============ Ryn Mix (Groq + Pollinations) ============
-RYN_MIX_ID = "ryn_mix"
-POLLINATIONS_IMG = "https://image.pollinations.ai/prompt/{prompt}?width={w}&height={h}&model=flux&nologo=true&seed={seed}"
-
-GROQ_RYN_MODELS = {
-    "deepseek": ["deepseek-r1-distill-llama-70b", "deepseek-r1-distill-qwen-32b"],
-    "qwen": ["qwen-qwq-32b", "llama-3.3-70b-versatile"],
-    "kimi": ["moonshotai/kimi-k2-instruct-0905"],
-}
-
-IMG_TRIGGERS = ("ارسم", "صورة", "صوره", "رسم", "مخطط", "generate image", "draw", "picture", "paint")
-
-
 COMPACT_PROMPT = (
-    "أنت Ryn AI، مساعد ذكي شامل. بتجاوب على أي سؤال تكنولوجي وعلمي وثقافي، "
-    "وعندك خبرة بكرافتلاند. جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة ومختصرة ومرتبة. "
-    "إذا مو متأكد من معلومة قول هيك وما تخترع."
+    "أنت Craftland AI، مساعد ذكي متخصص بـ Free Fire Craftland وCraftland Studio، وبتجاوب على أي سؤال تاني. "
+    "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة ومختصرة ومرتبة. "
+    "إذا مو متأكد من اسم بلوك أو طريقة عمله قول هيك وما تخترع."
 )
 
 _or_cache = {"t": 0.0, "items": [], "err": ""}
@@ -380,8 +385,6 @@ def _backend_ready(b):
     return bool(os.environ.get(b["key_env"]))
 
 def provider_ready(name):
-    if name == "ryn_mix":
-        return bool(_env_key("GROQ_API_KEY"))
     return name == "gemini" or any(_backend_ready(b) for b in PROVIDERS.get(name, {}).get("backends", []))
 
 def _text_only(contents):
@@ -403,6 +406,7 @@ def _is_free(item):
 
 
 def openrouter_catalog(force=False):
+    """قائمة موديلات OpenRouter: [{id, free, ctx}]، بتتخزن 6 ساعات."""
     now = time.time()
     if not force and _or_cache["items"] and now - _or_cache["t"] < 6 * 3600:
         return _or_cache["items"]
@@ -415,6 +419,7 @@ def openrouter_catalog(force=False):
                 data = r.json()
             except ValueError:
                 _or_cache["err"] = f"HTTP 200 بس الرد مو JSON: {r.text[:80]!r} | {_diag(r)}"
+                log.error("OpenRouter catalog: %s", _or_cache["err"])
                 return _or_cache["items"]
             for i in (data.get("data") or []):
                 if isinstance(i, dict) and i.get("id"):
@@ -422,8 +427,10 @@ def openrouter_catalog(force=False):
             _or_cache["err"] = "" if items else "القائمة رجعت فاضية"
         else:
             _or_cache["err"] = f"HTTP {r.status_code}: {r.text[:200]}"
+            log.error("OpenRouter catalog %s", _or_cache["err"])
     except Exception as e:
         _or_cache["err"] = f"{type(e).__name__}: {e}"
+        log.error("OpenRouter catalog error: %s", e)
     if items:
         _or_cache.update(t=now, items=items)
     return items or _or_cache["items"]
@@ -434,12 +441,15 @@ _EXCLUDE = ("embed", "guard", "moderation", "whisper", "tts", "image", "audio", 
 _HEAVY = ("r1", "pro", "reason", "think", "235b", "480b", "120b", "80b", "maverick", "70b", "max", "v4", "large", "opus")
 _LIGHT = ("flash", "mini", "small", "lite", "8b", "7b", "4b", "3b", "nano", "instruct")
 
+
 _FAMILY_ORDER = ("openrouter/free", "deepseek", "qwen", "gpt-oss", "llama", "gemma", "glm", "nemotron", "minimax", "trinity")
 
 
 def free_chat_models(limit=40):
+    """كل الموديلات المجانية الصالحة للمحادثة، مرتبة (العائلات المعروفة أول)."""
     items = [i for i in openrouter_catalog()
              if i["free"] and not any(x in i["id"].lower() for x in _EXCLUDE)]
+
     def key(i):
         iid = i["id"].lower()
         fam = next((n for n, f in enumerate(_FAMILY_ORDER) if f in iid), len(_FAMILY_ORDER))
@@ -449,13 +459,15 @@ def free_chat_models(limit=40):
 
 
 def or_models_for(prov, match, deep):
+    """أفضل موديلات (مجانية افتراضياً) للمزوّد، مرتبة: الثقيلة للأسئلة المعقدة والخفيفة للعادية."""
     catalog = openrouter_catalog()
-    if not catalog:
+    if not catalog:  # فشل جلب القائمة
         return []
     items = [i for i in catalog
              if any(k in i["id"].lower() for k in match) and not any(x in i["id"].lower() for x in _EXCLUDE)]
     if not OR_ALLOW_PAID:
         items = [i for i in items if i["free"]]
+
     def score(i):
         iid = i["id"].lower()
         heavy = any(k in iid for k in _HEAVY)
@@ -494,7 +506,7 @@ def _build_messages(b, contents):
             last = msgs[-1]["content"]
             tail = last[-600:]
             allowed = max(300, cap - len(system) - len(tail) - 80)
-            msgs[-1]["content"] = last[:allowed] + "\n...[انقطع الملف لأنو طويل]...\n" + tail
+            msgs[-1]["content"] = last[:allowed] + "\n...[انقطع الملف لأنو طويل على هالموديل]...\n" + tail
         while msgs and msgs[0]["role"] == "assistant":
             msgs.pop(0)
     return [{"role": "system", "content": system}] + msgs
@@ -513,12 +525,13 @@ def _call_backend(b, contents, deep, json_mode, models=None, out=None):
     if models is None:
         models = or_models_for(b["prov"], b["match"], deep)
     if not models:
-        why = _or_cache.get("err") or "ما في موديل متاح حالياً"
-        raise ProviderError(404, f"ما لقيت موديل لـ {_pname(b['prov'])} ({why}).")
+        why = _or_cache.get("err") or "ما في موديل مجاني متاح حالياً من هالعائلة"
+        raise ProviderError(404, f"ما لقيت موديل لـ {_pname(b['prov'])} على OpenRouter ({why}). "
+                                 "جرّب /models واختار موديل مجاني تاني.")
     headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
     if b["name"] == "OpenRouter":
-        headers["HTTP-Referer"] = os.environ.get("OPENROUTER_REFERER", "https://ryn-ai.onrender.com")
-        headers["X-Title"] = "Ryn AI"
+        headers["HTTP-Referer"] = os.environ.get("OPENROUTER_REFERER", "https://my-ai-bot-vmf4.onrender.com")
+        headers["X-Title"] = "Craftland AI"
     last = None
     for model in models:
         body = {
@@ -538,12 +551,14 @@ def _call_backend(b, contents, deep, json_mode, models=None, out=None):
             )
         except requests.RequestException as e:
             last = ProviderError(None, f"{model}: {type(e).__name__}: {str(e)[:150]}")
+            log.error("%s [%s] network error: %s", b["name"], model, e)
             continue
         if r.status_code == 200:
             try:
                 data = r.json()
             except ValueError:
-                last = ProviderError(502, f"{model}: الرد مو JSON")
+                last = ProviderError(502, f"{model}: الرد مو JSON: {r.text[:80]!r} | {_diag(r)}")
+                log.error("%s [%s] bad response: %s", b["name"], model, r.text[:200])
                 continue
             if not data.get("choices"):
                 err = data.get("error") or {}
@@ -552,6 +567,7 @@ def _call_backend(b, contents, deep, json_mode, models=None, out=None):
                 except Exception:
                     code = 502
                 last = ProviderError(code, f"{model}: {str(err.get('message') or data)[:200]}")
+                log.error("%s [%s] error body: %s", b["name"], model, str(data)[:300])
                 continue
             text = (data["choices"][0].get("message", {}).get("content") or "")
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
@@ -562,6 +578,7 @@ def _call_backend(b, contents, deep, json_mode, models=None, out=None):
             last = ProviderError(502, f"{model}: رد فاضي")
             continue
         last = ProviderError(r.status_code, f"{model}: {r.text[:200]}")
+        log.error("%s [%s] code=%s: %s", b["name"], model, r.status_code, r.text[:300])
         if r.status_code in (401, 403):
             raise last
     raise last or ProviderError(None, "no models")
@@ -571,17 +588,20 @@ def _call_backend(b, contents, deep, json_mode, models=None, out=None):
 GROQ_BASE = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1").strip().rstrip("/")
 CODE_SYSTEM_PROMPT = (
     "أنت مبرمج خبير. اكتب كود صحيح ونظيف وجاهز للتشغيل، وحطه داخل ``` مع اسم اللغة. "
-    "بعد الكود اشرح بشكل قصير ومرتب بلغة المستخدم (إذا كتب عربي استعمل لهجة شامية بسيطة)."
+    "بعد الكود اشرح بشكل قصير ومرتب بلغة المستخدم (إذا كتب عربي استعمل لهجة شامية بسيطة)، "
+    "واذكر أي مكتبة لازم تتثبت وأي افتراض افترضته. ما تخترع مكتبات أو دوال مو موجودة، "
+    "وإذا مو متأكد من شي قول هيك بصراحة."
 )
 GROQ_BACKEND = {
     "name": "Groq", "base": GROQ_BASE, "key_env": "GROQ_API_KEY",
     "timeout_fast": 60, "timeout_deep": 120,
-    "system": CODE_SYSTEM_PROMPT, "max_chars": 14000, "max_tokens": 3500,
+    "system": CODE_SYSTEM_PROMPT, "max_chars": 14000, "max_tokens": 3500,  # حدود Groq المجانية صغيرة
 }
-GROQ_CODE_PREF = ("openai/gpt-oss-120b", "qwen-qwq-32b", "openai/gpt-oss-20b")
+# موديلات Llama 3 القديمة (llama3-70b-8192 و llama-3.1-70b-versatile وحتى llama-3.3-70b-versatile) انسكّرت عند Groq
+GROQ_CODE_PREF = ("openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b")
 _GROQ_SKIP = ("whisper", "tts", "guard", "safeguard", "vision", "embed", "compound", "orpheus", "playai")
 _groq_cache = {"t": 0.0, "ids": [], "err": ""}
-code_route_off = set()
+code_route_off = set()  # محادثات طفّت التوجيه التلقائي للكود بـ /code off
 
 
 def _groq_ready():
@@ -599,20 +619,23 @@ def groq_catalog(force=False):
             try:
                 data = r.json()
             except ValueError:
-                _groq_cache["err"] = "الرد مو JSON"
+                _groq_cache["err"] = f"HTTP 200 بس الرد مو JSON: {r.text[:80]!r}"
                 return _groq_cache["ids"]
             ids = [i["id"] for i in (data.get("data") or []) if isinstance(i, dict) and i.get("id")]
             _groq_cache["err"] = "" if ids else "القائمة رجعت فاضية"
         else:
             _groq_cache["err"] = f"HTTP {r.status_code}: {r.text[:200]}"
+            log.error("Groq catalog %s", _groq_cache["err"])
     except Exception as e:
         _groq_cache["err"] = f"{type(e).__name__}: {e}"
+        log.error("Groq catalog error: %s", e)
     if ids:
         _groq_cache.update(t=now, ids=ids)
     return ids or _groq_cache["ids"]
 
 
 def groq_code_models():
+    """أفضل موديلات الكود المتاحة فعلاً عند Groq، بالترتيب (الأسماء الميتة بتنتخطى)."""
     ids = groq_catalog()
     order = []
     env = os.environ.get("GROQ_CODE_MODEL", "").strip()
@@ -623,7 +646,7 @@ def groq_code_models():
             order.append(p)
     for i in ids:
         low = i.lower()
-        if i not in order and any(k in low for k in ("gpt-oss", "qwen", "llama", "kimi", "deepseek")) and not any(x in low for x in _GROQ_SKIP):
+        if i not in order and any(k in low for k in ("gpt-oss", "qwen", "llama", "kimi")) and not any(x in low for x in _GROQ_SKIP):
             order.append(i)
     return order[:4]
 
@@ -639,6 +662,7 @@ _CRAFT_MARKERS = ("كرافتلاند", "craftland", "بلوك", "ستوديو",
 
 
 def is_code_request(text):
+    """طلب كود برمجي؟ (بيتجاهل أسئلة كرافتلاند لأنها بلوكات مو كود)."""
     t = (text or "").lower()
     if _CODE_STRONG.search(text or ""):
         return True
@@ -658,44 +682,8 @@ def ask_openai_compat(prov, contents, deep=False, json_mode=False):
             last = e
     raise last or ProviderError(None, "no backend ready")
 
-
-def _ask_ryn_mix(chat_id, contents, deep=False, json_mode=False):
-    """Ryn Mix: نص من Groq (DeepSeek/Qwen/Kimi) + صور من Pollinations (FLUX)."""
-    last_text = ""
-    for c in reversed(contents):
-        for p in c.parts:
-            if getattr(p, "text", None):
-                last_text = p.text
-                break
-        if last_text:
-            break
-
-    # كشف طلب الصورة
-    if not json_mode and any(w in last_text.lower() for w in IMG_TRIGGERS):
-        import urllib.parse, random
-        prompt = urllib.parse.quote(last_text[:500])
-        seed = random.randint(1, 999999)
-        url = POLLINATIONS_IMG.format(prompt=prompt, w=1024, h=1024, seed=seed)
-        return f"🖼️ صورة مولّدة مجاناً عبر FLUX (Pollinations):\n{url}", "(Ryn Mix · FLUX)"
-
-    if not _groq_ready():
-        raise ProviderError(401, "GROQ_API_KEY مو مضاف")
-
-    if deep:
-        models = GROQ_RYN_MODELS["deepseek"]
-    elif len(last_text) > 800:
-        models = GROQ_RYN_MODELS["kimi"]
-    else:
-        models = GROQ_RYN_MODELS["qwen"] + GROQ_RYN_MODELS["deepseek"]
-
-    b = {**GROQ_BACKEND, "prov": "ryn_mix", "match": (), "system": None,
-         "max_chars": 14000, "max_tokens": 3500}
-    out = {}
-    ans = _call_backend(b, contents, deep, json_mode, models=models, out=out)
-    return ans, f"(Ryn Mix · {out.get('model', 'Groq')})"
-
-
 def ask_model(chat_id, contents, deep=False, json_mode=False, code=False):
+    """طلبات الكود بتروح تلقائياً لـ Groq، وإذا فشل بيجاوب Gemini. (إلا إذا اخترت موديل بإيدك أو طفّيت /code)."""
     pre_note = None
     if (code and not json_mode and _groq_ready() and chat_id not in code_route_off
             and chat_id not in chat_provider and _text_only(contents)):
@@ -706,20 +694,17 @@ def ask_model(chat_id, contents, deep=False, json_mode=False, code=False):
                 return ans, f"(الكود من Groq: {out.get('model')})"
         except Exception as e:
             c = getattr(e, "code", None)
+            log.error("Groq code route failed (%s): %s", c, e)
             pre_note = "(Groq ما اشتغل" + (f"، رمز {c}" if c else "") + "، جاوب Gemini)"
     ans, note = _ask_model_core(chat_id, contents, deep=deep, json_mode=json_mode)
     return ans, (note or pre_note)
 
 
 def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
+    """بيرجّع (الجواب، ملاحظة). البوت بيجبر الموديل المختار فقط وبدون تبديل تلقائي."""
     prov = chat_provider.get(chat_id, DEFAULT_PROVIDER)
-
-    # ===== Ryn Mix =====
-    if prov == RYN_MIX_ID:
-        return _ask_ryn_mix(chat_id, contents, deep=deep, json_mode=json_mode)
-
     text_only = _text_only(contents)
-
+    
     if not text_only and prov != "gemini":
         ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
         return ans, f"(استخدمت Gemini لأن {_pname(prov)} ما بيقدر يقرأ صور/صوت)"
@@ -727,7 +712,7 @@ def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
     if prov.startswith("or:"):
         try:
             if not _or_key():
-                raise ProviderError(401, "OPENROUTER_API_KEY مو مضاف")
+                raise ProviderError(401, "OPENROUTER_API_KEY مو مضاف على Render")
             b = {**OR_BACKEND, "prov": "custom", "match": ()}
             ans = _call_backend(b, contents, deep, json_mode, models=[prov[3:]])
             if ans:
@@ -748,25 +733,23 @@ def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
         except Exception as e:
             code = getattr(e, "code", None)
             raise ProviderError(code, f"{_pname(prov)} ← {e}")
-
+            
     raise ValueError(f"الموديل {_pname(prov)} مو متاح.")
-
 
 def friendly_error(e):
     code = getattr(e, "code", None)
     tag = f"\n(الخطأ: {str(e)[:350]})" if isinstance(e, ProviderError) else (f"\n(رمز: {code})" if code else f"\n({type(e).__name__})")
     if code == 429:
-        msg = "⏳ السيرفرات مضغوطة أو خلص الحد المجاني، جرّب بعد شوي."
+        msg = "⏳ السيرفرات مضغوطة حالياً أو خلص الحد المجاني للطلب، جرّب بعد شوي."
     elif code in (500, 502, 503, 504):
-        msg = "⏳ السيرفرات مو مستقرة، جرّب تاني."
+        msg = "⏳ السيرفرات تبع الذكاء الاصطناعي مو مستقرة، جرّب تاني."
     elif code in (401, 403):
-        msg = "🔑 في مشكلة بالمفتاح السري."
+        msg = "🔑 في مشكلة بالمفتاح السري بالـ Environment Variables."
     elif code == 404:
-        msg = "⚠️ هالموديل مو متاح حالياً."
+        msg = "⚠️ هالموديل مو متاح هلأ (ممكن شالوا المجاني منو). جرّب /models واختار غيرو."
     else:
-        msg = "⚠️ صار خطأ، جرّب تاني."
+        msg = "⚠️ صار خطأ أثناء المعالجة، جرّب مرة تانية."
     return msg + tag
-
 
 def process(message, user_parts, history_label, deep=False):
     chat_id = message.chat.id
@@ -826,7 +809,7 @@ def wants_script_image(text):
 def send_script(message, request_text):
     chat_id = message.chat.id
     if visual is None:
-        bot.reply_to(message, "ميزة رسم السكربتات مو مفعّلة.")
+        bot.reply_to(message, "ميزة رسم السكربتات مو مفعّلة (ملف visual.py ناقص).")
         return
     if is_spam(chat_id):
         bot.reply_to(message, "استنى شوي وأرسل تاني 🙂")
@@ -844,7 +827,7 @@ def send_script(message, request_text):
             raw, _ = ask_model(chat_id, contents, deep=True, json_mode=True)
         spec = visual.parse_spec(raw or "")
         if not spec:
-            bot.reply_to(message, "ما قدرت أطلّع سكربت مرتب، جرّب توصف الفكرة أوضح.")
+            bot.reply_to(message, "ما قدرت أطلّع سكربت مرتب، جرّب توصف الفكرة بشكل أوضح.")
             return
         png = visual.spec_to_image(spec, load_knowledge())
         bio = io.BytesIO(png)
@@ -855,7 +838,8 @@ def send_script(message, request_text):
         if tips:
             caption += "\n\n" + "\n".join("• " + t for t in tips)
         bot.send_photo(chat_id, bio, caption=caption[:1000], reply_to_message_id=message.message_id)
-        save_turn(chat_id, request_text, "[أرسلت سكربت كصورة] " + json.dumps(spec, ensure_ascii=False)[:1500])
+        save_turn(chat_id, request_text,
+                  "[أرسلت سكربت كصورة] " + json.dumps(spec, ensure_ascii=False)[:1500])
     except Exception as e:
         log.exception("Script error")
         bot.reply_to(message, friendly_error(e))
@@ -870,7 +854,10 @@ def send_script(message, request_text):
 DOC_TTL = 30 * 60
 MAX_FILE_BYTES = 15 * 1024 * 1024
 
-MIME_BY_EXT = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+MIME_BY_EXT = {
+    ".pdf": "application/pdf",
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+}
 TEXT_EXT = {".txt", ".md", ".csv", ".json", ".py", ".js", ".ts", ".html", ".css", ".xml",
             ".log", ".ini", ".yaml", ".yml", ".lua", ".java", ".c", ".cpp", ".cs", ".sql", ".tsv"}
 
@@ -918,7 +905,7 @@ def pdf_alt_parts(name, data):
     if len(text) < 200:
         return None
     if len(text) > 150_000:
-        text = text[:150_000] + "\n...[انقطع الملف]"
+        text = text[:150_000] + "\n...[انقطع الملف لأنه طويل]"
     return [types.Part(text=f"[محتوى الملف: {name}]\n{text}")]
 
 def set_doc(chat_id, name, parts, alt=None):
@@ -934,20 +921,25 @@ def get_doc(chat_id):
 # ============ الأوامر ============
 @bot.message_handler(commands=["start"])
 def cmd_start(message):
-    bot.reply_to(message, "أهلاً فيك في Ryn AI! 🤖\nابعتلي أي سؤال أو صورة أو رسالة صوتية وأنا بجاوبك.\n/reset لمسح الذاكرة\n/help للمساعدة")
+    bot.reply_to(
+        message,
+        "أهلاً فيك! 👋\nابعتلي أي سؤال أو صورة أو رسالة صوتية وأنا بجاوبك.\n"
+        "/reset لمسح الذاكرة\n/help للمساعدة",
+    )
 
 @bot.message_handler(commands=["help"])
 def cmd_help(message):
     lines = [
         "• اكتب سؤالك عادي",
         "• ابعت صورة مع تعليق (اختياري)",
-        "• ابعت ملف (PDF / Word / نص) مع سؤال",
-        "• /deep سؤالك ← تفكير عميق",
-        "• /model ← تبديل الموديل (Gemini / ChatGPT / Ryn Mix...)",
-        "• طلبات الكود بتروح تلقائياً لـ Groq (/code on|off)",
+        "• ابعت ملف (PDF / Word / نص) مع سؤال، وبضل مرفق 30 دقيقة",
+        "• ابعت رسالة صوتية",
+        "• /deep سؤالك  ←  تفكير عميق + مراجعة الجواب",
+        "• /model  ←  تبديل الموديل (Gemini / ChatGPT / Llama / Claude...)",
+        "• طلبات الكود البرمجي بتروح تلقائياً لـ Groq  (/code on|off)",
     ]
     if visual is not None:
-        lines += ["• /script فكرتك ← سكربت بصورة بلوكات", "• /scripts ← مكتبة السكربتات"]
+        lines += ["• /script فكرتك  ←  سكربت بصورة بلوكات", "• /scripts  ←  مكتبة السكربتات الجاهزة"]
     lines += ["• /clearfile لحذف الملف المرفق", "• /reset لبدء محادثة جديدة"]
     bot.reply_to(message, "\n".join(lines))
 
@@ -976,7 +968,7 @@ def cmd_scripts(message):
     kb = telebot.types.InlineKeyboardMarkup()
     for i, f in enumerate(files[:40]):
         kb.add(telebot.types.InlineKeyboardButton(visual.library_title(f), callback_data=f"lib:{i}"))
-    bot.send_message(message.chat.id, "📚 مكتبة السكربتات، اختار واحد:", reply_markup=kb)
+    bot.send_message(message.chat.id, "📚 مكتبة السكربتات الجاهزة، اختار واحد:", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: (c.data or "").startswith("lib:"))
 def cb_library(call):
@@ -1002,19 +994,19 @@ def cmd_clearfile(message):
 def cmd_model(message):
     arg = (message.text or "").partition(" ")[2].strip().lower()
     aliases = {
-        "gemini": "gemini", "جيميني": "gemini",
-        "deepseek": "deepseek", "ديبسيك": "deepseek",
+        "gemini": "gemini", "جيميني": "gemini", 
+        "deepseek": "deepseek", "ديب سيك": "deepseek", "ديبسيك": "deepseek",
         "qwen": "qwen", "كوين": "qwen",
-        "chatgpt": "chatgpt", "gpt": "chatgpt",
+        "chatgpt": "chatgpt", "gpt": "chatgpt", "شات جي بي تي": "chatgpt",
         "claude": "claude", "كلود": "claude",
-        "llama": "llama", "لاما": "llama",
-        "ryn": "ryn_mix", "ryn_mix": "ryn_mix", "ryn mix": "ryn_mix", "ميكس": "ryn_mix",
+        "llama": "llama", "لاما": "llama"
     }
     chat_id = message.chat.id
 
     if arg and arg not in aliases:
+        # اختيار موديل مجاني من OpenRouter: برقم (من /models) أو بجزء من اسمه أو free
         if not _or_key():
-            bot.reply_to(message, "OPENROUTER_API_KEY مو مضاف.")
+            bot.reply_to(message, "OPENROUTER_API_KEY مو مضاف على Render.")
             return
         free = free_chat_models()
         pick = None
@@ -1023,7 +1015,12 @@ def cmd_model(message):
             idx = int(arg) - 1
             pick = lst[idx] if 0 <= idx < len(lst) else None
             if not pick:
-                bot.reply_to(message, "الرقم مو بالقائمة. ابعت /models.")
+                bot.reply_to(message, "الرقم مو بالقائمة. ابعت /models وشوف الأرقام.")
+                return
+        elif arg in ("free", "auto", "مجاني"):
+            pick = "openrouter/free" if "openrouter/free" in free else None
+            if not pick:
+                bot.reply_to(message, "راوتر المجاني (openrouter/free) مو متاح حالياً. جرّب /models.")
                 return
         else:
             q = arg.replace(" ", "-")
@@ -1034,33 +1031,35 @@ def cmd_model(message):
             if len(hits) > 1:
                 last_models[chat_id] = hits[:10]
                 bot.reply_to(message, "لقيت أكتر من واحد، اختار رقم:\n" +
-                             "\n".join(f"{n}) {h.replace(':free', '')}" for n, h in enumerate(hits[:10], 1)))
+                             "\n".join(f"{n}) {h.replace(':free', '')}" for n, h in enumerate(hits[:10], 1)) +
+                             "\n\nمثال: /model 1")
                 return
             pick = hits[0]
         chat_provider[chat_id] = "or:" + pick
-        bot.reply_to(message, f"✅ صرت أجاوب بـ {pick.replace(':free', '')}.")
+        bot.reply_to(message, f"✅ صرت أجاوب بـ {pick.replace(':free', '')}، وكملنا بنفس المحادثة.")
         return
 
     if arg in aliases:
         name = aliases[arg]
         if not provider_ready(name):
-            bot.reply_to(message, f"مفتاح {name} مو مضاف.")
+            bot.reply_to(message, "مفتاح OPENROUTER_API_KEY مو مضاف على Render.")
             return
         chat_provider[chat_id] = name
         bot.reply_to(message, f"✅ صرت أجاوب بـ {PROVIDER_NAMES[name]}.")
         return
-
+        
     cur = chat_provider.get(chat_id, DEFAULT_PROVIDER)
     kb = telebot.types.InlineKeyboardMarkup()
+    lines = []
     for name, label in PROVIDER_NAMES.items():
         mark = "✅ " if name == cur else ("" if provider_ready(name) else "⚠️ ")
         kb.add(telebot.types.InlineKeyboardButton(mark + label, callback_data=f"mdl:{name}"))
-    bot.send_message(chat_id,
-        f"الموديل الحالي: {_pname(cur)}\n\n"
-        "• Gemini: أساسي، بيشوف صور وملفات\n"
-        "• Ryn Mix ⚡: DeepSeek + Qwen + Kimi + FLUX (مجاني)\n"
-        "• الباقي عبر OpenRouter (المجاني فقط)\n\n"
-        "أو /models لعرض قائمة كاملة.",
+        lines.append(f"• {label}")
+    
+    bot.send_message(
+        chat_id,
+        f"الموديل الحالي: {_pname(cur)}\n" + "\n".join(lines) +
+        "\n\n• تم إيقاف التبديل التلقائي.\n• كل الموديلات (غير Gemini) بتشتغل عن طريق OpenRouter، والمجاني منها بس.\n• /models بيعرض المتاح، و/model 3 بيختار رقم 3.",
         reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: (c.data or "").startswith("mdl:"))
@@ -1068,7 +1067,7 @@ def cb_model(call):
     name = call.data.split(":", 1)[1]
     try:
         if name not in PROVIDER_NAMES or not provider_ready(name):
-            bot.answer_callback_query(call.id, "المفتاح مو مضاف")
+            bot.answer_callback_query(call.id, "المفتاح مو مضاف على Render")
             return
         chat_provider[call.message.chat.id] = name
         bot.answer_callback_query(call.id, f"تم: {PROVIDER_NAMES[name]}")
@@ -1079,45 +1078,85 @@ def cb_model(call):
 @bot.message_handler(commands=["models", "ghmodels"])
 def cmd_models(message):
     if not _or_key():
-        bot.reply_to(message, "OPENROUTER_API_KEY مو مضاف.")
+        bot.reply_to(message, "OPENROUTER_API_KEY مو مضاف على Render.")
         return
     items = openrouter_catalog(force=True)
     if not items:
-        bot.reply_to(message, "ما قدرت أجيب قائمة OpenRouter.\nالسبب: " + (_or_cache.get("err") or "مجهول"))
+        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات OpenRouter.\nالسبب: " + (_or_cache.get("err") or "مجهول"))
         return
     free = free_chat_models()
     last_models[message.chat.id] = free
-    lines = [f"OpenRouter: {len(items)} موديل، منهم {len(free_chat_models(limit=10**6))} مجاني."]
+    lines = [f"OpenRouter: {len(items)} موديل، منهم {len(free_chat_models(limit=10**6))} مجاني للمحادثة."]
+    fam = []
+    for name in ("chatgpt", "llama", "claude", "deepseek", "qwen"):
+        b = PROVIDERS[name]["backends"][0]
+        ids = or_models_for(name, b["match"], True)
+        fam.append(f"{PROVIDER_NAMES[name]}: " + (ids[0].replace(":free", "") if ids else "ما في مجاني"))
+    lines.append("• " + " | ".join(fam))
     if free:
-        lines.append("\nالمجاني (اختار برقم: /model 3):")
+        lines.append("\nالمجاني الصالح للمحادثة (اختار برقم: /model 3):")
         lines += [f"{n}) {i.replace(':free', '')}" for n, i in enumerate(free[:30], 1)]
+    else:
+        lines.append("\nما في موديلات مجانية متاحة حالياً. ممكن OpenRouter شالها، أو لازم رصيد (OPENROUTER_ALLOW_PAID=1).")
     bot.reply_to(message, "\n".join(lines)[:3900])
+
+
+@bot.message_handler(commands=["ortest", "ghtest"])
+def cmd_ortest(message):
+    """تشخيص: /ortest [model]  ← بيجرب طلب واحد وبيعرض رد OpenRouter الخام."""
+    key = _or_key()
+    if not key:
+        bot.reply_to(message, "OPENROUTER_API_KEY مو مضاف على Render.")
+        return
+    model = (message.text or "").partition(" ")[2].strip()
+    if not model:
+        ids = free_chat_models()
+        model = ids[0] if ids else "openrouter/free"
+    url = OR_BASE + "/chat/completions"
+    lines = [f"الموديل: {model}", f"الرابط: {url}", f"المفتاح: يبدأ بـ {key[:8]}… طوله {len(key)}"]
+    try:
+        r = requests.post(
+            url,
+            headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
+                     "X-Title": "Craftland AI"},
+            json={"model": model, "messages": [{"role": "user", "content": "قول مرحبا بكلمة وحدة"}], "stream": False},
+            timeout=90,
+        )
+        lines.append(f"\nHTTP {r.status_code} | {_diag(r)}\nالرد: {r.text[:400]!r}")
+    except Exception as e:
+        lines.append(f"\nخطأ شبكة: {type(e).__name__}: {str(e)[:200]}")
+    bot.reply_to(message, "\n".join(lines)[:3900])
+
 
 @bot.message_handler(commands=["code"])
 def cmd_code(message):
     arg = (message.text or "").partition(" ")[2].strip().lower()
     cid = message.chat.id
-    if arg in ("off", "اطفاء", "طفي"):
+    if arg in ("off", "اطفاء", "إطفاء", "طفي"):
         code_route_off.add(cid)
-        bot.reply_to(message, "🔕 طفّيت توجيه الكود التلقائي.")
+        bot.reply_to(message, "🔕 طفّيت توجيه الكود التلقائي. الكود هلأ بيجاوب فيه الموديل الحالي.")
         return
     if arg in ("on", "تشغيل", "شغل"):
         code_route_off.discard(cid)
     state = "شغّال ✅" if (cid not in code_route_off) else "مطفّي 🔕"
-    key = "المفتاح موجود" if _groq_ready() else "GROQ_API_KEY مو مضاف"
-    bot.reply_to(message, f"توجيه الكود التلقائي: {state}\n({key})")
+    key = "المفتاح موجود" if _groq_ready() else "GROQ_API_KEY مو مضاف على Render"
+    bot.reply_to(message, f"توجيه الكود التلقائي لـ Groq: {state}\n({key})\n"
+                          "الأوامر: /code on ، /code off ، /groqmodels")
+
 
 @bot.message_handler(commands=["groqmodels"])
 def cmd_groqmodels(message):
     if not _groq_ready():
-        bot.reply_to(message, "GROQ_API_KEY مو مضاف.")
+        bot.reply_to(message, "GROQ_API_KEY مو مضاف على Render.")
         return
     ids = groq_catalog(force=True)
     if not ids:
-        bot.reply_to(message, "ما قدرت أجيب قائمة Groq.")
+        bot.reply_to(message, "ما قدرت أجيب قائمة موديلات Groq.\nالسبب: " + (_groq_cache.get("err") or "مجهول"))
         return
     chosen = groq_code_models()
-    bot.reply_to(message, "موديلات الكود المستعملة:\n" + "\n".join(f"{n}) {m}" for n, m in enumerate(chosen, 1)))
+    bot.reply_to(message, "موديلات الكود المستعملة (بالترتيب):\n" + "\n".join(f"{n}) {m}" for n, m in enumerate(chosen, 1)) +
+                 f"\n\nكل موديلات Groq ({len(ids)}):\n" + "\n".join(ids[:40]))
+
 
 @bot.message_handler(commands=["reset"])
 def cmd_reset(message):
@@ -1150,10 +1189,14 @@ def handle_photo(message):
         info = bot.get_file(message.photo[-1].file_id)
         data = bot.download_file(info.file_path)
     except Exception:
+        log.exception("Photo download error")
         bot.reply_to(message, "ما قدرت أنزّل الصورة، جرّب تاني.")
         return
     caption = message.caption or "اشرح هالصورة."
-    parts = [types.Part.from_bytes(data=data, mime_type="image/jpeg"), types.Part(text=caption)]
+    parts = [
+        types.Part.from_bytes(data=data, mime_type="image/jpeg"),
+        types.Part(text=caption),
+    ]
     process(message, parts, f"[صورة: {caption}]", deep=bool(message.caption) and is_deep_question(caption))
 
 @bot.message_handler(content_types=["voice"])
@@ -1162,10 +1205,13 @@ def handle_voice(message):
         info = bot.get_file(message.voice.file_id)
         data = bot.download_file(info.file_path)
     except Exception:
-        bot.reply_to(message, "ما قدرت أنزّل الرسالة الصوتية.")
+        log.exception("Voice download error")
+        bot.reply_to(message, "ما قدرت أنزّل الرسالة الصوتية، جرّب تاني.")
         return
-    parts = [types.Part.from_bytes(data=data, mime_type="audio/ogg"),
-             types.Part(text="افهم هالرسالة الصوتية وجاوب عليها.")]
+    parts = [
+        types.Part.from_bytes(data=data, mime_type="audio/ogg"),
+        types.Part(text="افهم هالرسالة الصوتية وجاوب عليها."),
+    ]
     process(message, parts, "[رسالة صوتية]")
 
 @bot.message_handler(content_types=["document"])
@@ -1173,20 +1219,25 @@ def handle_document(message):
     doc = message.document
     name = doc.file_name or "file"
     if doc.file_size and doc.file_size > MAX_FILE_BYTES:
-        bot.reply_to(message, "الملف كبير، الحد 15 ميجا. 📦")
+        bot.reply_to(message, "الملف كبير، الحد الأقصى 15 ميجا. 📦")
         return
     try:
         info = bot.get_file(doc.file_id)
         data = bot.download_file(info.file_path)
     except Exception:
-        bot.reply_to(message, "ما قدرت أنزّل الملف.")
+        log.exception("Document download error")
+        bot.reply_to(message, "ما قدرت أنزّل الملف، جرّب تاني.")
         return
     try:
         parts = build_doc_parts(name, data)
     except ValueError as e:
         reason = str(e)
-        msg = {"unsupported": "نوع الملف مو مدعوم.", "empty": "الملف فاضي.",
-               "bad_docx": "ما قدرت أفتح Word."}.get(reason, "ما قدرت أفتح الملف.")
+        if reason == "unsupported":
+            msg = "نوع الملف مو مدعوم حالياً. المدعوم: PDF، Word (docx)، صور، وملفات نصية."
+        elif reason == "empty":
+            msg = "الملف فاضي أو ما قدرت أقرأ نصه."
+        else:
+            msg = "ما قدرت أفتح الملف، يمكن تالف."
         bot.reply_to(message, msg)
         return
     chat_id = message.chat.id
@@ -1197,13 +1248,13 @@ def handle_document(message):
     process(message, base + [types.Part(text=question)],
             f"[ملف: {name}] {question}", deep=is_deep_question(question))
     try:
-        bot.send_message(chat_id, "📎 الملف مرفق 30 دقيقة. /clearfile لحذفه.")
+        bot.send_message(chat_id, "📎 الملف مرفق بالمحادثة 30 دقيقة، اسأل عنه براحتك. /clearfile لحذفه.")
     except Exception:
         pass
 
 @bot.message_handler(content_types=["sticker", "video", "audio"])
 def handle_unsupported(message):
-    bot.reply_to(message, "بدعم النص والصور والملفات والرسائل الصوتية بس 🙂")
+    bot.reply_to(message, "حالياً بدعم النص والصور والملفات والرسائل الصوتية بس 🙂")
 
 # ============ التشغيل ============
 def run_polling():
