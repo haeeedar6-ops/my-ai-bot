@@ -50,7 +50,7 @@ MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
 DEEP_TIMEOUT_MS = 75000
 
-SYSTEM_PROMPT = """أنت "Astra AI"، مساعد ذكي شامل ومتقدم، مستعد للإجابة عن أي سؤال في شتى المجالات.
+SYSTEM_PROMPT = """أنت "Ryn"، مساعد ذكي شامل ومتقدم، مستعد للإجابة عن أي سؤال في شتى المجالات.
 
 هويتك وصانعك (مهم جداً):
 - تم تطويرك وبرمجتك بواسطة المطور "haydar_xe".
@@ -321,7 +321,8 @@ PROVIDER_NAMES = {
 
 def _pname(prov):
     """اسم العرض للمزوّد، وللموديل المختار يدوياً (or:<id>)."""
-    return PROVIDER_NAMES.get(prov) or (prov[3:] if str(prov).startswith("or:") else str(prov))
+    p = str(prov)
+    return PROVIDER_NAMES.get(prov) or (p[3:] if p.startswith("or:") else (p[5:] if p.startswith("groq:") else p))
 
 
 last_models = {}  # chat_id -> آخر قائمة موديلات انعرضت (للاختيار بالرقم)
@@ -369,7 +370,7 @@ PROVIDERS = {
 chat_provider = {}
 
 COMPACT_PROMPT = (
-    "أنت Craftland AI، مساعد ذكي متخصص بـ Free Fire Craftland وCraftland Studio، وبتجاوب على أي سؤال تاني. "
+    "أنت Ryn، مساعد ذكي شامل، متخصص بـ Free Fire Craftland وCraftland Studio، وبتجاوب على أي سؤال تاني. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة ومختصرة ومرتبة. "
     "إذا مو متأكد من اسم بلوك أو طريقة عمله قول هيك وما تخترع."
 )
@@ -531,7 +532,7 @@ def _call_backend(b, contents, deep, json_mode, models=None, out=None):
     headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
     if b["name"] == "OpenRouter":
         headers["HTTP-Referer"] = os.environ.get("OPENROUTER_REFERER", "https://my-ai-bot-vmf4.onrender.com")
-        headers["X-Title"] = "Craftland AI"
+        headers["X-Title"] = "Ryn"
     last = None
     for model in models:
         body = {
@@ -598,7 +599,8 @@ GROQ_BACKEND = {
     "system": CODE_SYSTEM_PROMPT, "max_chars": 14000, "max_tokens": 3500,  # حدود Groq المجانية صغيرة
 }
 # موديلات Llama 3 القديمة (llama3-70b-8192 و llama-3.1-70b-versatile وحتى llama-3.3-70b-versatile) انسكّرت عند Groq
-GROQ_CODE_PREF = ("openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b")
+GROQ_CODE_PREF = ("openai/gpt-oss-120b", "qwen/qwen3.8-27b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b")
+GROQ_CHAT_BACKEND = {**GROQ_BACKEND, "system": None, "compact": True}  # دردشة عامة بموديل Groq تختاره
 _GROQ_SKIP = ("whisper", "tts", "guard", "safeguard", "vision", "embed", "compound", "orpheus", "playai")
 _groq_cache = {"t": 0.0, "ids": [], "err": ""}
 code_route_off = set()  # محادثات طفّت التوجيه التلقائي للكود بـ /code off
@@ -708,6 +710,17 @@ def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
     if not text_only and prov != "gemini":
         ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
         return ans, f"(استخدمت Gemini لأن {_pname(prov)} ما بيقدر يقرأ صور/صوت)"
+
+    if prov.startswith("groq:"):
+        try:
+            if not _groq_ready():
+                raise ProviderError(401, "GROQ_API_KEY مو مضاف على Render")
+            ans = _call_backend(GROQ_CHAT_BACKEND, contents, deep, json_mode, models=[prov[5:]])
+            if ans:
+                return ans, None
+        except Exception as e:
+            raise ProviderError(getattr(e, "code", None), f"{_pname(prov)} ← {e}")
+        raise ProviderError(502, f"{_pname(prov)} ← رد فاضي")
 
     if prov.startswith("or:"):
         try:
@@ -1118,7 +1131,7 @@ def cmd_ortest(message):
         r = requests.post(
             url,
             headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
-                     "X-Title": "Craftland AI"},
+                     "X-Title": "Ryn"},
             json={"model": model, "messages": [{"role": "user", "content": "قول مرحبا بكلمة وحدة"}], "stream": False},
             timeout=90,
         )
