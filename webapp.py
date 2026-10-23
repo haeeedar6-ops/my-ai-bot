@@ -12,6 +12,13 @@ import threading
 import logging
 
 from flask import request, session, jsonify, Response
+from urllib.parse import quote
+
+try:
+    import filegen  # توليد ملفات التحميل (كشف نوع الملف + بناء الملف)
+except Exception as _e:  # اختياري: الموقع بيشتغل بدونها
+    filegen = None
+    print(f'filegen.py غير متاح: {_e}')
 
 log = logging.getLogger("web")
 WEB_ID = "web"                 # محادثة الموقع (نفس المحادثة من أي جهاز)
@@ -166,6 +173,9 @@ main>:first-child{margin-top:auto}
 .fcard .fmeta{min-width:0;flex:1}
 .fcard .fmeta b{display:block;font-size:13.5px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fcard .fmeta small{display:block;font-size:11px;color:var(--sub);direction:rtl;text-align:right}
+.fcard.dl{text-decoration:none;color:inherit;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.fcard.dl:hover{border-color:var(--g);box-shadow:0 0 14px rgba(var(--g-rgb),.35)}
+.fcard .dlico{font-size:17px;flex:none;padding:0 2px}
 #chip .cthumb{width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid rgba(var(--g-rgb),.5);vertical-align:middle;margin-left:6px}
 .h{font-weight:800;color:var(--g);margin:6px 0 2px;text-shadow:0 0 8px rgba(var(--g-rgb),.4)}
 #lb{position:absolute;inset:0;background:rgba(0,0,0,.92);z-index:80;display:flex;align-items:center;justify-content:center;padding:14px}
@@ -537,7 +547,7 @@ const curChat=()=>store.chats.find(c=>c.id===store.cur);
 const M=()=>curChat().msgs;
 function saveStore(){
   let chats=store.chats.slice(0,25).map(c=>({id:c.id,title:c.title,ts:c.ts,
-    msgs:c.msgs.slice(-80).map(m=>({role:m.role,text:String(m.text).slice(0,8000),note:m.note,err:m.err,file:m.file,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
+    msgs:c.msgs.slice(-80).map(m=>({role:m.role,text:String(m.text).slice(0,8000),note:m.note,err:m.err,file:m.file,dfile:m.dfile,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
   for(;;){
     try{localStorage.setItem(LS,JSON.stringify({cur:store.cur,chats}));return}
     catch(e){if(chats.length<=2)return;chats.pop()}
@@ -607,7 +617,8 @@ function render(){
     const pic=(m.img&&String(m.img).startsWith('data:image/'))?'<img class="pic" data-i="'+i+'" src="'+m.img+'" alt="صورة">':'';
     const ext=m.file?(String(m.file).includes('.')?String(m.file).split('.').pop().slice(0,5):'FILE'):'';
     const fbox=m.file?'<div class="fcard"><div class="fico">'+esc(ext)+'</div><div class="fmeta"><b>'+esc(m.file)+'</b><small>ملف مرفق 📎</small></div></div>':'';
-    const body=pic+fbox+(m.reveal?'':md(m.text));
+    const dbox=m.dfile?'<a class="fcard dl" href="'+m.dfile.url+'" download="'+esc(m.dfile.name)+'" title="اضغط لتحميل الملف"><div class="fico">'+esc(String(m.dfile.ext).toUpperCase())+'</div><div class="fmeta"><b>'+esc(m.dfile.name)+'</b><small>💾 ملف جاهز للتحميل'+(m.dfile.size?(m.dfile.size>1024?' · '+Math.round(m.dfile.size/1024)+' KB':' · '+m.dfile.size+' B'):'')+'</small></div><div class="dlico">⬇️</div></a>':'';
+    const body=pic+fbox+dbox+(m.reveal?'':md(m.text));
     return '<div class="bubble '+(me?'me':'bot')+(m.err?' err':'')+'"'+(m.reveal?' data-rev="1"':'')+'>'+body+'</div>'+
       (m.note?'<div class="note">'+esc(m.note)+'</div>':'')+
       (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button></div>');
@@ -699,7 +710,7 @@ async function send(){
         if(aborted)break;
         if(j.status==='done'){
           if(j.image){const img=await shrink(j.image,720);M().push({role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img})}
-          else{const full=j.text||'(رد فاضي)';if(Array.isArray(j.memories)&&j.memories.length){let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك')}M().push({role:'model',text:full,note:j.note,reveal:full.length<6000})}
+          else{const full=j.text||'(رد فاضي)';if(Array.isArray(j.memories)&&j.memories.length){let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك')}const df=j.file?{name:j.file.name,url:'/api/download/'+j.file.id,ext:j.file.ext,size:j.file.size}:null;if(df)say('جهزتلك ملف التحميل 💾');M().push({role:'model',text:full,note:j.note,reveal:full.length<6000&&!df,dfile:df})}
           done=true}
         else if(j.status!=='running'){M().push({role:'model',text:j.text||'صار خطأ',err:true});ok=false;done=true}
       }
@@ -909,6 +920,9 @@ def register(app, b):
     )
     jobs, jlock = {}, threading.Lock()
     fails = {}  # ip -> أوقات المحاولات الغلط
+    files = {}  # fid -> {name, mime, data, exp} : ملفات التحميل المؤقتة
+    FILE_TTL = 30 * 60
+    FILE_MAX = 60
     web_mode = {"img": False}   # وضع الرسم (FLUX)
     img_counts = {}
     IMG_DAILY = int(os.environ.get("IMAGE_DAILY_LIMIT", "40"))
@@ -927,6 +941,19 @@ def register(app, b):
         with jlock:
             j = jobs.get(job_id)
             return (not j) or j.get("status") == "cancelled"
+
+    def store_file(name, mime, data):
+        """بيخزّن ملف تحميل مؤقت بالذاكرة وبيحذف المنتهي والأقدم عند الامتلاء."""
+        with jlock:
+            now = time.time()
+            for k in [k for k, v in list(files.items()) if v["exp"] < now]:
+                files.pop(k, None)
+            if len(files) >= FILE_MAX:
+                for k in sorted(files, key=lambda k: files[k]["exp"])[:len(files) - FILE_MAX + 1]:
+                    files.pop(k, None)
+            fid = uuid.uuid4().hex
+            files[fid] = {"name": name, "mime": mime, "data": data, "exp": now + FILE_TTL}
+            return fid
 
     def pick_or(match):
         try:
@@ -1119,7 +1146,18 @@ def register(app, b):
             if deep and answer and len(answer) > 150 and b.load_knowledge() and not note:
                 answer = b.review_answer(WEB_ID, text, answer)
                 answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
-            res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems}
+            dl = None
+            fext = filegen.detect_file_request(text) if filegen else None
+            if fext and answer:
+                try:
+                    fname, mime, data = filegen.make_file(fext, answer, text)
+                    fid = store_file(fname, mime, data)
+                    dl = {"id": fid, "name": fname, "ext": fext, "size": len(data)}
+                    log.info("ملف تحميل جاهز: %s (%s، %d بايت)", fname, fext, len(data))
+                except Exception:
+                    log.exception("توليد ملف التحميل فشل")
+            res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
+                   "file": dl}
         except Exception as e:
             log.exception("web chat error")
             msg = b.friendly_error(e)
@@ -1208,6 +1246,23 @@ def register(app, b):
             return bad
         b.doc_ctx.pop(WEB_ID, None)
         return jsonify(ok=True)
+
+    # ---------- تحميل الملفات المولّدة ----------
+    @app.get("/api/download/<fid>")
+    def api_download(fid):
+        if not authed():
+            return jsonify(error="سجّل دخول"), 401
+        with jlock:
+            f = files.get(fid)
+            if f and f["exp"] < time.time():
+                files.pop(fid, None)
+                f = None
+        if not f:
+            return jsonify(error="انتهى الرابط المؤقت للملف (الروابط بتضل 30 دقيقة)"), 404
+        resp = Response(f["data"], mimetype=f["mime"])
+        resp.headers["Content-Disposition"] = "attachment; filename*=UTF-8''" + quote(f["name"])
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
     # ---------- الموديلات ----------
     @app.get("/api/models")
