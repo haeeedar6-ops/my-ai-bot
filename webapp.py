@@ -811,11 +811,11 @@ $('#plus').onclick=e=>{e.stopPropagation();$('#sheet').hidden=true;$('#floating'
 $('#mname').onclick=e=>{e.stopPropagation();$('#floating').classList.add('off');openSheet()};
 function drawFloating(){
   const f=o=>o?'<button class="dia'+(current===o.id?' on':'')+'" data-m="'+esc(o.id)+'">':'';
-  const img=models.find(o=>o.id==='img:flux'),gem=models.find(o=>o.id==='gemini'),qw=models.find(o=>/qwen/i.test(o.label));
+  const img=models.find(o=>o.id==='img:flux'),gem=models.find(o=>o.id==='gemini'),qw=models.find(o=>o.id==='mix');
   let h='';
   if(img)h+=f(img)+'<span>رسم<br>🎨</span></button>';
   if(gem)h+=f(gem)+'<span>Gemini</span></button>';
-  if(qw)h+=f(qw)+'<span>Qwen</span></button>';
+  if(qw)h+=f(qw)+'<span>Ryn<br>mix</span></button>';
   if(models.length>2)h+='<button class="dia" data-m="__all"><span>كل<br>الموديلات</span></button>';
   if(hasGroq)h+='<button class="dia'+(codeAuto?' on':'')+'" data-m="__code"><span>كود<br>'+(codeAuto?'ON':'OFF')+'</span></button>';
   $('#floating').innerHTML=h;
@@ -1103,6 +1103,9 @@ def describe(mid, ready=True, model=""):
         d = ("يرسم صور قوية وواقعية حسب وصفك (Gemini Nano Banana 2.1)، وبيفهم الوصف بالعربي. "
              "قدّر تحدد الاتجاه: «عمودي» أو «أفقي» أو «مربع»، وإذا فشل Gemini بيرجع تلقائياً لـ FLUX عبر Cloudflare.")
         return d if ready else d + " غير مفعّل: بده GEMINI_API_KEY أو إعداد Cloudflare."
+    if mid == "mix":
+        return ("Gemini وGPT-OSS وDeepSeek وQwen بيجاوبوا سوا، وبعدين بيندمجوا بجواب واحد أدق. "
+                "أبطأ شوي من الباقي، وبيشتغل بالموديلات المتاحة عندك بس.")
     if mid == "gemini":
         return "الأساسي: دردشة عامة بالعربي، بيشوف الصور وبيقرا الملفات والـ PDF، وبيراجع جوابه."
     if mid.startswith("groq:"):
@@ -1198,7 +1201,8 @@ def register(app, b):
     def build_options():
         """القائمة: الرسم فوق Gemini، وبعدها Qwen وGPT-OSS (Groq)، وDeepSeek وKimi (OpenRouter، مدفوع)."""
         opts = [{"id": "img:flux", "label": "Nano Banana · رسم صور", "desc": describe("img:flux", ready=image_ready())},
-                {"id": "gemini", "label": "Gemini", "desc": describe("gemini")}]
+                {"id": "gemini", "label": "Gemini", "desc": describe("gemini")},
+                {"id": "mix", "label": "Ryn mix", "desc": describe("mix")}]
         gid = groq_ids()
         qwen = sorted([i for i in gid if "qwen" in i.lower() and not any(x in i.lower() for x in b._GROQ_SKIP)], reverse=True)
         if qwen:
