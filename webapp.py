@@ -886,9 +886,9 @@ $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 
 
 # ---------- رسم الصور: Gemini Nano Banana (أساسي) + FLUX عبر Cloudflare (احتياط) ----------
-IMG_SYS = ("Rewrite the user's idea as ONE detailed English prompt for an image generator. "
-           "If the user wants a real photo, enforce a raw, unedited photographic style (e.g., 'RAW photo, amateur photography, shot on 35mm lens, natural skin texture, subtle film grain, imperfect lighting'). "
-           "Strictly avoid words like 'vivid, hyper-realistic, 3D, CGI, smooth, flawless' unless the user asks for a digital art style. "
+IMG_SYS = ("Rewrite the user's idea as ONE detailed English prompt for a high-quality image generator. "
+           "Keep every detail, add vivid visual details (photorealistic style unless another style is requested, "
+           "natural lighting, sharp focus, rich colors, balanced composition) without changing the meaning. "
            "Output only the prompt, max 80 words.")
 
 _ASPECT_HINTS = (
@@ -1207,7 +1207,24 @@ def describe(mid, ready=True, model=""):
 
 def register(app, b):
     """بيركّب الموقع على تطبيق Flask تبع البوت. b = وحدة bot.py (للوصول لدوالها)."""
-    password = os.environ.get("WEB_PASSWORD", "")
+    def load_users():
+        """WEB_USERS = اسم:كلمة_سر,اسم2:كلمة_سر2  (كلمة السر بتحدد مين الشخص). WEB_PASSWORD بيضل شغّال كمستخدم main."""
+        us = {}
+        for part in os.environ.get("WEB_USERS", "").split(","):
+            if ":" in part:
+                n, pw = part.split(":", 1)
+                n, pw = n.strip(), pw.strip()
+                if n and pw:
+                    us[n] = pw
+        main_pw = os.environ.get("WEB_PASSWORD", "").strip()
+        if main_pw and main_pw not in us.values():
+            us.setdefault("main", main_pw)
+        if len(set(us.values())) != len(us):
+            log.warning("WEB_USERS: في كلمتين سر متشابهتين، لازم كل شخص كلمة سر مختلفة")
+        return us
+
+    users = load_users()
+    password = "|".join(users.values())   # للمفتاح السري وللتأكد إنو في مستخدمين
     app.secret_key = os.environ.get("WEB_SECRET") or hashlib.sha256(
         ("astra-web|" + password + "|" + str(getattr(b, "BOT_TOKEN", ""))).encode()).hexdigest()
     app.config.update(
@@ -1222,7 +1239,15 @@ def register(app, b):
     files = {}  # fid -> {name, mime, data, exp} : ملفات التحميل المؤقتة
     FILE_TTL = 30 * 60
     FILE_MAX = 60
-    web_mode = {"img": False, "mix": False}   # وضع الرسم + وضع Ryn mix
+    modes = {}   # لكل مستخدم: وضع الرسم + وضع Ryn mix
+    moods = {}   # لكل مستخدم: مزاجه
+
+    def wm(u=None):
+        return modes.setdefault(u or uid(), {"img": False, "mix": False})
+
+    def md(u=None):
+        return moods.setdefault(u or uid(), {"state": "normal", "reason": "", "since": 0.0})
+
     img_counts = {}
     IMG_DAILY = int(os.environ.get("IMAGE_DAILY_LIMIT", "40"))
     IMG_PROVIDER = os.environ.get("IMAGE_PROVIDER", "auto").strip().lower()  # auto | gemini | cloudflare
@@ -1318,6 +1343,13 @@ def register(app, b):
     def authed():
         return bool(session.get("ok"))
 
+    def uid():
+        return session.get("u") or "main"
+
+    def wid(u=None):
+        """معرّف المحادثة الخاص بكل مستخدم (موديله وملفه وإعداداته)."""
+        return "web:" + (u or uid())
+
     def guard():
         """رد خطأ إذا مو مسموح، وإلا None."""
         if not authed():
@@ -1370,23 +1402,28 @@ def register(app, b):
     # ---------- دخول ----------
     @app.get("/api/me")
     def api_me():
-        return jsonify(ok=authed(), configured=bool(password))
+        return jsonify(ok=authed(), configured=bool(users), user=(uid() if authed() else ""))
 
     @app.post("/api/login")
     def api_login():
-        if not password:
-            return jsonify(error="WEB_PASSWORD مو مضاف على Render"), 503
+        if not users:
+            return jsonify(error="WEB_PASSWORD أو WEB_USERS مو مضاف على Render"), 503
         if request.headers.get("X-Requested-With") != "astra":
             return jsonify(error="طلب مرفوض"), 403
         ip, now = client_ip(), time.time()
         recent = [t for t in fails.get(ip, []) if now - t < 600]
         if len(recent) >= 5:
             return jsonify(error="محاولات كتير، جرّب بعد 10 دقايق"), 429
-        given = str((request.get_json(silent=True) or {}).get("password", ""))
-        if hmac.compare_digest(given.encode(), password.encode()):
+        given = str((request.get_json(silent=True) or {}).get("password", "")).strip()
+        who = None
+        for n, pw in users.items():
+            if hmac.compare_digest(given.encode(), pw.encode()):
+                who = n
+        if who:
             fails.pop(ip, None)
             session.clear()
             session["ok"] = True
+            session["u"] = who
             session.permanent = True
             return jsonify(ok=True)
         recent.append(now)
@@ -1435,12 +1472,13 @@ def register(app, b):
             "أضف في آخر ردك السطر التالي بالضبط: [[MEM: المعلومة باختصار]] ليتم حفظها تلقائياً في ملف هاتفه.)\n---\n"
         )
 
-    mood = {"state": "normal", "reason": "", "since": 0.0}
     MOOD_RE = re.compile(r"\[\[MOOD:\s*(upset|happy|ok)\s*(?::\s*(.+?))?\s*\]\]", re.S)
 
-    def run_job(job_id, text, history, mem_prompt="", emo=False):
+    def run_job(job_id, text, history, mem_prompt="", emo=False, u="main"):
         try:
             T = b.types
+            W = wid(u)
+            mood = md(u)
             if emo and mood["state"] == "upset":
                 if time.time() - mood["since"] > 600:   # بيسامح لحاله بعد 10 دقايق
                     mood.update(state="normal", reason="", since=0.0)
@@ -1448,7 +1486,7 @@ def register(app, b):
                     mem_prompt = UPSET_PROMPT % (mood["reason"] or "تصرّف ما عجبه") + mem_prompt
             contents = [T.Content(role=r, parts=[T.Part(text=t)]) for r, t in history]
             full_user_text = (mem_prompt + text) if mem_prompt else text
-            ctx = b.get_doc(WEB_ID)
+            ctx = b.get_doc(W)
             if ctx:
                 base = ctx["alt"] if ctx.get("alt") else ctx["parts"]
                 parts = list(base) + [T.Part(text=full_user_text)]
@@ -1456,10 +1494,10 @@ def register(app, b):
                 parts = [T.Part(text=full_user_text)]
             contents.append(T.Content(role="user", parts=parts))
             deep = b.is_deep_question(text)
-            if web_mode["mix"] and b._text_only(contents):
+            if wm(u)["mix"] and b._text_only(contents):
                 answer, note = mix_answer(b, contents, mix_members())
             else:
-                answer, note = b.ask_model(WEB_ID, contents, deep=deep, code=b.is_code_request(text))
+                answer, note = b.ask_model(W, contents, deep=deep, code=b.is_code_request(text))
             if is_cancelled(job_id):
                 return
             if emo and answer:
@@ -1480,7 +1518,7 @@ def register(app, b):
             if new_mems:
                 answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
             if deep and answer and len(answer) > 150 and b.load_knowledge() and not note:
-                answer = b.review_answer(WEB_ID, text, answer)
+                answer = b.review_answer(W, text, answer)
                 answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
             dl = None
             fext = filegen.detect_file_request(text) if filegen else None
@@ -1516,16 +1554,16 @@ def register(app, b):
         if emo_on:
             mem_prompt = EMO_PROMPT + mem_prompt
         else:
-            mood.update(state="normal", reason="", since=0.0)
+            md().update(state="normal", reason="", since=0.0)
         now = time.time()
         with jlock:
             for k in [k for k, v in jobs.items() if now - v["ts"] > 900]:
                 jobs.pop(k, None)
-            if sum(1 for v in jobs.values() if v["status"] == "running") >= 2:
+            if sum(1 for v in jobs.values() if v["status"] == "running" and v.get("uid") == uid()) >= 2:
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
-            jobs[job_id] = {"status": "running", "ts": now}
-        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt, emo_on),
+            jobs[job_id] = {"status": "running", "ts": now, "uid": uid()}
+        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt, emo_on, uid()),
                          daemon=True).start()
         return jsonify(job=job_id)
 
@@ -1536,9 +1574,9 @@ def register(app, b):
             return bad
         with jlock:
             j = jobs.get(job_id)
-            if not j:
+            if not j or j.get("uid") != uid():
                 return jsonify(status="error", text="انتهت صلاحية الطلب، جرّب تاني."), 404
-            return jsonify({k: v for k, v in j.items() if k != "ts"})
+            return jsonify({k: v for k, v in j.items() if k not in ("ts", "uid")})
 
     # ---------- الملفات ----------
     @app.post("/api/upload")
@@ -1556,9 +1594,9 @@ def register(app, b):
         mime = sniff_image(data)
         if mime:  # صورة: بنعرفها من محتواها، مو من اسمها (أسماء صور الموبايل أحياناً بدون امتداد)
             parts = [b.types.Part.from_bytes(data=data, mime_type=mime)]
-            b.set_doc(WEB_ID, name, parts, None)
-            b.doc_ctx[WEB_ID]["image"] = True
-            b.doc_ctx[WEB_ID]["exp"] = time.time() + 600   # الصورة بتضل مرفقة 10 دقايق
+            b.set_doc(wid(), name, parts, None)
+            b.doc_ctx[wid()]["image"] = True
+            b.doc_ctx[wid()]["exp"] = time.time() + 600   # الصورة بتضل مرفقة 10 دقايق
             return jsonify(ok=True, name=name, image=True)
         try:
             parts = b.build_doc_parts(name, data)
@@ -1568,7 +1606,7 @@ def register(app, b):
                    "empty": "الملف فاضي أو ما قدرت أقرأ نصه."}.get(reason, "ما قدرت أفتح الملف، يمكن تالف.")
             return jsonify(error=msg), 400
         alt = b.pdf_alt_parts(name, data) if name.lower().endswith(".pdf") else None
-        b.set_doc(WEB_ID, name, parts, alt)
+        b.set_doc(wid(), name, parts, alt)
         return jsonify(ok=True, name=name, image=False)
 
     @app.post("/api/clientlog")
@@ -1585,7 +1623,7 @@ def register(app, b):
         bad = guard()
         if bad:
             return bad
-        b.doc_ctx.pop(WEB_ID, None)
+        b.doc_ctx.pop(wid(), None)
         return jsonify(ok=True)
 
     # ---------- تحميل الملفات المولّدة ----------
@@ -1612,12 +1650,12 @@ def register(app, b):
         if bad:
             return bad
         opts = build_options()
-        cur = "img:flux" if web_mode["img"] else ("mix" if web_mode["mix"] else b.chat_provider.get(WEB_ID, "gemini"))
+        cur = "img:flux" if wm()["img"] else ("mix" if wm()["mix"] else b.chat_provider.get(wid(), "gemini"))
         if cur not in [o["id"] for o in opts]:
             cur = "gemini"
-        ctx = b.get_doc(WEB_ID)
+        ctx = b.get_doc(wid())
         return jsonify(current=cur, options=opts, groq=bool(b._groq_ready()),
-                       code_auto=WEB_ID not in b.code_route_off, file=(ctx["name"] if ctx else ""),
+                       code_auto=wid() not in b.code_route_off, file=(ctx["name"] if ctx else ""),
                        file_image=bool(ctx and ctx.get("image")))
 
     @app.post("/api/model")
@@ -1631,19 +1669,19 @@ def register(app, b):
         if mid == "img:flux":
             if not image_ready():
                 return jsonify(error="الرسم بده GEMINI_API_KEY أو إعداد Cloudflare على Render"), 400
-            web_mode["img"] = True
-            web_mode["mix"] = False
+            wm()["img"] = True
+            wm()["mix"] = False
             return jsonify(ok=True)
-        web_mode["img"] = False
+        wm()["img"] = False
         if mid == "mix":
-            web_mode["mix"] = True
-            b.chat_provider.pop(WEB_ID, None)
+            wm()["mix"] = True
+            b.chat_provider.pop(wid(), None)
             return jsonify(ok=True)
-        web_mode["mix"] = False
+        wm()["mix"] = False
         if mid == "gemini":
-            b.chat_provider.pop(WEB_ID, None)
+            b.chat_provider.pop(wid(), None)
         else:
-            b.chat_provider[WEB_ID] = mid
+            b.chat_provider[wid()] = mid
         return jsonify(ok=True)
 
     # ---------- رسم الصور (Gemini Nano Banana أساسي + FLUX احتياط) ----------
@@ -1712,18 +1750,18 @@ def register(app, b):
         prompt = str((request.get_json(silent=True) or {}).get("prompt", "")).strip()[:800]
         if not prompt:
             return jsonify(error="اكتب وصف الصورة"), 400
-        day = time.strftime("%Y-%m-%d")
+        day = uid() + "|" + time.strftime("%Y-%m-%d")   # الحصة لكل مستخدم لحاله
         now = time.time()
         with jlock:
             for k in [k for k, v in jobs.items() if now - v["ts"] > 900]:
                 jobs.pop(k, None)
-            if sum(1 for v in jobs.values() if v["status"] == "running") >= 2:
+            if sum(1 for v in jobs.values() if v["status"] == "running" and v.get("uid") == uid()) >= 2:
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
             if img_counts.get(day, 0) >= IMG_DAILY:
                 return jsonify(error="وصلت الحد اليومي للصور (%d)، كمّل بكرا." % IMG_DAILY), 429
             img_counts[day] = img_counts.get(day, 0) + 1
             job_id = uuid.uuid4().hex
-            jobs[job_id] = {"status": "running", "ts": now}
+            jobs[job_id] = {"status": "running", "ts": now, "uid": uid()}
         threading.Thread(target=guarded_image, args=(job_id, prompt, day), daemon=True).start()
         return jsonify(job=job_id)
 
@@ -1734,7 +1772,7 @@ def register(app, b):
             return bad
         with jlock:
             j = jobs.get(job_id)
-            if j and j.get("status") == "running":
+            if j and j.get("status") == "running" and j.get("uid") == uid():
                 j["status"] = "cancelled"
         return jsonify(ok=True)
 
@@ -1744,9 +1782,9 @@ def register(app, b):
         if bad:
             return bad
         if (request.get_json(silent=True) or {}).get("on"):
-            b.code_route_off.discard(WEB_ID)
+            b.code_route_off.discard(wid())
         else:
-            b.code_route_off.add(WEB_ID)
+            b.code_route_off.add(wid())
         return jsonify(ok=True)
 
     log.info("Web UI enabled (password %s)", "set" if password else "NOT set")
