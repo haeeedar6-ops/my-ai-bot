@@ -959,9 +959,13 @@ def _try_gemini_image(b, model, full):
         last = e
     cfg = None
     try:
-        cfg = T.GenerateContentConfig(response_modalities=["IMAGE"])
+        cfg = T.GenerateContentConfig(response_modalities=["IMAGE"],
+                                      http_options=T.HttpOptions(timeout=60000))
     except Exception:
-        cfg = None
+        try:
+            cfg = T.GenerateContentConfig(response_modalities=["IMAGE"])
+        except Exception:
+            cfg = None
     resp = client.models.generate_content(model=model, contents=full, config=cfg)
     gen = getattr(resp, "generated_images", None) or []
     if gen:
@@ -989,9 +993,15 @@ def _try_gemini_image(b, model, full):
 def gemini_image(b, full):
     """بيجرّب كل موديلات الرسم بالترتيب وبيرجّع (data, mime, model)."""
     last = None
+    t0 = time.time()
     for model in img_models():
+        if time.time() - t0 > 100:
+            log.warning("الرسم: خلصت المهلة الكلية، وقفت التجربة")
+            break
         try:
+            log.info("الرسم: بجرّب %s", model)
             data, mime = _try_gemini_image(b, model, full)
+            log.info("الرسم: %s خلص بـ %.0f ثانية", model, time.time() - t0)
             if data:
                 return data, mime, model
         except Exception as e:
@@ -1509,6 +1519,24 @@ def register(app, b):
         if res:
             finish(job_id, res)
 
+    IMG_HARD_TIMEOUT = int(os.environ.get("IMAGE_TIMEOUT", "150"))
+
+    def guarded_image(job_id, prompt, day):
+        """بيشغّل الرسم بخيط، وإذا علّق أكتر من المهلة بيسكّر الطلب بخطأ واضح."""
+        t = threading.Thread(target=run_image, args=(job_id, prompt, day), daemon=True)
+        t.start()
+        t.join(IMG_HARD_TIMEOUT)
+        if not t.is_alive():
+            return
+        with jlock:
+            j = jobs.get(job_id)
+            still = bool(j) and j.get("status") == "running"
+        if still:
+            log.error("الرسم علّق أكتر من %s ثانية، سكّرت الطلب %s", IMG_HARD_TIMEOUT, job_id)
+            img_counts[day] = max(0, img_counts.get(day, 1) - 1)
+            finish(job_id, {"status": "error",
+                            "text": "⏳ الرسم تأخر كتير وانوقف، جرّب تاني أو بسّط الوصف."})
+
     @app.post("/api/image")
     def api_image():
         bad = guard()
@@ -1531,7 +1559,7 @@ def register(app, b):
             img_counts[day] = img_counts.get(day, 0) + 1
             job_id = uuid.uuid4().hex
             jobs[job_id] = {"status": "running", "ts": now}
-        threading.Thread(target=run_image, args=(job_id, prompt, day), daemon=True).start()
+        threading.Thread(target=guarded_image, args=(job_id, prompt, day), daemon=True).start()
         return jsonify(job=job_id)
 
     @app.post("/api/cancel/<job_id>")
