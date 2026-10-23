@@ -930,9 +930,9 @@ def img_models():
     """سلسلة موديلات رسم Gemini بالترتيب (الأقوى أول، قابل للتخصيص بـ GEMINI_IMAGE_MODEL)."""
     seen = []
     for m in [os.environ.get("GEMINI_IMAGE_MODEL", "").strip(),
-              "gemini-nano-banana-2.1",
-              "gemini-3.1-flash-image",
-              "gemini-2.5-flash-image"]:
+              "gemini-3.1-flash-image-preview",
+              "gemini-2.5-flash-image",
+              "gemini-3-pro-image-preview"]:
         if m and m not in seen:
             seen.append(m)
     return seen
@@ -944,6 +944,8 @@ def _try_gemini_image(b, model, full):
     client = b.client
     last = None
     try:
+        if os.environ.get("IMAGE_USE_INTERACTIONS", "0") != "1":
+            raise RuntimeError("interactions متوقفة")
         it = client.interactions.create(model=model, input=full)
         oi = getattr(it, "output_image", None)
         if oi is not None:
@@ -960,7 +962,7 @@ def _try_gemini_image(b, model, full):
     cfg = None
     try:
         cfg = T.GenerateContentConfig(response_modalities=["IMAGE"],
-                                      http_options=T.HttpOptions(timeout=60000))
+                                      http_options=T.HttpOptions(timeout=45000))
     except Exception:
         try:
             cfg = T.GenerateContentConfig(response_modalities=["IMAGE"])
