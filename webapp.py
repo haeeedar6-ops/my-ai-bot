@@ -886,9 +886,9 @@ $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 
 
 # ---------- رسم الصور: Gemini Nano Banana (أساسي) + FLUX عبر Cloudflare (احتياط) ----------
-IMG_SYS = ("Rewrite the user's idea as ONE detailed English prompt for a high-quality image generator. "
-           "Keep every detail, add vivid visual details (photorealistic style unless another style is requested, "
-           "natural lighting, sharp focus, rich colors, balanced composition) without changing the meaning. "
+IMG_SYS = ("Rewrite the user's idea as ONE detailed English prompt for an image generator. "
+           "If the user wants a real photo, enforce a raw, unedited photographic style (e.g., 'RAW photo, amateur photography, shot on 35mm lens, natural skin texture, subtle film grain, imperfect lighting'). "
+           "Strictly avoid words like 'vivid, hyper-realistic, 3D, CGI, smooth, flawless' unless the user asks for a digital art style. "
            "Output only the prompt, max 80 words.")
 
 _ASPECT_HINTS = (
