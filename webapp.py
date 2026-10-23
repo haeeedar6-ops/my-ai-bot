@@ -1165,22 +1165,27 @@ def flux_image(b, full, en):
     tok = os.environ["CLOUDFLARE_API_TOKEN"].strip()
     models = []
     for m in [os.environ.get("CLOUDFLARE_IMAGE_MODEL", "").strip(),
+              "@cf/black-forest-labs/flux-2-klein-4b",
               "@cf/leonardo/lucid-origin",
               "@cf/black-forest-labs/flux-1-schnell"]:
         if m and m not in models:
             models.append(m)
     last_err = None
     for model in models:
-        if "schnell" in model:
-            payload = {"prompt": full, "steps": 8}
-        else:
-            payload = {"prompt": full, "width": 1024, "height": 1024}
+        url = "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s" % (acc, model)
         try:
             log.info("Cloudflare: بجرّب %s", model)
-            r = b.requests.post(
-                "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s" % (acc, model),
-                headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"},
-                json=payload, timeout=90)
+            if "flux-2" in model:   # عيلة FLUX.2 بتاخد multipart/form-data مو JSON
+                r = b.requests.post(
+                    url, headers={"Authorization": "Bearer " + tok},
+                    files={"prompt": (None, full), "width": (None, "1024"), "height": (None, "1024")},
+                    timeout=120)
+            else:
+                payload = {"prompt": full, "steps": 8} if "schnell" in model else \
+                    {"prompt": full, "width": 1024, "height": 1024}
+                r = b.requests.post(
+                    url, headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"},
+                    json=payload, timeout=90)
         except Exception as e:
             log.warning("Cloudflare %s: %s", model, e)
             last_err = _ImgError("ما قدرت أوصل لـ Cloudflare، جرّب تاني.")
