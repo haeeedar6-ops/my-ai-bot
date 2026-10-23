@@ -136,6 +136,12 @@ main>:first-child{margin-top:auto}
 .code pre{margin:0;padding:10px;overflow-x:auto;font-size:13px;line-height:1.55}
 .code pre code{background:none;border:0;padding:0;white-space:pre;color:#e4ffef}
 .pic{display:block;max-width:100%;max-height:230px;border-radius:12px;margin:0 0 8px;border:1px solid rgba(var(--g-rgb),.5);cursor:zoom-in}
+.fcard{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0 0 8px;border-radius:12px;background:rgba(7,6,26,.78);border:1px solid rgba(var(--g-rgb),.45);direction:ltr;text-align:left;max-width:100%}
+.fcard .fico{width:38px;height:38px;border-radius:10px;background:rgba(var(--acc-rgb),.22);border:1px solid rgba(var(--acc-rgb),.55);color:var(--g);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex:none;text-transform:uppercase}
+.fcard .fmeta{min-width:0;flex:1}
+.fcard .fmeta b{display:block;font-size:13.5px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fcard .fmeta small{display:block;font-size:11px;color:var(--sub);direction:rtl;text-align:right}
+#chip .cthumb{width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid rgba(var(--g-rgb),.5);vertical-align:middle;margin-left:6px}
 .h{font-weight:800;color:var(--g);margin:6px 0 2px;text-shadow:0 0 8px rgba(var(--g-rgb),.4)}
 #lb{position:absolute;inset:0;background:rgba(0,0,0,.92);z-index:80;display:flex;align-items:center;justify-content:center;padding:14px}
 #lb img{max-width:100%;max-height:100%;border-radius:12px}
@@ -395,7 +401,7 @@ const curChat=()=>store.chats.find(c=>c.id===store.cur);
 const M=()=>curChat().msgs;
 function saveStore(){
   let chats=store.chats.slice(0,25).map(c=>({id:c.id,title:c.title,ts:c.ts,
-    msgs:c.msgs.slice(-80).map(m=>({role:m.role,text:String(m.text).slice(0,8000),note:m.note,err:m.err,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
+    msgs:c.msgs.slice(-80).map(m=>({role:m.role,text:String(m.text).slice(0,8000),note:m.note,err:m.err,file:m.file,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
   for(;;){
     try{localStorage.setItem(LS,JSON.stringify({cur:store.cur,chats}));return}
     catch(e){if(chats.length<=2)return;chats.pop()}
@@ -462,8 +468,10 @@ function render(){
   msgs.innerHTML=ms.map((m,i)=>{
     if(m.role==='sys')return '<div class="sys">'+esc(m.text)+'</div>';
     const me=m.role==='user';
-    const pic=(m.img&&String(m.img).startsWith('data:image/jpeg;base64,'))?'<img class="pic" data-i="'+i+'" src="'+m.img+'" alt="صورة">':'';
-    const body=pic+(m.reveal?'':md(m.text));
+    const pic=(m.img&&String(m.img).startsWith('data:image/'))?'<img class="pic" data-i="'+i+'" src="'+m.img+'" alt="صورة">':'';
+    const ext=m.file?(String(m.file).includes('.')?String(m.file).split('.').pop().slice(0,5):'FILE'):'';
+    const fbox=m.file?'<div class="fcard"><div class="fico">'+esc(ext)+'</div><div class="fmeta"><b>'+esc(m.file)+'</b><small>ملف مرفق 📎</small></div></div>':'';
+    const body=pic+fbox+(m.reveal?'':md(m.text));
     return '<div class="bubble '+(me?'me':'bot')+(m.err?' err':'')+'"'+(m.reveal?' data-rev="1"':'')+'>'+body+'</div>'+
       (m.note?'<div class="note">'+esc(m.note)+'</div>':'')+
       (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button></div>');
@@ -494,7 +502,7 @@ msgs.addEventListener('click',e=>{
   const pic=e.target.closest('.pic');
   if(pic){$('#lbImg').src=pic.src;$('#lbSave').href=pic.src;$('#lb').hidden=false;return}
   const ed=e.target.closest('[data-edit]');
-  if(ed&&!busy){const i=+ed.dataset.edit,ms=M(),m=ms[i];ms.splice(i);inp.value=m.text;grow();if(m.img&&!$('#chip').hidden)pendingThumb=m.img;touch();render();saveStore();inp.focus();say('عدّل رسالتك وبعتها ✏️');return}
+  if(ed&&!busy){const i=+ed.dataset.edit,ms=M(),m=ms[i];ms.splice(i);inp.value=m.text;grow();if(m.img&&!$('#chip').hidden)pendingThumb=m.img;if(m.file&&!$('#chip').hidden)pendingFile=m.file;touch();render();saveStore();inp.focus();say('عدّل رسالتك وبعتها ✏️');return}
   const cp=e.target.closest('.cp');
   if(cp){copy(cp.closest('.code').querySelector('code').innerText);return}
   const c=e.target.closest('[data-copy]');
@@ -534,7 +542,7 @@ async function send(){
   inp.value='';grow();
   const isImg=current==='img:flux';
   const hist=M().filter(m=>m.role!=='sys').slice(-14).map(m=>({role:m.role,text:m.text}));
-  const um={role:'user',text};if(pendingThumb&&!isImg){um.img=pendingThumb;pendingThumb=null}
+  const um={role:'user',text};if(!isImg){if(pendingThumb){um.img=pendingThumb;pendingThumb=null}if(pendingFile){um.file=pendingFile;pendingFile=null}}
   M().push(um);touch();busy=true;aborted=false;curJob=null;setSendMode(true);
   setBot('thinking');
   say(isImg?'عم أرسم 🎨...':(/(python|javascript|html|css|sql|كود|برمج|code)/i.test(text)?'عم أكتب الكود 💻':($('#chip').hidden?'عم أفكّر...':'عم أقرا المرفق 📎')));
@@ -564,7 +572,7 @@ async function send(){
   }catch(e){if(e.message!=='auth'&&!aborted){M().push({role:'model',text:'ما قدرت أوصل للسيرفر، جرّب تاني.',err:true});ok=false}}
   if(aborted){ /* رجّع الرسالة للتعديل */
     const ms=M(),i=ms.indexOf(um);if(i>=0)ms.splice(i,1);
-    inp.value=text;grow();if(um.img&&!$('#chip').hidden)pendingThumb=um.img;
+    inp.value=text;grow();if(um.img&&!$('#chip').hidden)pendingThumb=um.img;if(um.file&&!$('#chip').hidden)pendingFile=um.file;
     aborted=false;busy=false;curJob=null;setSendMode(false);touch();render();saveStore();
     setBot('idle');say('تم الإلغاء، عدّل رسالتك ✏️');toast('تم الإلغاء');inp.focus();return;
   }
@@ -590,27 +598,36 @@ async function prepImage(f){
       cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);return cv};
     const blob=await new Promise(r=>draw(1600).toBlob(r,'image/jpeg',0.85));
     const thumb=draw(420).toDataURL('image/jpeg',0.72);
-    if(blob&&blob.size)return {file:new File([blob],'photo.jpg',{type:'image/jpeg'}),thumb};
+    if(blob&&blob.size)return {file:new File([blob],f.name||'photo.jpg',{type:'image/jpeg'}),thumb};
+  }catch(e){}
+  try{
+    const url=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)});
+    const thumb=await shrink(url,420);
+    return {file:f,thumb};
   }catch(e){}
   return {file:f,thumb:null};
 }
 async function toMemory(f){const buf=await f.arrayBuffer();return new File([buf],f.name||'file',{type:f.type||'application/octet-stream'})}
-let pendingThumb=null;
+let pendingThumb=null,pendingFile=null;
 async function upload(f,isImg){
   if(!f)return;
-  toast(isImg?'عم أجهّز الصورة...':'عم أرفع الملف...');setBot('thinking');
-  let thumb=null;
-  try{if(isImg){const p=await prepImage(f);f=p.file;thumb=p.thumb}f=await toMemory(f)}
+  const looksImg=isImg||(f.type&&f.type.startsWith('image/'))||/\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(f.name||'');
+  toast(looksImg?'عم أجهّز الصورة...':'عم أرفع الملف...');setBot('thinking');
+  let thumb=null,origName=f.name||(looksImg?'photo.jpg':'file');
+  try{if(looksImg){const p=await prepImage(f);f=p.file;thumb=p.thumb}f=await toMemory(f)}
   catch(e){dbg('prep failed: '+e.name+' '+e.message);toast('ما قدرت أقرا الملف من الجهاز');setBot('error',1800);return}
   if(f.size>15*1024*1024){toast('الملف أكبر من 15 ميجا');setBot('error',1800);return}
   for(let attempt=0;attempt<2;attempt++){
     try{
-      const fd=new FormData();fd.append('file',f,f.name||(isImg?'photo.jpg':'file'));
+      const fd=new FormData();fd.append('file',f,origName);
       const r=await api('/api/upload',{method:'POST',body:fd});
       let d={};try{d=await r.json()}catch(e){}
       if(!r.ok){toast(d.error||('فشل الرفع ('+r.status+')'));setBot('error',1800);
         dbg('upload http '+r.status+' '+(d.error||'')+' size='+f.size+' type='+f.type+' standalone='+standalone);return}
-      showChip(d.name,!!d.image);pendingThumb=d.image?thumb:null;
+      const fname=d.name||origName;
+      if(d.image){pendingThumb=thumb;pendingFile=null}
+      else{pendingFile=fname;pendingThumb=null}
+      showChip(fname,!!d.image,pendingThumb);
       if(!inp.value.trim()){inp.value=d.image?'شو بالصورة؟ اشرحلي إياها.':'لخّصلي هالملف واذكر أهم النقاط.';grow()}
       inp.focus();setBot('happy',1200);say(d.image?'شفت الصورة 👀 شو بدك فيها؟':'استلمت الملف 📎 شو بدك منه؟');return;
     }catch(e){
@@ -626,8 +643,12 @@ $('#imgFile').onchange=e=>{const f=e.target.files[0];e.target.value='';upload(f,
 $('#docFile').onchange=e=>{const f=e.target.files[0];e.target.value='';upload(f,false)};
 inp.addEventListener('paste',e=>{const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(x=>x.type.startsWith('image/'));
   if(it){e.preventDefault();upload(it.getAsFile(),true)}});
-function showChip(name,img){$('#chipName').textContent=img?'🖼️ صورة مرفقة (10 دقايق)':('📎 '+name+' (30 دقيقة)');$('#chip').hidden=false}
-function hideChip(){$('#chip').hidden=true;pendingThumb=null}
+function showChip(name,img,thumb){
+  if(img&&thumb){$('#chipName').innerHTML='<img class="cthumb" src="'+thumb+'" alt="">🖼️ '+esc(name||'صورة مرفقة')+' (10 دقايق)'}
+  else{$('#chipName').textContent=img?'🖼️ صورة مرفقة (10 دقايق)':('📎 '+name+' (30 دقيقة)')}
+  $('#chip').hidden=false;
+}
+function hideChip(){$('#chip').hidden=true;pendingThumb=null;pendingFile=null}
 async function clearFile(){try{await api('/api/clearfile',{method:'POST'})}catch(e){}hideChip()}
 $('#chipX').onclick=clearFile;
 
