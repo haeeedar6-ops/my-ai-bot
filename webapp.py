@@ -1,6 +1,7 @@
 """موقع Ryn: واجهة دردشة خاصة (تطبيق ويب PWA) فوق نفس عقل البوت.
 بيشتغل جنب بوت تيليجرام، وبيتفعّل لما تحط WEB_PASSWORD على Render."""
 import os
+import re
 import hmac
 import time
 import uuid
@@ -104,6 +105,30 @@ button{font-family:inherit;cursor:pointer}
 .robot.listening .eye{transform:scale(1.18)}
 #say{font-size:13px;color:var(--g);min-height:20px;text-shadow:0 0 8px rgba(var(--g-rgb),.55);text-align:center;max-width:92%;direction:rtl}
 #mname{margin-top:2px;font-size:12px;color:var(--txt);border:1px solid rgba(var(--acc-rgb),.55);border-radius:12px;padding:2px 12px;background:rgba(var(--acc-rgb),.14);max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;cursor:pointer}
+.toprow{display:flex;align-items:center;gap:6px;margin-top:2px;max-width:92%;justify-content:center}
+#memBtn{font-size:11.5px;color:var(--g);border:1px solid rgba(var(--g-rgb),.55);border-radius:12px;padding:2px 10px;background:rgba(var(--g-rgb),.12);white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+#memBtn.off{color:var(--sub);border-color:rgba(var(--acc-rgb),.35);background:rgba(var(--acc-rgb),.08)}
+#memModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(6px);z-index:65;display:flex;align-items:center;justify-content:center;padding:14px}
+.mbox{width:100%;max-width:410px;max-height:88vh;background:rgba(12,10,34,.97);border:1.5px solid var(--acc);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 36px rgba(var(--acc-rgb),.4)}
+.mh{display:flex;justify-content:space-between;align-items:center;color:var(--g);font-size:15.5px;font-weight:800}
+.mh button{background:none;border:0;color:var(--txt);font-size:18px}
+.mbody{overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-left:2px}
+.msec{background:rgba(5,4,20,.75);border:1px solid rgba(var(--acc-rgb),.38);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.msec label{font-size:12.5px;color:var(--g);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.msec small{font-size:11px;color:var(--sub);line-height:1.45}
+.minp,.mtxt{width:100%;background:rgba(14,12,38,.9);border:1px solid rgba(var(--acc-rgb),.45);border-radius:10px;color:var(--txt);padding:8px 10px;font-size:13.5px;outline:0;text-align:right;font-family:inherit}
+.minp:focus,.mtxt:focus{border-color:var(--g)}
+.mtxt{min-height:68px;resize:vertical;line-height:1.5}
+.madd{display:flex;gap:6px}
+.madd button{background:var(--g);color:#031a10;border:0;border-radius:10px;padding:0 13px;font-weight:800;font-size:16px;flex:none}
+#memList{display:flex;flex-direction:column;gap:5px;max-height:140px;overflow-y:auto}
+.mitem{display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(var(--acc-rgb),.11);border:1px solid rgba(var(--acc-rgb),.3);border-radius:9px;padding:6px 9px;font-size:12.5px;color:var(--txt)}
+.mitem span{flex:1;min-width:0;overflow-wrap:anywhere}
+.mitem button{background:none;border:0;color:var(--red);font-size:14px;flex:none;padding:2px 4px}
+.mbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mbtns button,.msave{padding:10px;border-radius:12px;font-size:12.5px;font-weight:700;border:1.5px solid rgba(var(--acc-rgb),.55);background:rgba(var(--acc-rgb),.15);color:var(--txt)}
+.mbtns button:hover{border-color:var(--g);color:var(--g)}
+.msave{width:100%;background:var(--g);color:#031a10;border:0;font-size:14px;font-weight:800;box-shadow:0 0 14px rgba(var(--g-rgb),.4)}
 @media(max-height:700px){.botwrap{width:84px;height:84px}}
 
 #menu{position:absolute;top:calc(env(safe-area-inset-top,0px) + 54px);left:12px;background:rgba(10,8,30,.98);border:1.5px solid rgba(var(--acc-rgb),.7);border-radius:14px;padding:6px;z-index:40;min-width:210px;box-shadow:0 0 24px rgba(var(--acc-rgb),.35)}
@@ -275,11 +300,15 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <button class="mini" id="menuBtn" aria-label="القائمة">⋮</button>
     <div class="botwrap" id="botBox"></div>
     <div id="say"></div>
-    <div id="mname" title="تبديل الموديل">Gemini</div>
+    <div class="toprow">
+      <div id="mname" title="تبديل الموديل">Gemini</div>
+      <button id="memBtn" type="button" title="ملف التخصيص وذاكرة الجهاز">🧠 ذاكرتي <span id="memCnt">0</span></button>
+    </div>
   </div>
 
   <div id="menu" hidden>
     <button id="mNew">✨ محادثة جديدة</button>
+    <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mFile">📎 حذف الملف المرفق</button>
     <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">📸 تواصل · إنستغرام @haydar_xe</a>
     <button id="mOut">🚪 تسجيل خروج</button>
@@ -346,6 +375,41 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   </div>
 </div>
 <div id="lb" hidden><img id="lbImg" alt=""><a id="lbSave" download="ryn-image.jpg">💾 حفظ الصورة</a></div>
+<div id="memModal" hidden>
+  <div class="mbox">
+    <div class="mh"><span>🧠 ملف التخصيص وذاكرة هاتفك</span><button id="memClose" aria-label="إغلاق">✕</button></div>
+    <div class="mbody">
+      <div class="msec">
+        <label><span>تفعيل الذاكرة والتخصيص بالردود</span><input type="checkbox" id="memOn" checked style="width:18px;height:18px;accent-color:var(--g)"></label>
+        <small>كل بياناتك بتنحفظ بملف خاص على هاتفك بس، وRyn بيتذكرك منها بكل محادثة.</small>
+      </div>
+      <div class="msec">
+        <label>👤 اسمك وملف تخصيصك</label>
+        <input class="minp" id="memName" placeholder="اسمك أو لقبك (مثال: حيدر)">
+        <textarea class="mtxt" id="memCustom" placeholder="كيف بتحب Ryn يجاوبك؟ شو اهتماماتك أو مجالك؟ (مثال: جاوبني باختصار، بهتم بالبرمجة وكرافتلاند...)"></textarea>
+      </div>
+      <div class="msec">
+        <label><span>📌 ذكريات محفوظة على هاتفك</span><small id="memStat">0 معلومة</small></label>
+        <small>💡 فينك تضيف هون يدوياً، أو تقول بالشات «تذكر أني...» وبيحفظها تلقائياً!</small>
+        <div class="madd">
+          <input class="minp" id="memNew" placeholder="أضف معلومة يتذكرها عنك دايماً...">
+          <button type="button" id="memAddBtn" title="إضافة">＋</button>
+        </div>
+        <div id="memList"></div>
+      </div>
+      <div class="msec">
+        <label>📱 ملف الذاكرة على جهازك (.json)</label>
+        <small>احفظ نسخة كملف حقيقي على هاتفك أو استرجعها بأي وقت لو غيرت الجهاز أو المتصفح.</small>
+        <div class="mbtns">
+          <button type="button" id="memExport">💾 تنزيل الملف للهاتف</button>
+          <button type="button" id="memImportBtn">📂 رفع ملف من الهاتف</button>
+        </div>
+        <input type="file" id="memFileInp" hidden accept=".json,application/json">
+      </div>
+    </div>
+    <button type="button" class="msave" id="memSave">حفظ التخصيص على الجهاز ✅</button>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -386,7 +450,79 @@ document.addEventListener('pointermove',e=>{
 });
 
 /* ===== المحادثات المحفوظة ===== */
-const LS='astra_store_v2';
+const LS='astra_store_v2',MEM_LS='astra_memory_v1';
+let mem={enabled:true,name:'',custom:'',facts:[]};
+function loadMem(){
+  try{const m=JSON.parse(localStorage.getItem(MEM_LS)||'null');if(m&&typeof m==='object')mem={enabled:m.enabled!==false,name:String(m.name||''),custom:String(m.custom||''),facts:Array.isArray(m.facts)?m.facts.map(String):[]}}catch(e){}
+  updateMemUI();
+}
+function saveMem(){
+  try{localStorage.setItem(MEM_LS,JSON.stringify(mem))}catch(e){}
+  if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+  updateMemUI();
+}
+function addMemFact(txt){
+  const t=String(txt||'').trim();if(!t)return false;
+  if(!mem.facts.some(x=>x.toLowerCase()===t.toLowerCase())){mem.facts.unshift(t);if(mem.facts.length>60)mem.facts.pop();saveMem();return true}
+  return false;
+}
+function updateMemUI(){
+  const cnt=(mem.facts?mem.facts.length:0)+(mem.name.trim()?1:0)+(mem.custom.trim()?1:0);
+  const cEl=$('#memCnt');if(cEl)cEl.textContent=cnt;
+  const bEl=$('#memBtn');if(bEl)bEl.classList.toggle('off',!mem.enabled);
+  const st=$('#memStat');if(st)st.textContent=(mem.facts?mem.facts.length:0)+' معلومة';
+  const lst=$('#memList');
+  if(lst){
+    lst.innerHTML=(mem.facts&&mem.facts.length)?mem.facts.map((f,i)=>'<div class="mitem"><span>'+esc(f)+'</span><button type="button" data-mdel="'+i+'" title="حذف">✕</button></div>').join(''):'<small style="text-align:center;padding:6px">ما في ذكريات مضافة بعد.</small>';
+  }
+}
+function openMemModal(){
+  $('#menu').hidden=true;
+  $('#memOn').checked=mem.enabled!==false;
+  $('#memName').value=mem.name||'';
+  $('#memCustom').value=mem.custom||'';
+  updateMemUI();
+  $('#memModal').hidden=false;
+}
+function closeMemModal(){$('#memModal').hidden=true}
+$('#memBtn').onclick=openMemModal;
+$('#mMem').onclick=openMemModal;
+$('#memClose').onclick=closeMemModal;
+$('#memModal').onclick=e=>{if(e.target===$('#memModal'))closeMemModal()};
+$('#memAddBtn').onclick=()=>{const v=$('#memNew').value.trim();if(v){addMemFact(v);$('#memNew').value='';toast('انضافت للذاكرة 🧠')}};
+$('#memNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#memAddBtn').click()}});
+$('#memList').addEventListener('click',e=>{const b=e.target.closest('[data-mdel]');if(b){mem.facts.splice(+b.dataset.mdel,1);saveMem()}});
+$('#memSave').onclick=()=>{
+  mem.enabled=$('#memOn').checked;
+  mem.name=$('#memName').value.trim();
+  mem.custom=$('#memCustom').value.trim();
+  const pendingNew=$('#memNew').value.trim();
+  if(pendingNew){addMemFact(pendingNew);$('#memNew').value=''}
+  saveMem();closeMemModal();toast('تم حفظ ملف التخصيص على جهازك ✅');say('حفظت تخصيصك بذاكرة جهازك 🧠');
+};
+$('#memExport').onclick=()=>{
+  mem.enabled=$('#memOn').checked;mem.name=$('#memName').value.trim();mem.custom=$('#memCustom').value.trim();saveMem();
+  const payload={app:'Ryn',version:1,exportedAt:new Date().toISOString(),memory:mem,store};
+  const dataStr='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(payload,null,2));
+  const a=document.createElement('a');a.href=dataStr;a.download='ryn-memory-'+(mem.name||'user')+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  toast('تم تنزيل ملف التخصيص والذاكرة على هاتفك 💾');
+};
+$('#memImportBtn').onclick=()=>$('#memFileInp').click();
+$('#memFileInp').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const txt=await f.text();const d=JSON.parse(txt);
+    if(d&&d.memory&&typeof d.memory==='object'){
+      mem={enabled:d.memory.enabled!==false,name:String(d.memory.name||''),custom:String(d.memory.custom||''),facts:Array.isArray(d.memory.facts)?d.memory.facts.map(String):[]};
+      saveMem();
+    }
+    if(d&&d.store&&Array.isArray(d.store.chats)&&d.store.chats.length){
+      store=d.store;saveStore();render();drawDrawer();
+    }
+    openMemModal();toast('تم استرجاع ملف التخصيص والذاكرة بنجاح 📂');say('رجعت كل ذكرياتك وتخصيصك من الملف! 💚');
+  }catch(err){toast('الملف مو صالح أو تالف ❌')}
+};
 let store={cur:null,chats:[]};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function titleOf(ms){const u=ms.find(m=>m.role==='user');return u?u.text.replace(/\s+/g,' ').trim().slice(0,34):'محادثة جديدة'}
@@ -549,7 +685,7 @@ async function send(){
   render();saveStore();
   let ok=true;
   try{
-    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist})});
+    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem})});
     const d=await r.json();
     if(!r.ok){if(!aborted){M().push({role:'model',text:d.error||'صار خطأ',err:true});ok=false}}
     else{
@@ -563,7 +699,7 @@ async function send(){
         if(aborted)break;
         if(j.status==='done'){
           if(j.image){const img=await shrink(j.image,720);M().push({role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img})}
-          else{const full=j.text||'(رد فاضي)';M().push({role:'model',text:full,note:j.note,reveal:full.length<6000})}
+          else{const full=j.text||'(رد فاضي)';if(Array.isArray(j.memories)&&j.memories.length){let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك')}M().push({role:'model',text:full,note:j.note,reveal:full.length<6000})}
           done=true}
         else if(j.status!=='running'){M().push({role:'model',text:j.text||'صار خطأ',err:true});ok=false;done=true}
       }
@@ -721,7 +857,7 @@ $('#go').onclick=login;
 $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 
 (async()=>{
-  loadStore();render();drawDrawer();
+  loadMem();loadStore();render();drawDrawer();
   try{const d=await (await fetch('/api/me',{credentials:'same-origin'})).json();
     if(d.ok){loadModels();say('أهلاً فيك! 👋 كيف بقدر ساعدك؟')}else{showLogin()}}catch(e){showLogin()}
   if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
@@ -939,24 +1075,51 @@ def register(app, b):
             out.pop(0)
         return out
 
-    def run_job(job_id, text, history):
+    def build_memory_prompt(raw):
+        if not isinstance(raw, dict) or not raw.get("enabled", True):
+            return ""
+        name = str(raw.get("name") or "").strip()[:120]
+        custom = str(raw.get("custom") or "").strip()[:2000]
+        facts = [str(x).strip()[:400] for x in (raw.get("facts") or [])[:60] if str(x).strip()]
+        lines = []
+        if name:
+            lines.append("• اسم المستخدم: " + name)
+        if custom:
+            lines.append("• تخصيص وتفضيلات المستخدم:\n" + custom)
+        if facts:
+            lines.append("• ذكريات ومعلومات محفوظة على هاتف المستخدم:\n" + "\n".join("  - " + f for f in facts))
+        mem_block = "\n".join(lines) if lines else "(لا توجد معلومات مسبقة بعد)"
+        return (
+            "[ملف التخصيص والذاكرة من هاتف المستخدم]\n"
+            + mem_block
+            + "\n(ملاحظة للنظام: راعِ تفضيلات المستخدم ومعلوماته أعلاه بشكل طبيعي في ردك. "
+            "وإذا طلب منك المستخدم تذكّر أو حفظ معلومة جديدة عنه للمستقبل مثل «تذكر أني...» أو «احفظ عندك...»، "
+            "أضف في آخر ردك السطر التالي بالضبط: [[MEM: المعلومة باختصار]] ليتم حفظها تلقائياً في ملف هاتفه.)\n---\n"
+        )
+
+    def run_job(job_id, text, history, mem_prompt=""):
         try:
             T = b.types
             contents = [T.Content(role=r, parts=[T.Part(text=t)]) for r, t in history]
+            full_user_text = (mem_prompt + text) if mem_prompt else text
             ctx = b.get_doc(WEB_ID)
             if ctx:
                 base = ctx["alt"] if ctx.get("alt") else ctx["parts"]
-                parts = list(base) + [T.Part(text=text)]
+                parts = list(base) + [T.Part(text=full_user_text)]
             else:
-                parts = [T.Part(text=text)]
+                parts = [T.Part(text=full_user_text)]
             contents.append(T.Content(role="user", parts=parts))
             deep = b.is_deep_question(text)
             answer, note = b.ask_model(WEB_ID, contents, deep=deep, code=b.is_code_request(text))
             if is_cancelled(job_id):
                 return
+            new_mems = [m.strip()[:300] for m in re.findall(r"\[\[MEM:\s*(.+?)\s*\]\]", answer or "") if m.strip()]
+            if new_mems:
+                answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
             if deep and answer and len(answer) > 150 and b.load_knowledge() and not note:
                 answer = b.review_answer(WEB_ID, text, answer)
-            res = {"status": "done", "text": answer or "", "note": note or ""}
+                answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
+            res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems}
         except Exception as e:
             log.exception("web chat error")
             msg = b.friendly_error(e)
@@ -974,6 +1137,7 @@ def register(app, b):
         text = str(data.get("message", "")).strip()
         if not text:
             return jsonify(error="الرسالة فاضية"), 400
+        mem_prompt = build_memory_prompt(data.get("memory"))
         now = time.time()
         with jlock:
             for k in [k for k, v in jobs.items() if now - v["ts"] > 900]:
@@ -982,7 +1146,7 @@ def register(app, b):
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
             jobs[job_id] = {"status": "running", "ts": now}
-        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history"))),
+        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt),
                          daemon=True).start()
         return jsonify(job=job_id)
 
