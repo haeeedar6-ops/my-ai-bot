@@ -886,10 +886,19 @@ $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 
 
 # ---------- رسم الصور: Gemini Nano Banana (أساسي) + FLUX عبر Cloudflare (احتياط) ----------
-IMG_SYS = ("Rewrite the user's idea as ONE detailed English prompt for a high-quality image generator. "
-           "Keep every detail, add vivid visual details (photorealistic style unless another style is requested, "
-           "natural lighting, sharp focus, rich colors, balanced composition) without changing the meaning. "
-           "Output only the prompt, max 80 words.")
+IMG_SYS = (
+    "You write prompts for an AI image generator. Rewrite the user's idea (Arabic or English) "
+    "as ONE detailed English prompt. Keep every detail the user gave (subject, count, colors, place, clothing, mood) "
+    "and never add new main subjects. "
+    "STYLE: if the user wants a real photo, or gives no style, write it as an unedited candid photograph: "
+    "'RAW photo, amateur photography, shot on 35mm lens, natural skin texture with visible pores, "
+    "subtle film grain, natural imperfect lighting, shallow depth of field'. "
+    "If the user asks for a specific style (anime, cartoon, 3D, game art, logo, painting, pixel art, digital art, poster), "
+    "follow that style exactly and do NOT use photo wording. "
+    "Avoid these words unless the user asks for that style: vivid, hyper-realistic, ultra HD, 8k, smooth, flawless, perfect, CGI, 3D render. "
+    "Describe only what should appear (negative prompts are not supported). "
+    "If text must appear inside the image, keep it very short and put it in English quotes. "
+    "Output only the prompt, max 90 words.")
 
 _ASPECT_HINTS = (
     (r"أفقي|عريض|landscape|wide|16:9|16/9", "The image must be in landscape (wide) 16:9 format."),
@@ -1099,6 +1108,57 @@ class _ImgError(Exception):
     """خطأ رسم برسالة عربية جاهزة للعرض للمستخدم."""
 
 
+def _img_result(data, model_name, en):
+    mime = sniff_image(data) or "image/jpeg"
+    return {"status": "done", "text": "تفضّل الصورة 🎨",
+            "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
+            "note": "الموديل: %s · الوصف المستعمل: %s" % (model_name, en[:150])}
+
+
+def pollinations_image(b, full, en):
+    """احتياط مجاني بدون مفتاح (Pollinations). POLLINATIONS_KEY اختياري لحد أعلى."""
+    import random
+    q = quote(full[:900], safe="")
+    model = os.environ.get("POLLINATIONS_MODEL", "flux").strip() or "flux"
+    params = "model=%s&width=1024&height=1024&nologo=true&seed=%d" % (quote(model), random.randint(1, 999999))
+    key = os.environ.get("POLLINATIONS_KEY", "").strip()
+    if key:
+        params += "&key=" + quote(key, safe="")
+    last = "ما رد"
+    for base in ("https://gen.pollinations.ai/image/", "https://image.pollinations.ai/prompt/"):
+        try:
+            r = b.requests.get(base + q + "?" + params, timeout=90, headers={"User-Agent": "Mozilla/5.0"})
+        except Exception as e:
+            last = str(e)[:80]
+            continue
+        ct = str((getattr(r, "headers", None) or {}).get("content-type", ""))
+        if r.status_code == 200 and ct.startswith("image/") and len(r.content) > 1000:
+            return _img_result(r.content, "%s (Pollinations)" % model, en)
+        last = "كود %s" % r.status_code
+        log.warning("Pollinations %s: %s", base, last)
+    raise _ImgError("Pollinations: " + last)
+
+
+def together_image(b, full, en):
+    """احتياط اختياري عبر Together AI (لازم TOGETHER_API_KEY)."""
+    key = os.environ.get("TOGETHER_API_KEY", "").strip()
+    model = os.environ.get("TOGETHER_IMAGE_MODEL", "black-forest-labs/FLUX.1-schnell-Free").strip()
+    try:
+        r = b.requests.post("https://api.together.xyz/v1/images/generations",
+                            headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+                            json={"model": model, "prompt": full[:1500], "width": 1024, "height": 1024,
+                                  "steps": 4, "n": 1, "response_format": "b64_json"}, timeout=90)
+    except Exception as e:
+        raise _ImgError("Together: " + str(e)[:80])
+    if r.status_code != 200:
+        raise _ImgError("Together: كود %s" % r.status_code)
+    try:
+        data = base64.b64decode(r.json()["data"][0]["b64_json"])
+    except Exception:
+        raise _ImgError("Together: رد بدون صورة")
+    return _img_result(data, "%s (Together)" % model.split("/")[-1], en)
+
+
 def flux_image(b, full, en):
     """احتياط مجاني عبر Cloudflare Workers AI: Lucid Origin (واقعي) ثم FLUX.1 schnell."""
     acc = os.environ["CLOUDFLARE_ACCOUNT_ID"].strip()
@@ -1255,9 +1315,12 @@ def register(app, b):
     def cf_ready():
         return bool(os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip() and os.environ.get("CLOUDFLARE_API_TOKEN", "").strip())
 
+    def fallback_on():
+        return os.environ.get("IMAGE_FALLBACK", "1") != "0"
+
     def image_ready():
-        """الرسم متاح؟ (Gemini تلقائياً، أو Cloudflare للاحتياط)."""
-        return bool(b.client) or cf_ready()
+        """الرسم متاح؟ (Gemini، أو Cloudflare، أو الاحتياط المجاني)."""
+        return bool(b.client) or cf_ready() or fallback_on()
 
     def finish(job_id, res):
         """بيحفظ نتيجة المهمة إلا إذا انلغت."""
@@ -1687,7 +1750,6 @@ def register(app, b):
     # ---------- رسم الصور (Gemini Nano Banana أساسي + FLUX احتياط) ----------
     def run_image(job_id, prompt, day):
         res = None
-        gerr = None
         try:
             en = english_prompt(b, prompt)
             ah = aspect_hint(prompt)
@@ -1695,23 +1757,44 @@ def register(app, b):
             if is_cancelled(job_id):
                 return
             prov = IMG_PROVIDER
+            chain = []
             if prov in ("auto", "gemini") and b.client:
-                try:
+                def _gem():
                     data, mime, model = gemini_image(b, full)
-                    res = {"status": "done", "text": "تفضّل الصورة 🎨",
-                           "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
-                           "note": "الموديل: %s · الوصف المستعمل: %s" % (model, en[:150])}
-                except Exception as e:
-                    if prov == "gemini" or not cf_ready():
+                    return _img_result(data, model, en)
+                chain.append(("Gemini", _gem))
+            if prov in ("auto", "cloudflare") and cf_ready():
+                chain.append(("Cloudflare", lambda: flux_image(b, full, en)))
+            if fallback_on():
+                chain.append(("Pollinations", lambda: pollinations_image(b, full, en)))
+                if os.environ.get("TOGETHER_API_KEY", "").strip():
+                    chain.append(("Together", lambda: together_image(b, full, en)))
+            fails = []
+            for name, fn in chain:
+                if is_cancelled(job_id):
+                    return
+                try:
+                    log.info("الرسم: بجرّب %s", name)
+                    res = fn()
+                    break
+                except _ImgError as e:
+                    log.warning("الرسم: %s فشل: %s", name, e)
+                    if str(e).startswith("⛔"):   # فلتر المحتوى: ما منجرّب غيرو
                         raise
-                    gerr = e
-                    log.warning("Gemini للرسم فشل، بجرّب Cloudflare: %s", e)
-            if res is None and prov in ("auto", "cloudflare") and cf_ready():
-                res = flux_image(b, full, en)
-                if gerr is not None and res.get("status") == "done":
-                    res["note"] = (res.get("note", "") + " · ⚠️ Gemini فشل: " + str(gerr)[:220]).strip()
+                    fails.append((name, str(e)))
+                except Exception as e:
+                    log.warning("الرسم: %s فشل: %s", name, str(e)[:200])
+                    fails.append((name, str(e)))
             if res is None:
-                raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY (موجود تلقائياً) أو إعداد Cloudflare.")
+                if not chain:
+                    raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY أو Cloudflare أو الاحتياط المجاني.")
+                msg = next((m for n, m in fails if n == "Cloudflare" and m.startswith(("⏳", "🔑"))), None) \
+                    or (fails[-1][1] if fails else "")
+                raise _ImgError("ما قدرت أرسم هلق (كل المزودين فشلوا). " + (msg if msg.startswith(("⏳", "🔑")) else "جرّب بعد شوي."))
+            shown = [(n, m) for n, m in fails if not (n == "Gemini" and ("429" in m or "RESOURCE_EXHAUSTED" in m))]
+            if shown and res.get("status") == "done":
+                res["note"] = (res.get("note", "") + " · ⚠️ " + " | ".join(
+                    "%s: %s" % (n, m[:60]) for n, m in shown)).strip()
         except _ImgError as e:
             res = {"status": "error", "text": str(e)}
         except Exception as e:
@@ -1722,7 +1805,7 @@ def register(app, b):
         if res:
             finish(job_id, res)
 
-    IMG_HARD_TIMEOUT = int(os.environ.get("IMAGE_TIMEOUT", "150"))
+    IMG_HARD_TIMEOUT = int(os.environ.get("IMAGE_TIMEOUT", "240"))
 
     def guarded_image(job_id, prompt, day):
         """بيشغّل الرسم بخيط، وإذا علّق أكتر من المهلة بيسكّر الطلب بخطأ واضح."""
