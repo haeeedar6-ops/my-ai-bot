@@ -713,6 +713,9 @@ def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
         ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
         return ans, f"(استخدمت Gemini لأن {_pname(prov)} ما بيقدر يقرأ صور/صوت)"
 
+    if prov == "mix":
+        return ask_mix(contents, deep=deep)
+
     if prov.startswith("groq:"):
         try:
             if not _groq_ready():
@@ -750,6 +753,75 @@ def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
             raise ProviderError(code, f"{_pname(prov)} ← {e}")
             
     raise ValueError(f"الموديل {_pname(prov)} مو متاح.")
+
+
+# ============ Ryn mix: Gemini + GPT-OSS + DeepSeek + Qwen بشخص واحد ============
+MIX_SYSTEM = (
+    "أنت Ryn. وصلك سؤال المستخدم مع إجابات عدة موديلات ذكاء اصطناعي. "
+    "ادمجهم بجواب واحد نهائي، صحيح ومرتب ومختصر: خذ الأدق من كل إجابة، "
+    "وصحّح أي تناقض أو خطأ، وما تذكر أسماء الموديلات ولا إنك قارنت إجابات. "
+    "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة. "
+    "إذا في اسم بلوك Craftland مو متأكد منو قول هيك وما تخترع."
+)
+
+
+def _mix_members(deep):
+    """بيرجّع قائمة (الاسم، دالة بتاخد contents وبترجّع نص) للموديلات الجاهزة فعلاً."""
+    members = [("Gemini", lambda c: ask_gemini(c, deep=False))]
+    if _groq_ready():
+        ids = groq_catalog()
+        gpt = "openai/gpt-oss-120b"
+        if not ids or gpt in ids:
+            members.append(("GPT-OSS", lambda c: _call_backend(GROQ_CHAT_BACKEND, c, False, False, models=[gpt])))
+        qw = sorted([i for i in ids if "qwen" in i.lower() and not any(x in i.lower() for x in _GROQ_SKIP)], reverse=True)
+        if qw:
+            members.append(("Qwen", lambda c, m=qw[0]: _call_backend(GROQ_CHAT_BACKEND, c, False, False, models=[m])))
+    if _or_key():
+        members.append(("DeepSeek", lambda c: ask_openai_compat("deepseek", c, deep=False)))
+    return members
+
+
+def ask_mix(contents, deep=False):
+    """بيسأل الموديلات بنفس الوقت (مهلة 45 ثانية)، وبعدين Gemini بيدمج الأجوبة بجواب واحد."""
+    import concurrent.futures as cf
+    members = _mix_members(deep)
+    answers = {}
+    ex = cf.ThreadPoolExecutor(max_workers=max(1, len(members)))
+    futs = {ex.submit(fn, contents): name for name, fn in members}
+    try:
+        for f in cf.as_completed(futs, timeout=45):
+            name = futs[f]
+            try:
+                t = (f.result() or "").strip()
+                if t:
+                    answers[name] = t[:6000]
+            except Exception as e:
+                log.warning("Ryn mix: %s فشل: %s", name, str(e)[:160])
+    except cf.TimeoutError:
+        log.warning("Ryn mix: خلصت المهلة، بكمّل بالأجوبة يلي وصلت")
+    ex.shutdown(wait=False)
+    if not answers:
+        raise ProviderError(502, "Ryn mix ← ولا موديل رد")
+    if len(answers) == 1:
+        name, only = next(iter(answers.items()))
+        return only, f"(Ryn mix: رد {name} بس، الباقي ما اشتغل)"
+    question = ""
+    for c in reversed(contents):
+        if c.role == "user":
+            question = "\n".join(p.text for p in c.parts if getattr(p, "text", None))
+            break
+    block = "\n\n".join(f"--- إجابة {i} ---\n{t}" for i, t in enumerate(answers.values(), 1))
+    prompt = f"سؤال المستخدم:\n{question[:4000]}\n\n{block}\n\nاكتب الجواب النهائي المدموج فقط."
+    final = None
+    try:
+        final = ask_gemini([types.Content(role="user", parts=[types.Part(text=prompt)])],
+                           deep=False, system=MIX_SYSTEM)
+    except Exception as e:
+        log.warning("Ryn mix: الدمج فشل: %s", str(e)[:160])
+    if not final:
+        final = max(answers.values(), key=len)
+    return final, "(Ryn mix: " + " + ".join(answers.keys()) + ")"
+
 
 def friendly_error(e):
     code = getattr(e, "code", None)
