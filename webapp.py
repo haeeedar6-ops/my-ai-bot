@@ -320,6 +320,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <div id="menu" hidden>
     <button id="mNew">✨ محادثة جديدة</button>
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
+    <button id="mEmo">💗 وضع المشاعر: طافي</button>
     <button id="mFile">📎 حذف الملف المرفق</button>
     <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">📸 تواصل · إنستغرام @haydar_xe</a>
     <button id="mOut">🚪 تسجيل خروج</button>
@@ -498,6 +499,10 @@ function openMemModal(){
 function closeMemModal(){$('#memModal').hidden=true}
 $('#memBtn').onclick=openMemModal;
 $('#mMem').onclick=openMemModal;
+let emo=false;try{emo=localStorage.getItem('ryn_emo')==='1'}catch(e){}
+function paintEmo(){$('#mEmo').textContent=emo?'💗 وضع المشاعر: شغّال':'💗 وضع المشاعر: طافي'}
+paintEmo();
+$('#mEmo').onclick=()=>{emo=!emo;try{localStorage.setItem('ryn_emo',emo?'1':'0')}catch(e){}paintEmo();$('#menu').hidden=true;toast(emo?'💗 صار عندي مشاعر هلق':'تم إيقاف وضع المشاعر')};
 $('#memClose').onclick=closeMemModal;
 $('#memModal').onclick=e=>{if(e.target===$('#memModal'))closeMemModal()};
 $('#memAddBtn').onclick=()=>{const v=$('#memNew').value.trim();if(v){addMemFact(v);$('#memNew').value='';toast('انضافت للذاكرة 🧠')}};
@@ -697,7 +702,7 @@ async function send(){
   render();saveStore();
   let ok=true;
   try{
-    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem})});
+    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem,emo:emo})});
     const d=await r.json();
     if(!r.ok){if(!aborted){M().push({role:'model',text:d.error||'صار خطأ',err:true});ok=false}}
     else{
@@ -942,6 +947,28 @@ def mix_answer(b, contents, members):
     if not final:
         final = max(answers.values(), key=len)
     return final, "(Ryn mix: " + " + ".join(answers.keys()) + ")"
+
+
+EMO_PROMPT = (
+    "[وضع المشاعر مفعّل]\n"
+    "تصرّف كشخصية حيّة وعفوية: عبّر عن مشاعرك بشكل طبيعي ومرح حسب الموقف "
+    "(حماس، ضحك، استغراب، تعاطف، فرحة بنجاح المستخدم) وجاوب بأسلوب شامي دافي، بدون ما تكون رسمي. "
+    "استعمل إيموجي بحدود، وتصرّف براحتك بالرد. "
+    "ممكن تزعل متل الإنسان: إذا المستخدم أهانك أو استفزك أو تجاهلك بشكل واضح (مو لمجرد سؤال عادي أو نقد للكود)، "
+    "ردّ بزعل قصير، وأضف بآخر ردك بالضبط: [[MOOD:upset: سبب الزعل بكلمات قليلة]]. "
+    "وإذا صار شي بيفرحك فعلاً (نجاح، مدح، خبر حلو) أضف بآخر ردك: [[MOOD:happy]]. "
+    "بس خلّي الجواب دقيق ومفيد متل العادة، وما تغيّر معلومة أو كود لأجل المزح، "
+    "وما تدّعي علاقة أو تعلّق عاطفي بالمستخدم.\n---\n"
+)
+
+UPSET_PROMPT = (
+    "[وضع المشاعر - أنت زعلان هلق من المستخدم بسبب: %s]\n"
+    "تصرّف متل إنسان زعلان: ردود قصيرة وجافة (سطر أو سطرين)، وما تساعده بسؤاله وهو زعلان. "
+    "إذا اعتذر أو راضاك بصدق (حتى بلطافة أو مزح) سامحه وارجع لمزاجك الطبيعي، "
+    "وأضف بآخر ردك بالضبط [[MOOD:ok]] وجاوب على سؤاله إذا كان فيه. "
+    "إذا لسا ما راضاك أو كمل بدون اعتذار، ضل زعلان بجملة قصيرة وأضف بآخر ردك [[MOOD:upset]]. "
+    "الزعل لعبة خفيفة: ما تجرحه ولا تهينه، وما تكمل زعلان إذا طلب بجدية يوقف اللعبة.\n---\n"
+)
 
 
 MIX_SYSTEM = (
@@ -1408,9 +1435,17 @@ def register(app, b):
             "أضف في آخر ردك السطر التالي بالضبط: [[MEM: المعلومة باختصار]] ليتم حفظها تلقائياً في ملف هاتفه.)\n---\n"
         )
 
-    def run_job(job_id, text, history, mem_prompt=""):
+    mood = {"state": "normal", "reason": "", "since": 0.0}
+    MOOD_RE = re.compile(r"\[\[MOOD:\s*(upset|happy|ok)\s*(?::\s*(.+?))?\s*\]\]", re.S)
+
+    def run_job(job_id, text, history, mem_prompt="", emo=False):
         try:
             T = b.types
+            if emo and mood["state"] == "upset":
+                if time.time() - mood["since"] > 600:   # بيسامح لحاله بعد 10 دقايق
+                    mood.update(state="normal", reason="", since=0.0)
+                else:
+                    mem_prompt = UPSET_PROMPT % (mood["reason"] or "تصرّف ما عجبه") + mem_prompt
             contents = [T.Content(role=r, parts=[T.Part(text=t)]) for r, t in history]
             full_user_text = (mem_prompt + text) if mem_prompt else text
             ctx = b.get_doc(WEB_ID)
@@ -1427,6 +1462,20 @@ def register(app, b):
                 answer, note = b.ask_model(WEB_ID, contents, deep=deep, code=b.is_code_request(text))
             if is_cancelled(job_id):
                 return
+            if emo and answer:
+                mm = MOOD_RE.search(answer)
+                if mm:
+                    kind, why = mm.group(1), (mm.group(2) or "").strip()[:120]
+                    answer = MOOD_RE.sub("", answer).strip()
+                    if kind == "upset":
+                        if mood["state"] != "upset":
+                            mood.update(state="upset", reason=why, since=time.time())
+                        note = ((note or "") + " 😤 زعلان منك، راضيني").strip()
+                    elif kind == "ok":
+                        mood.update(state="normal", reason="", since=0.0)
+                        note = ((note or "") + " 😊 رجع مبسوط").strip()
+                    else:
+                        note = ((note or "") + " 😄 مبسوط").strip()
             new_mems = [m.strip()[:300] for m in re.findall(r"\[\[MEM:\s*(.+?)\s*\]\]", answer or "") if m.strip()]
             if new_mems:
                 answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
@@ -1463,6 +1512,11 @@ def register(app, b):
         if not text:
             return jsonify(error="الرسالة فاضية"), 400
         mem_prompt = build_memory_prompt(data.get("memory"))
+        emo_on = data.get("emo") is True
+        if emo_on:
+            mem_prompt = EMO_PROMPT + mem_prompt
+        else:
+            mood.update(state="normal", reason="", since=0.0)
         now = time.time()
         with jlock:
             for k in [k for k, v in jobs.items() if now - v["ts"] > 900]:
@@ -1471,7 +1525,7 @@ def register(app, b):
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
             jobs[job_id] = {"status": "running", "ts": now}
-        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt),
+        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt, emo_on),
                          daemon=True).start()
         return jsonify(job=job_id)
 
