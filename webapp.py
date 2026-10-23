@@ -902,6 +902,57 @@ def aspect_hint(text):
     return ""
 
 
+def mix_answer(b, contents, members):
+    """Ryn mix: بيسأل الموديلات سوا (مهلة 45 ثانية) وGemini بيدمج الأجوبة بجواب واحد."""
+    import concurrent.futures as cf
+    answers = {}
+    ex = cf.ThreadPoolExecutor(max_workers=max(1, len(members)))
+    futs = {ex.submit(fn, contents): name for name, fn in members}
+    try:
+        for f in cf.as_completed(futs, timeout=45):
+            name = futs[f]
+            try:
+                t = (f.result() or "").strip()
+                if t:
+                    answers[name] = t[:6000]
+            except Exception as e:
+                log.warning("Ryn mix: %s فشل: %s", name, str(e)[:160])
+    except cf.TimeoutError:
+        log.warning("Ryn mix: خلصت المهلة، بكمّل بالأجوبة يلي وصلت")
+    ex.shutdown(wait=False)
+    if not answers:
+        raise b.ProviderError(502, "Ryn mix ← ولا موديل رد")
+    if len(answers) == 1:
+        name, only = next(iter(answers.items()))
+        return only, "(Ryn mix: رد %s بس، الباقي ما اشتغل)" % name
+    question = ""
+    for c in reversed(contents):
+        if c.role == "user":
+            question = "\n".join(p.text for p in c.parts if getattr(p, "text", None))
+            break
+    block = "\n\n".join("--- إجابة %d ---\n%s" % (i, t) for i, t in enumerate(answers.values(), 1))
+    prompt = "سؤال المستخدم:\n%s\n\n%s\n\nاكتب الجواب النهائي المدموج فقط." % (question[:4000], block)
+    final = None
+    try:
+        T = b.types
+        final = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=prompt)])],
+                             deep=False, system=MIX_SYSTEM)
+    except Exception as e:
+        log.warning("Ryn mix: الدمج فشل: %s", str(e)[:160])
+    if not final:
+        final = max(answers.values(), key=len)
+    return final, "(Ryn mix: " + " + ".join(answers.keys()) + ")"
+
+
+MIX_SYSTEM = (
+    "أنت Ryn. وصلك سؤال المستخدم مع إجابات عدة موديلات ذكاء اصطناعي. "
+    "ادمجهم بجواب واحد نهائي، صحيح ومرتب ومختصر: خذ الأدق من كل إجابة، "
+    "وصحّح أي تناقض أو خطأ، وما تذكر أسماء الموديلات ولا إنك قارنت إجابات. "
+    "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة. "
+    "إذا في اسم بلوك Craftland مو متأكد منو قول هيك وما تخترع."
+)
+
+
 def english_prompt(b, text):
     if all(ord(c) < 128 for c in text):
         return text
@@ -1144,7 +1195,7 @@ def register(app, b):
     files = {}  # fid -> {name, mime, data, exp} : ملفات التحميل المؤقتة
     FILE_TTL = 30 * 60
     FILE_MAX = 60
-    web_mode = {"img": False}   # وضع الرسم
+    web_mode = {"img": False, "mix": False}   # وضع الرسم + وضع Ryn mix
     img_counts = {}
     IMG_DAILY = int(os.environ.get("IMAGE_DAILY_LIMIT", "40"))
     IMG_PROVIDER = os.environ.get("IMAGE_PROVIDER", "auto").strip().lower()  # auto | gemini | cloudflare
@@ -1197,6 +1248,24 @@ def register(app, b):
             return b.groq_catalog() if b._groq_ready() else []
         except Exception:
             return []
+
+    def mix_members():
+        """الموديلات الجاهزة فعلاً لـ Ryn mix."""
+        members = [("Gemini", lambda c: b.ask_gemini(c, deep=False))]
+        gid = groq_ids()
+        if "openai/gpt-oss-120b" in gid:
+            members.append(("GPT-OSS", lambda c: b._call_backend(
+                b.GROQ_CHAT_BACKEND, c, False, False, models=["openai/gpt-oss-120b"])))
+        qw = sorted([i for i in gid if "qwen" in i.lower() and not any(x in i.lower() for x in b._GROQ_SKIP)], reverse=True)
+        if qw:
+            members.append(("Qwen", lambda c, m=qw[0]: b._call_backend(
+                b.GROQ_CHAT_BACKEND, c, False, False, models=[m])))
+        if b._or_key():
+            ds = pick_or(("deepseek",))
+            if ds:
+                members.append(("DeepSeek", lambda c, m=ds: b._call_backend(
+                    {**b.OR_BACKEND, "prov": "custom", "match": ()}, c, False, False, models=[m])))
+        return members
 
     def build_options():
         """القائمة: الرسم فوق Gemini، وبعدها Qwen وGPT-OSS (Groq)، وDeepSeek وKimi (OpenRouter، مدفوع)."""
@@ -1352,7 +1421,10 @@ def register(app, b):
                 parts = [T.Part(text=full_user_text)]
             contents.append(T.Content(role="user", parts=parts))
             deep = b.is_deep_question(text)
-            answer, note = b.ask_model(WEB_ID, contents, deep=deep, code=b.is_code_request(text))
+            if web_mode["mix"] and b._text_only(contents):
+                answer, note = mix_answer(b, contents, mix_members())
+            else:
+                answer, note = b.ask_model(WEB_ID, contents, deep=deep, code=b.is_code_request(text))
             if is_cancelled(job_id):
                 return
             new_mems = [m.strip()[:300] for m in re.findall(r"\[\[MEM:\s*(.+?)\s*\]\]", answer or "") if m.strip()]
@@ -1486,7 +1558,7 @@ def register(app, b):
         if bad:
             return bad
         opts = build_options()
-        cur = "img:flux" if web_mode["img"] else b.chat_provider.get(WEB_ID, "gemini")
+        cur = "img:flux" if web_mode["img"] else ("mix" if web_mode["mix"] else b.chat_provider.get(WEB_ID, "gemini"))
         if cur not in [o["id"] for o in opts]:
             cur = "gemini"
         ctx = b.get_doc(WEB_ID)
@@ -1506,8 +1578,14 @@ def register(app, b):
             if not image_ready():
                 return jsonify(error="الرسم بده GEMINI_API_KEY أو إعداد Cloudflare على Render"), 400
             web_mode["img"] = True
+            web_mode["mix"] = False
             return jsonify(ok=True)
         web_mode["img"] = False
+        if mid == "mix":
+            web_mode["mix"] = True
+            b.chat_provider.pop(WEB_ID, None)
+            return jsonify(ok=True)
+        web_mode["mix"] = False
         if mid == "gemini":
             b.chat_provider.pop(WEB_ID, None)
         else:
