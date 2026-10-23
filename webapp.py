@@ -939,30 +939,14 @@ def img_models():
 
 
 def _try_gemini_image(b, model, full):
-    """محاولة واحدة: Interactions API الحديثة أولاً، وبعدها generate_content الكلاسيكية."""
+    """طلب واحد لكل موديل؛ لا نطلق طلب رسم ثانياً إذا كانت الطريقة الأولى بطيئة أو رجعت بلا صورة."""
     T = b.types
-    client = b.client
-    last = None
-    try:
-        it = client.interactions.create(model=model, input=full)
-        oi = getattr(it, "output_image", None)
-        if oi is not None:
-            data = getattr(oi, "data", None)
-            if isinstance(data, str):
-                try:
-                    data = base64.b64decode(data, validate=True)
-                except Exception:
-                    data = data.encode("utf-8")
-            if data:
-                return data, (getattr(oi, "mime_type", None) or "image/png")
-    except Exception as e:
-        last = e
     cfg = None
     try:
         cfg = T.GenerateContentConfig(response_modalities=["IMAGE"])
     except Exception:
-        cfg = None
-    resp = client.models.generate_content(model=model, contents=full, config=cfg)
+        pass
+    resp = b.client.models.generate_content(model=model, contents=full, config=cfg)
     gen = getattr(resp, "generated_images", None) or []
     if gen:
         g = gen[0]
@@ -977,13 +961,18 @@ def _try_gemini_image(b, model, full):
         if data:
             return data, (getattr(im, "mime_type", None) or "image/png")
     for c in (getattr(resp, "candidates", None) or []):
-        for p in (getattr(c.content, "parts", None) or []):
-            inline = getattr(p, "inline_data", None)
+        for part in (getattr(getattr(c, "content", None), "parts", None) or []):
+            inline = getattr(part, "inline_data", None)
             if inline is not None:
-                return (getattr(inline, "data", None) or b""), (getattr(inline, "mime_type", None) or "image/png")
-    if last is not None:
-        raise last
-    raise RuntimeError("الرد ما فيه صورة")
+                data = getattr(inline, "data", None) or b""
+                if isinstance(data, str):
+                    try:
+                        data = base64.b64decode(data)
+                    except Exception:
+                        data = data.encode("utf-8")
+                if data:
+                    return data, (getattr(inline, "mime_type", None) or "image/png")
+    raise RuntimeError("رد الموديل ما فيه صورة")
 
 
 def gemini_image(b, full):
@@ -1479,9 +1468,11 @@ def register(app, b):
     def run_image(job_id, prompt, day):
         res = None
         try:
-            en = english_prompt(b, prompt)
+            # لا نضيّع وقتاً باستدعاء موديل دردشة لترجمة الوصف قبل كل عملية رسم Gemini.
+            # Gemini يستقبل الوصف الأصلي مباشرة؛ الترجمة تُجرّب فقط عند التحويل إلى FLUX.
+            en = prompt
             ah = aspect_hint(prompt)
-            full = (en + ((" " + ah) if ah else "")).strip()
+            full = (prompt + ((" " + ah) if ah else "")).strip()
             if is_cancelled(job_id):
                 return
             prov = IMG_PROVIDER
@@ -1490,12 +1481,14 @@ def register(app, b):
                     data, mime, model = gemini_image(b, full)
                     res = {"status": "done", "text": "تفضّل الصورة 🎨",
                            "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
-                           "note": "الموديل: %s · الوصف المستعمل: %s" % (model, en[:150])}
+                           "note": "الموديل: %s · الوصف: %s" % (model, prompt[:150])}
                 except Exception as e:
                     if prov == "gemini" or not cf_ready():
                         raise
                     log.warning("Gemini للرسم فشل، بجرّب Cloudflare: %s", e)
             if res is None and prov in ("auto", "cloudflare") and cf_ready():
+                en = english_prompt(b, prompt)
+                full = (en + ((" " + ah) if ah else "")).strip()
                 res = flux_image(b, full, en)
             if res is None:
                 raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY (موجود تلقائياً) أو إعداد Cloudflare.")
