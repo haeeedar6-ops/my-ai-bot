@@ -10,6 +10,7 @@ import base64
 import hashlib
 import threading
 import logging
+import io
 
 from flask import request, session, jsonify, Response
 from urllib.parse import quote
@@ -879,12 +880,194 @@ $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 '''
 
 
+# ---------- رسم الصور: Gemini Nano Banana (أساسي) + FLUX عبر Cloudflare (احتياط) ----------
+IMG_SYS = ("Rewrite the user's idea as ONE detailed English prompt for a high-quality image generator. "
+           "Keep every detail, add vivid visual details (photorealistic style unless another style is requested, "
+           "natural lighting, sharp focus, rich colors, balanced composition) without changing the meaning. "
+           "Output only the prompt, max 80 words.")
+
+_ASPECT_HINTS = (
+    (r"أفقي|عريض|landscape|wide|16:9|16/9", "The image must be in landscape (wide) 16:9 format."),
+    (r"عمودي|طولي|portrait|9:16|9/16", "The image must be in portrait (vertical) 9:16 format."),
+    (r"مربع|square|1:1", "The image must be square 1:1 format."),
+)
+
+
+def aspect_hint(text):
+    """ملاحظة إنجليزية بتحدد اتجاه الصورة من كلام المستخدم (أو فاضية)."""
+    low = (text or "").lower()
+    for pat, hint in _ASPECT_HINTS:
+        if re.search(pat, low):
+            return hint
+    return ""
+
+
+def english_prompt(b, text):
+    if all(ord(c) < 128 for c in text):
+        return text
+    try:
+        T = b.types
+        out = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=text)])], deep=False, system=IMG_SYS)
+        return (out or "").strip().strip('"')[:600] or text
+    except Exception:
+        return text
+
+
+def sniff_image(data):
+    """نوع الصورة من أول بايتات الملف (JPEG/PNG/WEBP/HEIC)."""
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[4:8] == b"ftyp" and data[8:12] in (b"heic", b"heix", b"heim", b"heis", b"mif1", b"msf1"):
+        return "image/heic"
+    return None
+
+
+def img_models():
+    """سلسلة موديلات رسم Gemini بالترتيب (الأقوى أول، قابل للتخصيص بـ GEMINI_IMAGE_MODEL)."""
+    seen = []
+    for m in [os.environ.get("GEMINI_IMAGE_MODEL", "").strip(),
+              "gemini-nano-banana-2.1",
+              "gemini-3.1-flash-image",
+              "gemini-2.5-flash-image"]:
+        if m and m not in seen:
+            seen.append(m)
+    return seen
+
+
+def _try_gemini_image(b, model, full):
+    """محاولة واحدة: Interactions API الحديثة أولاً، وبعدها generate_content الكلاسيكية."""
+    T = b.types
+    client = b.client
+    last = None
+    try:
+        it = client.interactions.create(model=model, input=full)
+        oi = getattr(it, "output_image", None)
+        if oi is not None:
+            data = getattr(oi, "data", None)
+            if isinstance(data, str):
+                try:
+                    data = base64.b64decode(data, validate=True)
+                except Exception:
+                    data = data.encode("utf-8")
+            if data:
+                return data, (getattr(oi, "mime_type", None) or "image/png")
+    except Exception as e:
+        last = e
+    cfg = None
+    try:
+        cfg = T.GenerateContentConfig(response_modalities=["IMAGE"])
+    except Exception:
+        cfg = None
+    resp = client.models.generate_content(model=model, contents=full, config=cfg)
+    gen = getattr(resp, "generated_images", None) or []
+    if gen:
+        g = gen[0]
+        im = getattr(g, "image", None) or g
+        data = getattr(im, "image_bytes", None) or getattr(im, "_image_bytes", None)
+        if not data:
+            pil = getattr(im, "_pil_image", None)
+            if pil is not None:
+                buf = io.BytesIO()
+                pil.save(buf, format="PNG")
+                data = buf.getvalue()
+        if data:
+            return data, (getattr(im, "mime_type", None) or "image/png")
+    for c in (getattr(resp, "candidates", None) or []):
+        for p in (getattr(c.content, "parts", None) or []):
+            inline = getattr(p, "inline_data", None)
+            if inline is not None:
+                return (getattr(inline, "data", None) or b""), (getattr(inline, "mime_type", None) or "image/png")
+    if last is not None:
+        raise last
+    raise RuntimeError("الرد ما فيه صورة")
+
+
+def gemini_image(b, full):
+    """بيجرّب كل موديلات الرسم بالترتيب وبيرجّع (data, mime, model)."""
+    last = None
+    for model in img_models():
+        try:
+            data, mime = _try_gemini_image(b, model, full)
+            if data:
+                return data, mime, model
+        except Exception as e:
+            last = e
+            code = getattr(e, "code", None)
+            if code in (401, 403, 429):
+                raise
+            log.warning("موديل الرسم %s فشل: %s", model, e)
+    if last is not None:
+        raise last
+    raise RuntimeError("ما في موديل رسم متاح")
+
+
+class _ImgError(Exception):
+    """خطأ رسم برسالة عربية جاهزة للعرض للمستخدم."""
+
+
+def flux_image(b, full, en):
+    """احتياط: FLUX.1 schnell عبر Cloudflare Workers AI."""
+    acc = os.environ["CLOUDFLARE_ACCOUNT_ID"].strip()
+    tok = os.environ["CLOUDFLARE_API_TOKEN"].strip()
+    r = b.requests.post(
+        "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/black-forest-labs/flux-1-schnell" % acc,
+        headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"},
+        json={"prompt": full, "steps": 8}, timeout=120)
+    data = None
+    ct = str((getattr(r, "headers", None) or {}).get("content-type", ""))
+    if r.status_code == 200 and ct.startswith("image/"):
+        data = r.content
+    else:
+        try:
+            j = r.json()
+        except ValueError:
+            j = {}
+        if r.status_code == 200 and (j.get("result") or {}).get("image"):
+            data = base64.b64decode(j["result"]["image"])
+        else:
+            errs = "; ".join(str(e.get("message", e)) if isinstance(e, dict) else str(e)
+                             for e in (j.get("errors") or []))[:200]
+            low = errs.lower()
+            if r.status_code in (401, 403):
+                raise _ImgError("🔑 مفتاح Cloudflare مو مقبول، تأكد من CLOUDFLARE_API_TOKEN.")
+            if r.status_code == 429 or "limit" in low or "quota" in low:
+                raise _ImgError("⏳ خلصت حصة الرسم اليومية، جرّب بكرا.")
+            if "nsfw" in low:
+                raise _ImgError("⛔ الوصف مرفوض (محتوى غير مناسب)، جرّب وصف تاني.")
+            raise _ImgError("ما قدرت أرسم (%s). %s" % (r.status_code, errs))
+    if not data:
+        raise _ImgError("رد Cloudflare بدون صورة")
+    mime = sniff_image(data) or "image/jpeg"
+    return {"status": "done", "text": "تفضّل الصورة 🎨",
+            "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
+            "note": "الموديل: FLUX (Cloudflare) · الوصف المستعمل: " + en[:150]}
+
+
+def image_error(e):
+    """رسالة عربية لطيفة حسب نوع خطأ الرسم."""
+    if isinstance(e, _ImgError):
+        return str(e)
+    code = getattr(e, "code", None)
+    s = str(e).lower()
+    if code == 429 or "429" in s or "quota" in s or ("rate" in s and "limit" in s):
+        return "⏳ خلصت حصة الرسم اليومية (الحد المجاني)، جرّب بكرا."
+    if code in (401, 403):
+        return "🔑 في مشكلة بمفتاح Google بالـ Environment Variables."
+    if "nsfw" in s or "safety" in s or "recitation" in s or "blocked" in s:
+        return "⛔ الوصف مرفوض (محتوى غير مناسب أو مخالف)، جرّب وصف تاني."
+    return "ما قدرت أرسم هلق، جرّب تاني بعد شوي."
+
+
 def describe(mid, ready=True, model=""):
     """وصف مختصر لكل موديل (بنكتب بس اللي منعرفه)."""
     if mid == "img:flux":
-        d = ("يرسم صورة من وصفك (FLUX.1 schnell من Black Forest Labs عبر Cloudflare). "
-             "بيترجم وصفك للإنجليزي تلقائياً لنتيجة أحسن.")
-        return d if ready else d + " غير مفعّل: بده إعداد Cloudflare."
+        d = ("يرسم صور قوية وواقعية حسب وصفك (Gemini Nano Banana 2.1)، وبيفهم الوصف بالعربي. "
+             "قدّر تحدد الاتجاه: «عمودي» أو «أفقي» أو «مربع»، وإذا فشل Gemini بيرجع تلقائياً لـ FLUX عبر Cloudflare.")
+        return d if ready else d + " غير مفعّل: بده GEMINI_API_KEY أو إعداد Cloudflare."
     if mid == "gemini":
         return "الأساسي: دردشة عامة بالعربي، بيشوف الصور وبيقرا الملفات والـ PDF، وبيراجع جوابه."
     if mid.startswith("groq:"):
@@ -923,12 +1106,17 @@ def register(app, b):
     files = {}  # fid -> {name, mime, data, exp} : ملفات التحميل المؤقتة
     FILE_TTL = 30 * 60
     FILE_MAX = 60
-    web_mode = {"img": False}   # وضع الرسم (FLUX)
+    web_mode = {"img": False}   # وضع الرسم
     img_counts = {}
     IMG_DAILY = int(os.environ.get("IMAGE_DAILY_LIMIT", "40"))
+    IMG_PROVIDER = os.environ.get("IMAGE_PROVIDER", "auto").strip().lower()  # auto | gemini | cloudflare
 
     def cf_ready():
         return bool(os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip() and os.environ.get("CLOUDFLARE_API_TOKEN", "").strip())
+
+    def image_ready():
+        """الرسم متاح؟ (Gemini تلقائياً، أو Cloudflare للاحتياط)."""
+        return bool(b.client) or cf_ready()
 
     def finish(job_id, res):
         """بيحفظ نتيجة المهمة إلا إذا انلغت."""
@@ -974,7 +1162,7 @@ def register(app, b):
 
     def build_options():
         """القائمة: الرسم فوق Gemini، وبعدها Qwen وGPT-OSS (Groq)، وDeepSeek وKimi (OpenRouter، مدفوع)."""
-        opts = [{"id": "img:flux", "label": "FLUX · رسم صور", "desc": describe("img:flux", ready=cf_ready())},
+        opts = [{"id": "img:flux", "label": "Nano Banana · رسم صور", "desc": describe("img:flux", ready=image_ready())},
                 {"id": "gemini", "label": "Gemini", "desc": describe("gemini")}]
         gid = groq_ids()
         qwen = sorted([i for i in gid if "qwen" in i.lower() and not any(x in i.lower() for x in b._GROQ_SKIP)], reverse=True)
@@ -1039,18 +1227,6 @@ def register(app, b):
     @app.get("/icon-512.png")
     def web_icon512():
         return Response(ICON_512, mimetype="image/png", headers={"Cache-Control": "public, max-age=86400"})
-
-    def sniff_image(data):
-        """نوع الصورة من أول بايتات الملف (JPEG/PNG/WEBP/HEIC)."""
-        if data[:3] == b"\xff\xd8\xff":
-            return "image/jpeg"
-        if data[:8] == b"\x89PNG\r\n\x1a\n":
-            return "image/png"
-        if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-            return "image/webp"
-        if data[4:8] == b"ftyp" and data[8:12] in (b"heic", b"heix", b"heim", b"heis", b"mif1", b"msf1"):
-            return "image/heic"
-        return None
 
     @app.errorhandler(413)
     def too_big(_e):
@@ -1288,8 +1464,8 @@ def register(app, b):
         if mid not in {o["id"] for o in build_options()}:
             return jsonify(error="هالموديل مو متاح هلأ"), 400
         if mid == "img:flux":
-            if not cf_ready():
-                return jsonify(error="الرسم بده إعداد Cloudflare (CLOUDFLARE_ACCOUNT_ID و CLOUDFLARE_API_TOKEN على Render)"), 400
+            if not image_ready():
+                return jsonify(error="الرسم بده GEMINI_API_KEY أو إعداد Cloudflare على Render"), 400
             web_mode["img"] = True
             return jsonify(ok=True)
         web_mode["img"] = False
@@ -1299,65 +1475,35 @@ def register(app, b):
             b.chat_provider[WEB_ID] = mid
         return jsonify(ok=True)
 
-    # ---------- رسم الصور (FLUX عبر Cloudflare Workers AI) ----------
-    IMG_SYS = ("Rewrite the user's idea as ONE detailed English prompt for an image generator (FLUX). "
-               "Keep every detail, add helpful visual details (style, lighting, composition) without changing the meaning. "
-               "Output only the prompt, max 60 words.")
-
-    def english_prompt(text):
-        if all(ord(c) < 128 for c in text):
-            return text
-        try:
-            T = b.types
-            out = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=text)])], deep=False, system=IMG_SYS)
-            return (out or "").strip().strip('"')[:600] or text
-        except Exception:
-            return text
-
+    # ---------- رسم الصور (Gemini Nano Banana أساسي + FLUX احتياط) ----------
     def run_image(job_id, prompt, day):
         res = None
         try:
-            acc = os.environ["CLOUDFLARE_ACCOUNT_ID"].strip()
-            tok = os.environ["CLOUDFLARE_API_TOKEN"].strip()
-            en = english_prompt(prompt)
+            en = english_prompt(b, prompt)
+            ah = aspect_hint(prompt)
+            full = (en + ((" " + ah) if ah else "")).strip()
             if is_cancelled(job_id):
                 return
-            r = b.requests.post(
-                "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/black-forest-labs/flux-1-schnell" % acc,
-                headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"},
-                json={"prompt": en, "steps": 6}, timeout=120)
-            data = None
-            ct = str((getattr(r, "headers", None) or {}).get("content-type", ""))
-            if r.status_code == 200 and ct.startswith("image/"):
-                data = r.content
-            else:
+            prov = IMG_PROVIDER
+            if prov in ("auto", "gemini") and b.client:
                 try:
-                    j = r.json()
-                except ValueError:
-                    j = {}
-                if r.status_code == 200 and (j.get("result") or {}).get("image"):
-                    data = base64.b64decode(j["result"]["image"])
-                else:
-                    errs = "; ".join(str(e.get("message", e)) if isinstance(e, dict) else str(e)
-                                     for e in (j.get("errors") or []))[:200]
-                    low = errs.lower()
-                    if r.status_code in (401, 403):
-                        msg = "🔑 مفتاح Cloudflare مو مقبول، تأكد من CLOUDFLARE_API_TOKEN."
-                    elif r.status_code == 429 or "limit" in low or "quota" in low:
-                        msg = "⏳ خلصت حصة الرسم اليومية، جرّب بكرا."
-                    elif "nsfw" in low:
-                        msg = "الوصف مرفوض (محتوى غير مناسب)، جرّب وصف تاني."
-                    else:
-                        msg = "ما قدرت أرسم (%s). %s" % (r.status_code, errs)
-                    res = {"status": "error", "text": msg}
-            if data:
-                mime = sniff_image(data) or "image/jpeg"
-                res = {"status": "done", "text": "تفضّل الصورة 🎨",
-                       "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
-                       "note": "الوصف المستعمل: " + en[:180]}
-        except Exception:
+                    data, mime, model = gemini_image(b, full)
+                    res = {"status": "done", "text": "تفضّل الصورة 🎨",
+                           "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
+                           "note": "الموديل: %s · الوصف المستعمل: %s" % (model, en[:150])}
+                except Exception as e:
+                    if prov == "gemini" or not cf_ready():
+                        raise
+                    log.warning("Gemini للرسم فشل، بجرّب Cloudflare: %s", e)
+            if res is None and prov in ("auto", "cloudflare") and cf_ready():
+                res = flux_image(b, full, en)
+            if res is None:
+                raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY (موجود تلقائياً) أو إعداد Cloudflare.")
+        except _ImgError as e:
+            res = {"status": "error", "text": str(e)}
+        except Exception as e:
             log.exception("web image error")
-            res = {"status": "error", "text": "ما قدرت أوصل لخدمة الرسم، جرّب تاني."}
+            res = {"status": "error", "text": image_error(e)}
         if res and res.get("status") != "done":
             img_counts[day] = max(0, img_counts.get(day, 1) - 1)  # ما بنحسب المحاولة الفاشلة
         if res:
@@ -1368,8 +1514,8 @@ def register(app, b):
         bad = guard()
         if bad:
             return bad
-        if not cf_ready():
-            return jsonify(error="الرسم بده إعداد Cloudflare (CLOUDFLARE_ACCOUNT_ID و CLOUDFLARE_API_TOKEN على Render)"), 503
+        if not image_ready():
+            return jsonify(error="الرسم بده GEMINI_API_KEY أو إعداد Cloudflare (CLOUDFLARE_ACCOUNT_ID و CLOUDFLARE_API_TOKEN على Render)"), 503
         prompt = str((request.get_json(silent=True) or {}).get("prompt", "")).strip()[:800]
         if not prompt:
             return jsonify(error="اكتب وصف الصورة"), 400
