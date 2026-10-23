@@ -927,15 +927,8 @@ def sniff_image(data):
 
 
 def img_models():
-    """سلسلة موديلات رسم Gemini بالترتيب (الأقوى أول، قابل للتخصيص بـ GEMINI_IMAGE_MODEL)."""
-    seen = []
-    for m in [os.environ.get("GEMINI_IMAGE_MODEL", "").strip(),
-              "gemini-nano-banana-2.1",
-              "gemini-3.1-flash-image",
-              "gemini-2.5-flash-image"]:
-        if m and m not in seen:
-            seen.append(m)
-    return seen
+    """موديل الرسم الأساسي فقط: Nano Banana. عند فشله ينتقل المسار مباشرة إلى FLUX."""
+    return [os.environ.get("GEMINI_IMAGE_MODEL", "").strip() or "gemini-nano-banana-2.1"]
 
 
 def _try_gemini_image(b, model, full):
@@ -1478,15 +1471,17 @@ def register(app, b):
             prov = IMG_PROVIDER
             if prov in ("auto", "gemini") and b.client:
                 try:
+                    # المحاولة الأولى دائماً Nano Banana فقط؛ لا نضيّع الوقت على موديلات Gemini أخرى.
                     data, mime, model = gemini_image(b, full)
                     res = {"status": "done", "text": "تفضّل الصورة 🎨",
                            "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
                            "note": "الموديل: %s · الوصف: %s" % (model, prompt[:150])}
                 except Exception as e:
-                    if prov == "gemini" or not cf_ready():
+                    if not cf_ready():
                         raise
-                    log.warning("Gemini للرسم فشل، بجرّب Cloudflare: %s", e)
-            if res is None and prov in ("auto", "cloudflare") and cf_ready():
+                    log.warning("Nano Banana فشل، الانتقال مباشرة إلى FLUX: %s", e)
+            # FLUX هو الاحتياط المباشر عند فشل Nano Banana، أو عند اختياره صراحةً.
+            if res is None and prov in ("auto", "cloudflare", "gemini") and cf_ready():
                 en = english_prompt(b, prompt)
                 full = (en + ((" " + ah) if ah else "")).strip()
                 res = flux_image(b, full, en)
