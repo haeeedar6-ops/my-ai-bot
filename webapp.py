@@ -1022,41 +1022,64 @@ class _ImgError(Exception):
 
 
 def flux_image(b, full, en):
-    """احتياط: FLUX.1 schnell عبر Cloudflare Workers AI."""
+    """احتياط مجاني عبر Cloudflare Workers AI: Lucid Origin (واقعي) ثم FLUX.1 schnell."""
     acc = os.environ["CLOUDFLARE_ACCOUNT_ID"].strip()
     tok = os.environ["CLOUDFLARE_API_TOKEN"].strip()
-    r = b.requests.post(
-        "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/black-forest-labs/flux-1-schnell" % acc,
-        headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"},
-        json={"prompt": full, "steps": 8}, timeout=120)
-    data = None
-    ct = str((getattr(r, "headers", None) or {}).get("content-type", ""))
-    if r.status_code == 200 and ct.startswith("image/"):
-        data = r.content
-    else:
-        try:
-            j = r.json()
-        except ValueError:
-            j = {}
-        if r.status_code == 200 and (j.get("result") or {}).get("image"):
-            data = base64.b64decode(j["result"]["image"])
+    models = []
+    for m in [os.environ.get("CLOUDFLARE_IMAGE_MODEL", "").strip(),
+              "@cf/leonardo/lucid-origin",
+              "@cf/black-forest-labs/flux-1-schnell"]:
+        if m and m not in models:
+            models.append(m)
+    last_err = None
+    for model in models:
+        if "schnell" in model:
+            payload = {"prompt": full, "steps": 8}
         else:
-            errs = "; ".join(str(e.get("message", e)) if isinstance(e, dict) else str(e)
-                             for e in (j.get("errors") or []))[:200]
-            low = errs.lower()
-            if r.status_code in (401, 403):
-                raise _ImgError("🔑 مفتاح Cloudflare مو مقبول، تأكد من CLOUDFLARE_API_TOKEN.")
-            if r.status_code == 429 or "limit" in low or "quota" in low:
-                raise _ImgError("⏳ خلصت حصة الرسم اليومية، جرّب بكرا.")
-            if "nsfw" in low:
-                raise _ImgError("⛔ الوصف مرفوض (محتوى غير مناسب)، جرّب وصف تاني.")
-            raise _ImgError("ما قدرت أرسم (%s). %s" % (r.status_code, errs))
-    if not data:
-        raise _ImgError("رد Cloudflare بدون صورة")
-    mime = sniff_image(data) or "image/jpeg"
-    return {"status": "done", "text": "تفضّل الصورة 🎨",
-            "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
-            "note": "الموديل: FLUX (Cloudflare) · الوصف المستعمل: " + en[:150]}
+            payload = {"prompt": full, "width": 1024, "height": 1024}
+        try:
+            log.info("Cloudflare: بجرّب %s", model)
+            r = b.requests.post(
+                "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s" % (acc, model),
+                headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"},
+                json=payload, timeout=90)
+        except Exception as e:
+            log.warning("Cloudflare %s: %s", model, e)
+            last_err = _ImgError("ما قدرت أوصل لـ Cloudflare، جرّب تاني.")
+            continue
+        data = None
+        ct = str((getattr(r, "headers", None) or {}).get("content-type", ""))
+        if r.status_code == 200 and ct.startswith("image/"):
+            data = r.content
+        else:
+            try:
+                j = r.json()
+            except ValueError:
+                j = {}
+            if r.status_code == 200 and (j.get("result") or {}).get("image"):
+                data = base64.b64decode(j["result"]["image"])
+            else:
+                errs = "; ".join(str(e.get("message", e)) if isinstance(e, dict) else str(e)
+                                 for e in (j.get("errors") or []))[:200]
+                low = errs.lower()
+                log.warning("Cloudflare %s فشل %s: %s", model, r.status_code, errs)
+                if r.status_code in (401, 403):
+                    raise _ImgError("🔑 مفتاح Cloudflare مو مقبول، تأكد من CLOUDFLARE_API_TOKEN.")
+                if r.status_code == 429 or "limit" in low or "quota" in low or "neurons" in low:
+                    raise _ImgError("⏳ خلصت حصة الرسم اليومية المجانية، جرّب بكرا.")
+                if "nsfw" in low:
+                    raise _ImgError("⛔ الوصف مرفوض (محتوى غير مناسب)، جرّب وصف تاني.")
+                last_err = _ImgError("ما قدرت أرسم (%s). %s" % (r.status_code, errs))
+                continue
+        if not data:
+            last_err = _ImgError("رد Cloudflare بدون صورة")
+            continue
+        mime = sniff_image(data) or "image/jpeg"
+        short = model.split("/")[-1]
+        return {"status": "done", "text": "تفضّل الصورة 🎨",
+                "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
+                "note": "الموديل: %s (Cloudflare) · الوصف المستعمل: %s" % (short, en[:150])}
+    raise last_err or _ImgError("ما قدرت أرسم هلق، جرّب تاني.")
 
 
 def image_error(e):
@@ -1490,6 +1513,7 @@ def register(app, b):
     # ---------- رسم الصور (Gemini Nano Banana أساسي + FLUX احتياط) ----------
     def run_image(job_id, prompt, day):
         res = None
+        gerr = None
         try:
             en = english_prompt(b, prompt)
             ah = aspect_hint(prompt)
@@ -1506,9 +1530,12 @@ def register(app, b):
                 except Exception as e:
                     if prov == "gemini" or not cf_ready():
                         raise
+                    gerr = e
                     log.warning("Gemini للرسم فشل، بجرّب Cloudflare: %s", e)
             if res is None and prov in ("auto", "cloudflare") and cf_ready():
                 res = flux_image(b, full, en)
+                if gerr is not None and res.get("status") == "done":
+                    res["note"] = (res.get("note", "") + " · ⚠️ Gemini فشل: " + str(gerr)[:220]).strip()
             if res is None:
                 raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY (موجود تلقائياً) أو إعداد Cloudflare.")
         except _ImgError as e:
