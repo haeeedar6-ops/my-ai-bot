@@ -1116,26 +1116,28 @@ def _img_result(data, model_name, en):
 
 
 def pollinations_image(b, full, en):
-    """احتياط مجاني بدون مفتاح (Pollinations). POLLINATIONS_KEY اختياري لحد أعلى."""
+    """احتياط مجاني (Pollinations). POLLINATIONS_MODEL ممكن يكون كذا موديل مفصولين بفاصلة، بيجرّبن بالترتيب.
+    POLLINATIONS_KEY اختياري (مفتاح مجاني بيشيل العلامة المائية وبيرفع الحد)."""
     import random
     q = quote(full[:900], safe="")
-    model = os.environ.get("POLLINATIONS_MODEL", "flux").strip() or "flux"
-    params = "model=%s&width=1024&height=1024&nologo=true&seed=%d" % (quote(model), random.randint(1, 999999))
+    models = [m.strip() for m in os.environ.get("POLLINATIONS_MODEL", "flux").split(",") if m.strip()] or ["flux"]
     key = os.environ.get("POLLINATIONS_KEY", "").strip()
-    if key:
-        params += "&key=" + quote(key, safe="")
     last = "ما رد"
-    for base in ("https://gen.pollinations.ai/image/", "https://image.pollinations.ai/prompt/"):
-        try:
-            r = b.requests.get(base + q + "?" + params, timeout=90, headers={"User-Agent": "Mozilla/5.0"})
-        except Exception as e:
-            last = str(e)[:80]
-            continue
-        ct = str((getattr(r, "headers", None) or {}).get("content-type", ""))
-        if r.status_code == 200 and ct.startswith("image/") and len(r.content) > 1000:
-            return _img_result(r.content, "%s (Pollinations)" % model, en)
-        last = "كود %s" % r.status_code
-        log.warning("Pollinations %s: %s", base, last)
+    for model in models:
+        params = "model=%s&width=1024&height=1024&nologo=true&seed=%d" % (quote(model), random.randint(1, 999999))
+        if key:
+            params += "&key=" + quote(key, safe="")
+        for base in ("https://gen.pollinations.ai/image/", "https://image.pollinations.ai/prompt/"):
+            try:
+                r = b.requests.get(base + q + "?" + params, timeout=90, headers={"User-Agent": "Mozilla/5.0"})
+            except Exception as e:
+                last = str(e)[:80]
+                continue
+            ct = str((getattr(r, "headers", None) or {}).get("content-type", ""))
+            if r.status_code == 200 and ct.startswith("image/") and len(r.content) > 1000:
+                return _img_result(r.content, "%s (Pollinations)" % model, en)
+            last = "%s كود %s" % (model, r.status_code)
+            log.warning("Pollinations %s %s: %s", base, model, last)
     raise _ImgError("Pollinations: " + last)
 
 
