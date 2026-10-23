@@ -927,19 +927,42 @@ def sniff_image(data):
 
 
 def img_models():
-    """موديل الرسم الأساسي فقط: Nano Banana. عند فشله ينتقل المسار مباشرة إلى FLUX."""
-    return [os.environ.get("GEMINI_IMAGE_MODEL", "").strip() or "gemini-nano-banana-2.1"]
+    """سلسلة موديلات رسم Gemini بالترتيب (الأقوى أول، قابل للتخصيص بـ GEMINI_IMAGE_MODEL)."""
+    seen = []
+    for m in [os.environ.get("GEMINI_IMAGE_MODEL", "").strip(),
+              "gemini-nano-banana-2.1",
+              "gemini-3.1-flash-image",
+              "gemini-2.5-flash-image"]:
+        if m and m not in seen:
+            seen.append(m)
+    return seen
 
 
 def _try_gemini_image(b, model, full):
-    """طلب واحد لكل موديل؛ لا نطلق طلب رسم ثانياً إذا كانت الطريقة الأولى بطيئة أو رجعت بلا صورة."""
+    """محاولة واحدة: Interactions API الحديثة أولاً، وبعدها generate_content الكلاسيكية."""
     T = b.types
+    client = b.client
+    last = None
+    try:
+        it = client.interactions.create(model=model, input=full)
+        oi = getattr(it, "output_image", None)
+        if oi is not None:
+            data = getattr(oi, "data", None)
+            if isinstance(data, str):
+                try:
+                    data = base64.b64decode(data, validate=True)
+                except Exception:
+                    data = data.encode("utf-8")
+            if data:
+                return data, (getattr(oi, "mime_type", None) or "image/png")
+    except Exception as e:
+        last = e
     cfg = None
     try:
         cfg = T.GenerateContentConfig(response_modalities=["IMAGE"])
     except Exception:
-        pass
-    resp = b.client.models.generate_content(model=model, contents=full, config=cfg)
+        cfg = None
+    resp = client.models.generate_content(model=model, contents=full, config=cfg)
     gen = getattr(resp, "generated_images", None) or []
     if gen:
         g = gen[0]
@@ -954,18 +977,13 @@ def _try_gemini_image(b, model, full):
         if data:
             return data, (getattr(im, "mime_type", None) or "image/png")
     for c in (getattr(resp, "candidates", None) or []):
-        for part in (getattr(getattr(c, "content", None), "parts", None) or []):
-            inline = getattr(part, "inline_data", None)
+        for p in (getattr(c.content, "parts", None) or []):
+            inline = getattr(p, "inline_data", None)
             if inline is not None:
-                data = getattr(inline, "data", None) or b""
-                if isinstance(data, str):
-                    try:
-                        data = base64.b64decode(data)
-                    except Exception:
-                        data = data.encode("utf-8")
-                if data:
-                    return data, (getattr(inline, "mime_type", None) or "image/png")
-    raise RuntimeError("رد الموديل ما فيه صورة")
+                return (getattr(inline, "data", None) or b""), (getattr(inline, "mime_type", None) or "image/png")
+    if last is not None:
+        raise last
+    raise RuntimeError("الرد ما فيه صورة")
 
 
 def gemini_image(b, full):
@@ -1461,29 +1479,23 @@ def register(app, b):
     def run_image(job_id, prompt, day):
         res = None
         try:
-            # لا نضيّع وقتاً باستدعاء موديل دردشة لترجمة الوصف قبل كل عملية رسم Gemini.
-            # Gemini يستقبل الوصف الأصلي مباشرة؛ الترجمة تُجرّب فقط عند التحويل إلى FLUX.
-            en = prompt
+            en = english_prompt(b, prompt)
             ah = aspect_hint(prompt)
-            full = (prompt + ((" " + ah) if ah else "")).strip()
+            full = (en + ((" " + ah) if ah else "")).strip()
             if is_cancelled(job_id):
                 return
             prov = IMG_PROVIDER
             if prov in ("auto", "gemini") and b.client:
                 try:
-                    # المحاولة الأولى دائماً Nano Banana فقط؛ لا نضيّع الوقت على موديلات Gemini أخرى.
                     data, mime, model = gemini_image(b, full)
                     res = {"status": "done", "text": "تفضّل الصورة 🎨",
                            "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
-                           "note": "الموديل: %s · الوصف: %s" % (model, prompt[:150])}
+                           "note": "الموديل: %s · الوصف المستعمل: %s" % (model, en[:150])}
                 except Exception as e:
-                    if not cf_ready():
+                    if prov == "gemini" or not cf_ready():
                         raise
-                    log.warning("Nano Banana فشل، الانتقال مباشرة إلى FLUX: %s", e)
-            # FLUX هو الاحتياط المباشر عند فشل Nano Banana، أو عند اختياره صراحةً.
-            if res is None and prov in ("auto", "cloudflare", "gemini") and cf_ready():
-                en = english_prompt(b, prompt)
-                full = (en + ((" " + ah) if ah else "")).strip()
+                    log.warning("Gemini للرسم فشل، بجرّب Cloudflare: %s", e)
+            if res is None and prov in ("auto", "cloudflare") and cf_ready():
                 res = flux_image(b, full, en)
             if res is None:
                 raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY (موجود تلقائياً) أو إعداد Cloudflare.")
