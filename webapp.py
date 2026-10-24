@@ -53,7 +53,17 @@ INDEX_HTML = r'''<!doctype html>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<title>__APP_NAME__</title>
+<title>__APP_NAME__ · مساعد ذكاء اصطناعي لخرائط Craftland</title>
+<meta name="description" content="مساعد ذكاء اصطناعي عربي لتصميم وبرمجة خرائط Free Fire Craftland، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="__APP_NAME__">
+<meta property="og:title" content="__APP_NAME__ · مساعد ذكاء اصطناعي لخرائط Craftland">
+<meta property="og:description" content="مساعد ذكاء اصطناعي عربي لتصميم وبرمجة خرائط Free Fire Craftland، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.">
+<meta property="og:locale" content="ar_AR">
+<meta name="twitter:card" content="summary">
+<meta name="author" content="haydar_xe">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"__APP_NAME__","description":"مساعد ذكاء اصطناعي عربي لتصميم وبرمجة خرائط Free Fire Craftland، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","inLanguage":"ar","creator":{"@type":"Person","name":"haydar_xe","url":"https://www.instagram.com/haydar_xe/"},"featureList":["دردشة بعدة موديلات ذكاء اصطناعي","Ryn mix: دمج أجوبة عدة موديلات","توليد صور","بحث بالإنترنت وفهم فيديوهات يوتيوب","قراءة الصور والملفات","وضع المشاعر"]}</script>
 <style>
 :root{--g:#00ff9d;--g-rgb:0,255,157;--red:#ff5d6c;--txt:#eef0ff;--sub:rgba(238,240,255,.55);
  --acc:#8b5cf6;--acc-rgb:139,92,246;--me1:#4c1d95;--me2:#2e1065;--bg1:#070816;--bg2:#0d0a26}
@@ -116,7 +126,7 @@ button{font-family:inherit;cursor:pointer}
 .toprow{display:flex;align-items:center;gap:6px;margin-top:2px;max-width:92%;justify-content:center}
 #memBtn{font-size:11.5px;color:var(--g);border:1px solid rgba(var(--g-rgb),.55);border-radius:12px;padding:2px 10px;background:rgba(var(--g-rgb),.12);white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
 #memBtn.off{color:var(--sub);border-color:rgba(var(--acc-rgb),.35);background:rgba(var(--acc-rgb),.08)}
-#memModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(6px);z-index:65;display:flex;align-items:center;justify-content:center;padding:14px}
+#memModal,#aboutModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(6px);z-index:65;display:flex;align-items:center;justify-content:center;padding:14px}
 .mbox{width:100%;max-width:410px;max-height:88vh;background:rgba(12,10,34,.97);border:1.5px solid var(--acc);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 36px rgba(var(--acc-rgb),.4)}
 .mh{display:flex;justify-content:space-between;align-items:center;color:var(--g);font-size:15.5px;font-weight:800}
 .mh button{background:none;border:0;color:var(--txt);font-size:18px}
@@ -268,6 +278,19 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 @media(max-height:640px){.social{position:static;margin-top:16px}.overlay{flex-direction:column}}
 #lerr{color:var(--red);min-height:18px;margin-top:8px;font-size:13px}
 #toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(9,7,28,.96);border:1px solid var(--g);color:var(--g);padding:8px 14px;border-radius:20px;font-size:13px;z-index:70;display:none;max-width:90%;text-align:center}
+.box{backdrop-filter:blur(8px)}
+.box .tag{color:var(--txt);font-size:13.5px;line-height:1.6;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:2px 0 12px}
+.chips span{font-size:11.5px;padding:4px 10px;border-radius:999px;background:rgba(var(--acc-rgb),.16);border:1px solid rgba(var(--acc-rgb),.38);color:var(--txt)}
+.alink{display:inline-block;margin-top:12px;font-size:12.5px;color:var(--g);text-decoration:none;opacity:.9}
+.alink:hover{opacity:1;text-decoration:underline}
+.about p{font-size:13.5px;line-height:1.8;color:var(--txt)}
+.about p b{color:var(--g)}
+.alist{list-style:none;display:flex;flex-direction:column;gap:7px}
+.alist li{font-size:13px;line-height:1.6;padding:9px 11px;border-radius:12px;background:rgba(var(--acc-rgb),.10);border:1px solid rgba(var(--acc-rgb),.25)}
+.alist li b{color:var(--g)}
+.aby{text-align:center;font-size:12.5px;color:var(--sub);padding-top:4px}
+.aby a{color:var(--g);text-decoration:none;font-weight:700}
 </style>
 </head>
 <body>
@@ -321,6 +344,8 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <button id="mNew">✨ محادثة جديدة</button>
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mEmo">💗 وضع المشاعر: طافي</button>
+    <button id="mAbout">ℹ️ عن __APP_NAME__</button>
+    <button id="mNet">🌐 بحث بالإنترنت: طافي</button>
     <button id="mFile">📎 حذف الملف المرفق</button>
     <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">📸 تواصل · إنستغرام @haydar_xe</a>
     <button id="mOut">🚪 تسجيل خروج</button>
@@ -374,10 +399,12 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <div class="box">
     <div class="botwrap" id="loginBot"></div>
     <h2>__APP_NAME__</h2>
-    <p>موقع خاص، دخّل كلمة السر</p>
+    <p class="tag">مساعدك الذكي لخرائط Craftland والبرمجة وأي سؤال</p>
+    <div class="chips"><span>🎨 توليد صور</span><span>🌐 بحث بالإنترنت</span><span>🧩 Ryn mix</span></div>
     <input type="password" id="pw" placeholder="كلمة السر" autocomplete="current-password">
     <button id="go">دخول</button>
     <div id="lerr"></div>
+    <a href="#" class="alink" id="loginAbout">ℹ️ تعرّف على __APP_NAME__ · موقع خاص بكلمة سر</a>
   </div>
   <div class="social">
     <div class="soc-title"><i></i><span>اشترك · تواصل</span><i></i></div>
@@ -387,6 +414,25 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   </div>
 </div>
 <div id="lb" hidden><img id="lbImg" alt=""><a id="lbSave" download="ryn-image.jpg">💾 حفظ الصورة</a></div>
+<div id="aboutModal" hidden>
+  <div class="mbox">
+    <div class="mh"><span>ℹ️ عن __APP_NAME__</span><button id="aboutClose" aria-label="إغلاق">✕</button></div>
+    <div class="mbody about">
+      <p><b>__APP_NAME__</b> مساعد ذكاء اصطناعي بالعربي، مختص بتصميم وبرمجة خرائط <b>Free Fire Craftland</b>، وبيجاوب كمان على أي سؤال عام.</p>
+      <ul class="alist">
+        <li>💬 <b>عدة موديلات</b>: Gemini وQwen وGPT-OSS وDeepSeek، بتختار يلي بدك ياه.</li>
+        <li>🧩 <b>Ryn mix</b>: الموديلات بيجاوبوا سوا وبيندمجوا بجواب واحد أدق.</li>
+        <li>🎨 <b>توليد صور</b> واقعية حسب وصفك.</li>
+        <li>🌐 <b>بحث بالإنترنت</b> وفهم فيديوهات يوتيوب.</li>
+        <li>📎 <b>بيقرا الصور والملفات</b> (PDF وغيره).</li>
+        <li>💗 <b>وضع المشاعر</b>: بيفرح وبيزعل وبتقدر تراضيه.</li>
+        <li>🔒 <b>خاص</b>: دخول بكلمة سر، وملف التخصيص محفوظ على جهازك.</li>
+      </ul>
+      <div class="aby">من تطوير <b>haydar_xe</b> · <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">إنستغرام @haydar_xe</a></div>
+    </div>
+  </div>
+</div>
+
 <div id="memModal" hidden>
   <div class="mbox">
     <div class="mh"><span>🧠 ملف التخصيص وذاكرة هاتفك</span><button id="memClose" aria-label="إغلاق">✕</button></div>
@@ -499,9 +545,17 @@ function openMemModal(){
 function closeMemModal(){$('#memModal').hidden=true}
 $('#memBtn').onclick=openMemModal;
 $('#mMem').onclick=openMemModal;
+function showAbout(e){if(e)e.preventDefault();$('#menu').hidden=true;$('#aboutModal').hidden=false}
+$('#mAbout').onclick=showAbout;$('#loginAbout').onclick=showAbout;
+$('#aboutClose').onclick=()=>{$('#aboutModal').hidden=true};
+$('#aboutModal').onclick=e=>{if(e.target===$('#aboutModal'))$('#aboutModal').hidden=true};
 let emo=false;try{emo=localStorage.getItem('ryn_emo')==='1'}catch(e){}
 function paintEmo(){$('#mEmo').textContent=emo?'💗 وضع المشاعر: شغّال':'💗 وضع المشاعر: طافي'}
 paintEmo();
+let netOn=false;try{netOn=localStorage.getItem('ryn_net')==='1'}catch(e){}
+function paintNet(){$('#mNet').textContent=netOn?'🌐 بحث بالإنترنت: شغّال':'🌐 بحث بالإنترنت: طافي'}
+paintNet();
+$('#mNet').onclick=()=>{netOn=!netOn;try{localStorage.setItem('ryn_net',netOn?'1':'0')}catch(e){}paintNet();$('#menu').hidden=true;toast(netOn?'🌐 صار بيبحث بالإنترنت':'تم إيقاف البحث بالإنترنت')};
 $('#mEmo').onclick=()=>{emo=!emo;try{localStorage.setItem('ryn_emo',emo?'1':'0')}catch(e){}paintEmo();$('#menu').hidden=true;toast(emo?'💗 صار عندي مشاعر هلق':'تم إيقاف وضع المشاعر')};
 $('#memClose').onclick=closeMemModal;
 $('#memModal').onclick=e=>{if(e.target===$('#memModal'))closeMemModal()};
@@ -702,7 +756,7 @@ async function send(){
   render();saveStore();
   let ok=true;
   try{
-    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem,emo:emo})});
+    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem,emo:emo,net:netOn})});
     const d=await r.json();
     if(!r.ok){if(!aborted){M().push({role:'model',text:d.error||'صار خطأ',err:true});ok=false}}
     else{
@@ -916,6 +970,54 @@ def aspect_hint(text):
     return ""
 
 
+YT_RE = re.compile(r"https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?[^\s]*?v=|shorts/|live/)|youtu\.be/)[\w-]{6,}[^\s]*", re.I)
+
+WEB_HINT = (
+    "\n\nعندك هلق وصول للإنترنت عبر بحث Google، أو فيديو يوتيوب مرفق مع السؤال. "
+    "استعمل المعلومات الحديثة منهم، وجاوب بالعربي الشامي المختصر، "
+    "وإذا ما لقيت المعلومة أو الفيديو ما انفتح قول هيك بصراحة وما تخترع."
+)
+
+
+def web_answer(b, contents, use_search, yt_urls):
+    """Gemini مع بحث Google، أو بيشوف فيديو يوتيوب عام. بيرجّع (الجواب، ملاحظة)."""
+    T = b.types
+    cont = list(contents)
+    if yt_urls:
+        last = cont[-1]
+        cont[-1] = T.Content(role="user", parts=list(last.parts) + [
+            T.Part(file_data=T.FileData(file_uri=yt_urls[0]))])
+    kw = {"system_instruction": b.get_system_prompt() + WEB_HINT,
+          "http_options": T.HttpOptions(timeout=90000)}
+    if use_search and not yt_urls:
+        kw["tools"] = [T.Tool(google_search=T.GoogleSearch())]
+    last_err = None
+    for model in [m for m in list(b.FAST_MODELS) if isinstance(m, str)][:4]:
+        try:
+            resp = b.client.models.generate_content(model=model, contents=cont,
+                                                   config=T.GenerateContentConfig(**kw))
+            text = (resp.text or "").strip()
+            if not text:
+                continue
+            srcs, seen = [], set()
+            try:
+                gm = resp.candidates[0].grounding_metadata
+                for ch in (getattr(gm, "grounding_chunks", None) or []):
+                    wb = getattr(ch, "web", None)
+                    if wb and wb.uri and wb.uri not in seen:
+                        seen.add(wb.uri)
+                        srcs.append(((wb.title or "مصدر")[:60], wb.uri))
+            except Exception:
+                pass
+            if srcs:
+                text += "\n\n🌐 المصادر:\n" + "\n".join("- [%s](%s)" % (t, u) for t, u in srcs[:4])
+            return text, ("Gemini · فيديو" if yt_urls else "Gemini · بحث")
+        except Exception as e:
+            last_err = e
+            log.warning("web_answer %s فشل: %s", model, str(e)[:200])
+    raise last_err or RuntimeError("ما رد ولا موديل")
+
+
 def mix_answer(b, contents, members):
     """Ryn mix: بيسأل الموديلات سوا (مهلة 45 ثانية) وGemini بيدمج الأجوبة بجواب واحد."""
     import concurrent.futures as cf
@@ -938,7 +1040,8 @@ def mix_answer(b, contents, members):
         raise b.ProviderError(502, "Ryn mix ← ولا موديل رد")
     if len(answers) == 1:
         name, only = next(iter(answers.items()))
-        return only, "(Ryn mix: رد %s بس، الباقي ما اشتغل)" % name
+        log.info("Ryn mix: رد %s بس", name)
+        return only, "Ryn mix"
     question = ""
     for c in reversed(contents):
         if c.role == "user":
@@ -955,7 +1058,8 @@ def mix_answer(b, contents, members):
         log.warning("Ryn mix: الدمج فشل: %s", str(e)[:160])
     if not final:
         final = max(answers.values(), key=len)
-    return final, "(Ryn mix: " + " + ".join(answers.keys()) + ")"
+    log.info("Ryn mix: اشتغل %s", " + ".join(answers.keys()))
+    return final, "Ryn mix"
 
 
 EMO_PROMPT = (
@@ -1108,11 +1212,50 @@ class _ImgError(Exception):
     """خطأ رسم برسالة عربية جاهزة للعرض للمستخدم."""
 
 
+def img_label(model):
+    """اسم قصير ومفهوم لموديل الرسم."""
+    m = (model or "").lower()
+    if "pollinations" in m:
+        return "Pollinations"
+    if "together" in m:
+        return "Together FLUX"
+    if "pro-image" in m:
+        return "Nano Banana Pro"
+    if "flash-image" in m or "nano" in m:
+        return "Nano Banana"
+    if "klein" in m:
+        return "FLUX.2 klein"
+    if "flux-2" in m:
+        return "FLUX.2"
+    if "lucid" in m:
+        return "Lucid Origin"
+    if "schnell" in m:
+        return "FLUX.1 schnell"
+    return (model or "").split("/")[-1]
+
+
+_CHAT_NAMES = (("ryn mix", "Ryn mix"), ("gpt-oss", "GPT-OSS"), ("qwen", "Qwen"), ("deepseek", "DeepSeek"),
+               ("kimi", "Kimi"), ("moonshot", "Kimi"), ("llama", "Llama"), ("gemma", "Gemma"),
+               ("claude", "Claude"), ("gemini", "Gemini"))
+
+
+def short_name(note, fallback="Gemini"):
+    """بيحوّل ملاحظة البوت الطويلة لاسم الموديل بس."""
+    n = (note or "").lower()
+    if "جاوب gemini" in n or "استخدمت gemini" in n:
+        return "Gemini"
+    for k, v in _CHAT_NAMES:
+        if k in n:
+            return v
+    return fallback
+
+
 def _img_result(data, model_name, en):
     mime = sniff_image(data) or "image/jpeg"
+    log.info("الرسم: %s · الوصف: %s", model_name, en[:200])
     return {"status": "done", "text": "تفضّل الصورة 🎨",
             "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
-            "note": "الموديل: %s · الوصف المستعمل: %s" % (model_name, en[:150])}
+            "note": img_label(model_name)}
 
 
 def pollinations_image(b, full, en):
@@ -1221,9 +1364,7 @@ def flux_image(b, full, en):
             continue
         mime = sniff_image(data) or "image/jpeg"
         short = model.split("/")[-1]
-        return {"status": "done", "text": "تفضّل الصورة 🎨",
-                "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
-                "note": "الموديل: %s (Cloudflare) · الوصف المستعمل: %s" % (short, en[:150])}
+        return _img_result(data, model, en)
     raise last_err or _ImgError("ما قدرت أرسم هلق، جرّب تاني.")
 
 
@@ -1243,33 +1384,28 @@ def image_error(e):
 
 
 def describe(mid, ready=True, model=""):
-    """وصف مختصر لكل موديل (بنكتب بس اللي منعرفه)."""
+    """تخصص الموديل بكلمتين بس."""
     if mid == "img:flux":
-        d = ("يرسم صور قوية وواقعية حسب وصفك (Gemini Nano Banana 2.1)، وبيفهم الوصف بالعربي. "
-             "قدّر تحدد الاتجاه: «عمودي» أو «أفقي» أو «مربع»، وإذا فشل Gemini بيرجع تلقائياً لـ FLUX عبر Cloudflare.")
-        return d if ready else d + " غير مفعّل: بده GEMINI_API_KEY أو إعداد Cloudflare."
+        return "رسم صور واقعية" if ready else "غير مفعّل"
     if mid == "mix":
-        return ("Gemini وGPT-OSS وDeepSeek وQwen بيجاوبوا سوا، وبعدين بيندمجوا بجواب واحد أدق. "
-                "أبطأ شوي من الباقي، وبيشتغل بالموديلات المتاحة عندك بس.")
+        return "أدق جواب · كل الموديلات سوا"
     if mid == "gemini":
-        return "الأساسي: دردشة عامة بالعربي، بيشوف الصور وبيقرا الملفات والـ PDF، وبيراجع جوابه."
+        return "دردشة عامة · صور وملفات"
     if mid.startswith("groq:"):
         m = mid[5:].lower()
-        if "gpt-oss-120b" in m:
-            return "موديل OpenAI المفتوح (120B) عبر Groq: تفكير وبرمجة وحل مشاكل، وسريع جداً."
+        if "gpt-oss" in m:
+            return "تفكير وبرمجة"
         if "qwen" in m:
-            return "Qwen من Alibaba عبر Groq: سريع جداً ومتعدد اللغات، جيد بالنصوص والكود (تجريبي عند Groq)."
-        return "موديل عبر Groq: سريع."
+            return "نصوص وكود · سريع"
+        return "سريع"
     if mid.startswith("or:"):
         m = (model or mid).lower()
         if "deepseek" in m:
-            d = "DeepSeek عبر OpenRouter: قوي بالتفكير وحل المشاكل والبرمجة."
-        elif "kimi" in m or "moonshot" in m:
-            d = "Kimi من Moonshot AI عبر OpenRouter: موديل كبير للبرمجة والمهام الطويلة."
-        else:
-            d = "موديل عبر OpenRouter."
-        return d + " مدفوع: بده رصيد على OpenRouter. (" + (model or mid[3:]) + ")"
-    return "ما عندي معلومات مؤكدة عنه. جرّبه وقارن بنفسك."
+            return "تحليل عميق"
+        if "kimi" in m or "moonshot" in m:
+            return "برمجة ومهام طويلة"
+        return ""
+    return ""
 
 
 def register(app, b):
@@ -1391,7 +1527,7 @@ def register(app, b):
 
     def build_options():
         """القائمة: الرسم فوق Gemini، وبعدها Qwen وGPT-OSS (Groq)، وDeepSeek وKimi (OpenRouter، مدفوع)."""
-        opts = [{"id": "img:flux", "label": "Nano Banana · رسم صور", "desc": describe("img:flux", ready=image_ready())},
+        opts = [{"id": "img:flux", "label": "توليد صور", "desc": describe("img:flux", ready=image_ready())},
                 {"id": "gemini", "label": "Gemini", "desc": describe("gemini")},
                 {"id": "mix", "label": "Ryn mix", "desc": describe("mix")}]
         gid = groq_ids()
@@ -1544,7 +1680,7 @@ def register(app, b):
 
     MOOD_RE = re.compile(r"\[\[MOOD:\s*(upset|happy|ok)\s*(?::\s*(.+?))?\s*\]\]", re.S)
 
-    def run_job(job_id, text, history, mem_prompt="", emo=False, u="main"):
+    def run_job(job_id, text, history, mem_prompt="", emo=False, u="main", net=False):
         try:
             T = b.types
             W = wid(u)
@@ -1564,10 +1700,34 @@ def register(app, b):
                 parts = [T.Part(text=full_user_text)]
             contents.append(T.Content(role="user", parts=parts))
             deep = b.is_deep_question(text)
-            if wm(u)["mix"] and b._text_only(contents):
+            answer = note = None
+            kind = ""
+            yt = [m.group(0) for m in YT_RE.finditer(text)]
+            net_fail = ""
+            if (net or yt) and b.client:
+                try:
+                    answer, note = web_answer(b, contents, net, yt)
+                    kind = "clean"
+                except Exception as e:
+                    log.warning("البحث/الفيديو فشل: %s", str(e)[:200])
+                    answer = None
+                    net_fail = " (الإنترنت ما اشتغل هلق، جاوبت من معلوماتي)"
+            if answer:
+                pass
+            elif wm(u)["mix"] and b._text_only(contents):
                 answer, note = mix_answer(b, contents, mix_members())
+                kind = "clean"
             else:
                 answer, note = b.ask_model(W, contents, deep=deep, code=b.is_code_request(text))
+            if net_fail:
+                log.info("الإنترنت ما اشتغل، جاوب من معلوماته")
+            plain = (kind != "clean") and not note   # جواب عادي بدون أي توجيه خاص
+            if kind != "clean":
+                sel = b.chat_provider.get(W, "gemini")
+                labels = {o["id"]: o["label"] for o in build_options()}
+                note = short_name(note, labels.get(sel, "Gemini"))
+            if net_fail:
+                note = note + " · ⚠️ بدون إنترنت"
             if is_cancelled(job_id):
                 return
             if emo and answer:
@@ -1578,16 +1738,16 @@ def register(app, b):
                     if kind == "upset":
                         if mood["state"] != "upset":
                             mood.update(state="upset", reason=why, since=time.time())
-                        note = ((note or "") + " 😤 زعلان منك، راضيني").strip()
+                        note = (note + " · 😤 زعلان منك").strip()
                     elif kind == "ok":
                         mood.update(state="normal", reason="", since=0.0)
-                        note = ((note or "") + " 😊 رجع مبسوط").strip()
+                        note = (note + " · 😊 رجع مبسوط").strip()
                     else:
-                        note = ((note or "") + " 😄 مبسوط").strip()
+                        note = (note + " · 😄 مبسوط").strip()
             new_mems = [m.strip()[:300] for m in re.findall(r"\[\[MEM:\s*(.+?)\s*\]\]", answer or "") if m.strip()]
             if new_mems:
                 answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
-            if deep and answer and len(answer) > 150 and b.load_knowledge() and not note:
+            if deep and answer and len(answer) > 150 and b.load_knowledge() and plain:
                 answer = b.review_answer(W, text, answer)
                 answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
             dl = None
@@ -1621,6 +1781,7 @@ def register(app, b):
             return jsonify(error="الرسالة فاضية"), 400
         mem_prompt = build_memory_prompt(data.get("memory"))
         emo_on = data.get("emo") is True
+        net_on = data.get("net") is True
         if emo_on:
             mem_prompt = EMO_PROMPT + mem_prompt
         else:
@@ -1633,7 +1794,7 @@ def register(app, b):
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
             jobs[job_id] = {"status": "running", "ts": now, "uid": uid()}
-        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt, emo_on, uid()),
+        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt, emo_on, uid(), net_on),
                          daemon=True).start()
         return jsonify(job=job_id)
 
@@ -1798,10 +1959,6 @@ def register(app, b):
                 msg = next((m for n, m in fails if n == "Cloudflare" and m.startswith(("⏳", "🔑"))), None) \
                     or (fails[-1][1] if fails else "")
                 raise _ImgError("ما قدرت أرسم هلق (كل المزودين فشلوا). " + (msg if msg.startswith(("⏳", "🔑")) else "جرّب بعد شوي."))
-            shown = [(n, m) for n, m in fails if not (n == "Gemini" and ("429" in m or "RESOURCE_EXHAUSTED" in m))]
-            if shown and res.get("status") == "done":
-                res["note"] = (res.get("note", "") + " · ⚠️ " + " | ".join(
-                    "%s: %s" % (n, m[:60]) for n, m in shown)).strip()
         except _ImgError as e:
             res = {"status": "error", "text": str(e)}
         except Exception as e:
