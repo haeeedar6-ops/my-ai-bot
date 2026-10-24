@@ -53,17 +53,17 @@ INDEX_HTML = r'''<!doctype html>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<title>__APP_NAME__ · مساعد ذكاء اصطناعي لخرائط Craftland</title>
-<meta name="description" content="مساعد ذكاء اصطناعي عربي لتصميم وبرمجة خرائط Free Fire Craftland، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.">
+<title>__APP_NAME__ · مساعد برمجي بالذكاء الاصطناعي</title>
+<meta name="description" content="مساعد برمجي بالذكاء الاصطناعي بالعربي: بيكتب الكود وبيصلّحو وبيشرحو، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث تلقائي بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="__APP_NAME__">
-<meta property="og:title" content="__APP_NAME__ · مساعد ذكاء اصطناعي لخرائط Craftland">
-<meta property="og:description" content="مساعد ذكاء اصطناعي عربي لتصميم وبرمجة خرائط Free Fire Craftland، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.">
+<meta property="og:title" content="__APP_NAME__ · مساعد برمجي بالذكاء الاصطناعي">
+<meta property="og:description" content="مساعد برمجي بالذكاء الاصطناعي بالعربي: بيكتب الكود وبيصلّحو وبيشرحو، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث تلقائي بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.">
 <meta property="og:locale" content="ar_AR">
 <meta name="twitter:card" content="summary">
 <meta name="author" content="haydar_xe">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"__APP_NAME__","description":"مساعد ذكاء اصطناعي عربي لتصميم وبرمجة خرائط Free Fire Craftland، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","inLanguage":"ar","creator":{"@type":"Person","name":"haydar_xe","url":"https://www.instagram.com/haydar_xe/"},"featureList":["دردشة بعدة موديلات ذكاء اصطناعي","Ryn mix: دمج أجوبة عدة موديلات","توليد صور","بحث بالإنترنت وفهم فيديوهات يوتيوب","قراءة الصور والملفات","وضع المشاعر"]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"__APP_NAME__","description":"مساعد برمجي بالذكاء الاصطناعي بالعربي: بيكتب الكود وبيصلّحو وبيشرحو، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث تلقائي بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","inLanguage":"ar","creator":{"@type":"Person","name":"haydar_xe","url":"https://www.instagram.com/haydar_xe/"},"featureList":["كتابة وتصحيح وشرح الكود","دردشة بعدة موديلات ذكاء اصطناعي","Ryn mix: دمج أجوبة عدة موديلات","توليد صور","بحث تلقائي بالإنترنت وفهم فيديوهات يوتيوب","قراءة الصور والملفات","وضع المشاعر"]}</script>
 <style>
 :root{--g:#00ff9d;--g-rgb:0,255,157;--red:#ff5d6c;--txt:#eef0ff;--sub:rgba(238,240,255,.55);
  --acc:#8b5cf6;--acc-rgb:139,92,246;--me1:#4c1d95;--me2:#2e1065;--bg1:#070816;--bg2:#0d0a26}
@@ -345,7 +345,6 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mEmo">💗 وضع المشاعر: طافي</button>
     <button id="mAbout">ℹ️ عن __APP_NAME__</button>
-    <button id="mNet">🌐 بحث بالإنترنت: طافي</button>
     <button id="mFile">📎 حذف الملف المرفق</button>
     <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">📸 تواصل · إنستغرام @haydar_xe</a>
     <button id="mOut">🚪 تسجيل خروج</button>
@@ -399,8 +398,8 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <div class="box">
     <div class="botwrap" id="loginBot"></div>
     <h2>__APP_NAME__</h2>
-    <p class="tag">مساعدك الذكي لخرائط Craftland والبرمجة وأي سؤال</p>
-    <div class="chips"><span>🎨 توليد صور</span><span>🌐 بحث بالإنترنت</span><span>🧩 Ryn mix</span></div>
+    <p class="tag">مساعدك البرمجي الذكي: كود وتحليل وأي سؤال</p>
+    <div class="chips"><span>💻 برمجة</span><span>🎨 توليد صور</span><span>🧩 Ryn mix</span></div>
     <input type="password" id="pw" placeholder="كلمة السر" autocomplete="current-password">
     <button id="go">دخول</button>
     <div id="lerr"></div>
@@ -418,12 +417,13 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <div class="mbox">
     <div class="mh"><span>ℹ️ عن __APP_NAME__</span><button id="aboutClose" aria-label="إغلاق">✕</button></div>
     <div class="mbody about">
-      <p><b>__APP_NAME__</b> مساعد ذكاء اصطناعي بالعربي، مختص بتصميم وبرمجة خرائط <b>Free Fire Craftland</b>، وبيجاوب كمان على أي سؤال عام.</p>
+      <p><b>__APP_NAME__</b> مساعد برمجي بالذكاء الاصطناعي بالعربي: بيكتب الكود وبيصلّحو وبيشرحو، وبيجاوب كمان على أي سؤال عام.</p>
       <ul class="alist">
+        <li>💻 <b>برمجة</b>: كتابة وتصحيح وشرح كود بكل اللغات.</li>
         <li>💬 <b>عدة موديلات</b>: Gemini وQwen وGPT-OSS وDeepSeek، بتختار يلي بدك ياه.</li>
         <li>🧩 <b>Ryn mix</b>: الموديلات بيجاوبوا سوا وبيندمجوا بجواب واحد أدق.</li>
         <li>🎨 <b>توليد صور</b> واقعية حسب وصفك.</li>
-        <li>🌐 <b>بحث بالإنترنت</b> وفهم فيديوهات يوتيوب.</li>
+        <li>🌐 <b>بحث تلقائي بالإنترنت</b> لما السؤال بدو معلومة حديثة، وفهم فيديوهات يوتيوب.</li>
         <li>📎 <b>بيقرا الصور والملفات</b> (PDF وغيره).</li>
         <li>💗 <b>وضع المشاعر</b>: بيفرح وبيزعل وبتقدر تراضيه.</li>
         <li>🔒 <b>خاص</b>: دخول بكلمة سر، وملف التخصيص محفوظ على جهازك.</li>
@@ -444,7 +444,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
       <div class="msec">
         <label>👤 اسمك وملف تخصيصك</label>
         <input class="minp" id="memName" placeholder="اسمك أو لقبك (مثال: حيدر)">
-        <textarea class="mtxt" id="memCustom" placeholder="كيف بتحب Ryn يجاوبك؟ شو اهتماماتك أو مجالك؟ (مثال: جاوبني باختصار، بهتم بالبرمجة وكرافتلاند...)"></textarea>
+        <textarea class="mtxt" id="memCustom" placeholder="كيف بتحب Ryn يجاوبك؟ شو اهتماماتك أو مجالك؟ (مثال: جاوبني باختصار، بهتم ببايثون وجافاسكربت...)"></textarea>
       </div>
       <div class="msec">
         <label><span>📌 ذكريات محفوظة على هاتفك</span><small id="memStat">0 معلومة</small></label>
@@ -552,10 +552,6 @@ $('#aboutModal').onclick=e=>{if(e.target===$('#aboutModal'))$('#aboutModal').hid
 let emo=false;try{emo=localStorage.getItem('ryn_emo')==='1'}catch(e){}
 function paintEmo(){$('#mEmo').textContent=emo?'💗 وضع المشاعر: شغّال':'💗 وضع المشاعر: طافي'}
 paintEmo();
-let netOn=false;try{netOn=localStorage.getItem('ryn_net')==='1'}catch(e){}
-function paintNet(){$('#mNet').textContent=netOn?'🌐 بحث بالإنترنت: شغّال':'🌐 بحث بالإنترنت: طافي'}
-paintNet();
-$('#mNet').onclick=()=>{netOn=!netOn;try{localStorage.setItem('ryn_net',netOn?'1':'0')}catch(e){}paintNet();$('#menu').hidden=true;toast(netOn?'🌐 صار بيبحث بالإنترنت':'تم إيقاف البحث بالإنترنت')};
 $('#mEmo').onclick=()=>{emo=!emo;try{localStorage.setItem('ryn_emo',emo?'1':'0')}catch(e){}paintEmo();$('#menu').hidden=true;toast(emo?'💗 صار عندي مشاعر هلق':'تم إيقاف وضع المشاعر')};
 $('#memClose').onclick=closeMemModal;
 $('#memModal').onclick=e=>{if(e.target===$('#memModal'))closeMemModal()};
@@ -756,7 +752,7 @@ async function send(){
   render();saveStore();
   let ok=true;
   try{
-    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem,emo:emo,net:netOn})});
+    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem,emo:emo})});
     const d=await r.json();
     if(!r.ok){if(!aborted){M().push({role:'model',text:d.error||'صار خطأ',err:true});ok=false}}
     else{
@@ -979,6 +975,21 @@ WEB_HINT = (
 )
 
 
+_WEB_RE = re.compile(
+    r"(أخبار|اخبار|خبر|سعر|أسعار|اسعار|الطقس|نتيجة المباراة|نتائج|ابحث|دوّر|دور على|بحث عن|"
+    r"آخر إصدار|اخر اصدار|آخر نسخة|اخر نسخة|أحدث|احدث|"
+    r"latest|newest|news|price|weather|search for|release notes|changelog|\b202[5-9]\b)", re.I)
+_URL_RE = re.compile(r"https?://", re.I)
+
+
+def needs_web(text):
+    """بيقرّر تلقائياً إذا السؤال بدو إنترنت (معلومة حديثة أو رابط)."""
+    t = text or ""
+    if _WEB_RE.search(t):
+        return True
+    return bool(_URL_RE.search(t)) and len(t) < 400 and "```" not in t
+
+
 def web_answer(b, contents, use_search, yt_urls):
     """Gemini مع بحث Google، أو بيشوف فيديو يوتيوب عام. بيرجّع (الجواب، ملاحظة)."""
     T = b.types
@@ -1089,7 +1100,7 @@ MIX_SYSTEM = (
     "ادمجهم بجواب واحد نهائي، صحيح ومرتب ومختصر: خذ الأدق من كل إجابة، "
     "وصحّح أي تناقض أو خطأ، وما تذكر أسماء الموديلات ولا إنك قارنت إجابات. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة. "
-    "إذا في اسم بلوك Craftland مو متأكد منو قول هيك وما تخترع."
+    "إذا مو متأكد من معلومة قول هيك وما تخترع."
 )
 
 
@@ -1704,6 +1715,8 @@ def register(app, b):
             kind = ""
             yt = [m.group(0) for m in YT_RE.finditer(text)]
             net_fail = ""
+            if not net and not wm(u)["mix"] and b.client:
+                net = needs_web(text)
             if (net or yt) and b.client:
                 try:
                     answer, note = web_answer(b, contents, net, yt)
@@ -1781,7 +1794,6 @@ def register(app, b):
             return jsonify(error="الرسالة فاضية"), 400
         mem_prompt = build_memory_prompt(data.get("memory"))
         emo_on = data.get("emo") is True
-        net_on = data.get("net") is True
         if emo_on:
             mem_prompt = EMO_PROMPT + mem_prompt
         else:
@@ -1794,7 +1806,7 @@ def register(app, b):
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
             jobs[job_id] = {"status": "running", "ts": now, "uid": uid()}
-        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt, emo_on, uid(), net_on),
+        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt, emo_on, uid()),
                          daemon=True).start()
         return jsonify(job=job_id)
 
