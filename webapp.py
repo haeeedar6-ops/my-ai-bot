@@ -294,6 +294,47 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 .alist li b{color:var(--g)}
 .aby{text-align:center;font-size:12.5px;color:var(--sub);padding-top:4px}
 .aby a{color:var(--g);text-decoration:none;font-weight:700}
+
+/* ===== خلفيات متحركة حسب الموديل ===== */
+#fx{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;transition:opacity .45s ease}
+#fx i{position:absolute;display:block;will-change:transform,opacity}
+#fx i.b{width:75%;height:34%;border-radius:50%;background:radial-gradient(circle,rgba(var(--c),.30),transparent 70%);animation:fxdrift var(--d) ease-in-out infinite alternate}
+@keyframes fxdrift{from{transform:translate(-10%,0) scale(1)}to{transform:translate(14%,12%) scale(1.3)}}
+#fx i.s{width:3px;height:3px;border-radius:50%;background:rgb(var(--c));box-shadow:0 0 6px rgb(var(--c));animation:fxtw var(--d) ease-in-out infinite}
+@keyframes fxtw{0%,100%{opacity:.08;transform:scale(.6)}50%{opacity:.95;transform:scale(1.5)}}
+#fx i.r{left:50%;top:36%;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;border:1.5px solid rgba(var(--c),.6);animation:fxring var(--d) ease-out infinite}
+@keyframes fxring{0%{transform:scale(.4);opacity:.75}100%{transform:scale(10);opacity:0}}
+#fx i.w{left:-40%;width:70%;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,rgba(var(--c),.65),transparent);animation:fxstreak var(--d) linear infinite}
+@keyframes fxstreak{from{transform:translateX(-30%) rotate(-18deg)}to{transform:translateX(330%) rotate(-18deg)}}
+#fx i.u{bottom:-30px;width:var(--z);height:var(--z);border-radius:50%;border:1px solid rgba(var(--c),.55);background:radial-gradient(circle at 30% 30%,rgba(var(--c),.28),transparent 65%);animation:fxrise var(--d) ease-in infinite}
+@keyframes fxrise{0%{transform:translate(0,0);opacity:0}15%{opacity:.85}100%{transform:translate(var(--x),-112vh);opacity:0}}
+#fx i.k{width:110px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,.95),transparent);animation:fxmeteor var(--d) linear infinite;opacity:0}
+@keyframes fxmeteor{0%{transform:translate(0,0) rotate(32deg);opacity:0}8%{opacity:1}60%{opacity:0}100%{transform:translate(-95vw,62vh) rotate(32deg);opacity:0}}
+#fx i.p{width:var(--z);height:var(--z);background:radial-gradient(circle at 30% 30%,rgba(var(--c),.5),rgba(var(--c),.04) 72%);animation:fxmorph var(--d) ease-in-out infinite alternate}
+@keyframes fxmorph{0%{border-radius:42% 58% 60% 40%/50% 40% 60% 50%;transform:translate(0,0) rotate(0)}100%{border-radius:60% 40% 35% 65%/40% 60% 40% 60%;transform:translate(var(--x),var(--y)) rotate(110deg)}}
+#fx i.c{left:50%;top:18%;width:150%;aspect-ratio:1;margin-left:-75%;border-radius:50%;opacity:.9;
+ background:conic-gradient(rgba(167,139,250,.30),rgba(52,211,153,.24),rgba(56,189,248,.30),rgba(251,146,60,.26),rgba(167,139,250,.30));
+ -webkit-mask:radial-gradient(circle,transparent 18%,#000 48%,transparent 70%);mask:radial-gradient(circle,transparent 18%,#000 48%,transparent 70%);animation:spin 26s linear infinite}
+@media(prefers-reduced-motion:reduce){#fx i{animation:none!important}}
+
+/* ===== الروبوت: ألوان الموديل + المشاعر + Ryn mix ===== */
+.robot .orb,.robot .chest{fill:rgb(var(--bcrgb,var(--g-rgb)))}
+.robot .brows,.robot .arcs,.robot .blush,.robot .steam,.robot .mixgrp{display:none}
+.robot[data-mix="1"] .mixgrp{display:block}
+.robot[data-mix="1"] .chest{display:none}
+.mixorbit{transform-origin:60px 60px;animation:spin 8s linear infinite}
+.robot[data-mood=happy]:not(.thinking):not(.speaking) .eye{display:none}
+.robot[data-mood=happy]:not(.thinking):not(.speaking) .arcs,.robot[data-mood=happy]:not(.thinking):not(.speaking) .blush{display:block}
+.robot[data-mood=happy]:not(.thinking):not(.speaking) .m-smile{display:none}
+.robot[data-mood=happy]:not(.thinking):not(.speaking) .m-grin{display:block}
+.robot[data-mood=happy]:not(.thinking):not(.speaking) .float{animation:hop .9s ease-in-out infinite}
+.robot[data-mood=upset]:not(.thinking):not(.speaking) .eye rect{fill:var(--red)}
+.robot[data-mood=upset]:not(.thinking):not(.speaking) .brows,.robot[data-mood=upset]:not(.thinking):not(.speaking) .steam{display:block}
+.robot[data-mood=upset]:not(.thinking):not(.speaking) .m-smile{display:none}
+.robot[data-mood=upset]:not(.thinking):not(.speaking) .m-sad{display:block}
+.robot[data-mood=upset]:not(.thinking):not(.speaking) .float{animation:shake .5s linear infinite}
+.robot .steam path{animation:puff 1.1s ease-out infinite;transform-box:fill-box}
+@keyframes puff{0%{opacity:0;transform:translateY(4px)}50%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
 </style>
 </head>
 <body>
@@ -323,12 +364,27 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <rect x="50" y="93" width="20" height="7" rx="3" fill="#14163a" stroke="var(--acc)" stroke-width="1.5"/>
   <path d="M28 114 Q28 101 60 101 Q92 101 92 114" fill="#14163a" stroke="var(--g)" stroke-width="2"/>
   <circle class="chest" cx="60" cy="109" r="3.2" fill="var(--g)"/>
+  <g class="brows" stroke="var(--red)" stroke-width="3.4" stroke-linecap="round"><line x1="37" y1="45" x2="55" y2="50"/><line x1="83" y1="45" x2="65" y2="50"/></g>
+  <g class="arcs" fill="none" stroke="var(--g)" stroke-width="4" stroke-linecap="round"><path d="M40 66 Q47 54 54 66"/><path d="M66 66 Q73 54 80 66"/></g>
+  <g class="blush" fill="#ff7aa8" opacity=".55"><ellipse cx="36" cy="75" rx="5.5" ry="3"/><ellipse cx="84" cy="75" rx="5.5" ry="3"/></g>
+  <path class="m m-grin" d="M47 70 Q60 86 73 70 Z" fill="var(--g)"/>
+  <g class="steam" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round"><path class="sp1" d="M12 46 q-4 -6 0 -11"/><path class="sp2" d="M108 46 q4 -6 0 -11"/></g>
+  <g class="mixgrp">
+   <g class="mixorbit">
+    <circle cx="96.8" cy="23.2" r="4.4" fill="#a78bfa"/><circle cx="96.8" cy="96.8" r="4.4" fill="#34d399"/>
+    <circle cx="23.2" cy="96.8" r="4.4" fill="#38bdf8"/><circle cx="23.2" cy="23.2" r="4.4" fill="#fb923c"/>
+   </g>
+   <rect x="31" y="97" width="58" height="21" rx="5" fill="#0d0f2e" stroke="#facc15" stroke-width="2"/>
+   <text x="60" y="112.5" text-anchor="middle" font-size="13.5" font-weight="800" fill="#facc15" font-family="system-ui,Segoe UI,Arial,sans-serif">Ryn</text>
+   <circle cx="29" cy="108" r="4.4" fill="#14163a" stroke="#facc15" stroke-width="1.8"/><circle cx="91" cy="108" r="4.4" fill="#14163a" stroke="#facc15" stroke-width="1.8"/>
+  </g>
  </g>
 </svg>
 </template>
 
 <div id="app">
   <div class="grid3d"></div>
+  <div id="fx" class="fx-gemini"></div>
 
   <div class="top">
     <button class="mini" id="histBtn" aria-label="المحادثات السابقة" title="المحادثات السابقة">
@@ -510,6 +566,57 @@ document.addEventListener('pointermove',e=>{
   bot.style.setProperty('--ex',(dx*4.5)+'px');bot.style.setProperty('--ey',(dy*3.5)+'px');
 });
 
+
+/* ===== خلفيات الموديل + مشاعر الروبوت ===== */
+let moodT=null,fxKeyNow='';
+function setMood(m,ms){
+  clearTimeout(moodT);bot.dataset.mood=m;
+  if(ms)moodT=setTimeout(()=>{bot.dataset.mood='neutral'},ms);
+}
+function moodFromNote(n){
+  n=String(n||'');
+  if(n.indexOf('😤')>=0){setMood('upset');say('😤 أنا زعلان... راضيني!')}
+  else if(n.indexOf('😊')>=0){setMood('happy',9000);say('😊 رجع مبسوط!')}
+  else if(n.indexOf('😄')>=0){setMood('happy',9000)}
+  else if(typeof emo!=='undefined'&&!emo){setMood('neutral')}
+}
+function fxKey(id){
+  id=String(id||'');const l=id.toLowerCase();
+  if(id==='mix')return 'mix';if(id==='img:flux')return 'img';
+  if(l.indexOf('gpt-oss')>=0)return 'gptoss';if(l.indexOf('qwen')>=0)return 'qwen';
+  if(l.indexOf('deepseek')>=0)return 'deepseek';if(l.indexOf('kimi')>=0||l.indexOf('moonshot')>=0)return 'kimi';
+  return 'gemini';
+}
+const FX_RGB={gemini:'167,139,250',gptoss:'52,211,153',qwen:'251,146,60',deepseek:'56,189,248',kimi:'203,213,225',img:'244,114,182',mix:'250,204,21'};
+const FX_COLS={gemini:['167,139,250','96,165,250','244,114,182'],gptoss:['52,211,153','16,185,129','110,231,183'],qwen:['251,146,60','250,204,21','56,189,248'],
+  deepseek:['56,189,248','59,130,246','99,102,241'],kimi:['203,213,225','148,163,184','226,232,240'],img:['244,114,182','251,146,60','56,189,248','163,230,53'],
+  mix:['167,139,250','52,211,153','56,189,248','251,146,60']};
+function rnd(a,b){return a+Math.random()*(b-a)}
+function buildFx(k){
+  const fx=$('#fx'),C=FX_COLS[k],pick=()=>C[Math.floor(Math.random()*C.length)];let h='';
+  const el=(cls,st)=>'<i class="'+cls+'" style="'+st+'"></i>';
+  const stars=n=>{for(let i=0;i<n;i++)h+=el('s','left:'+rnd(3,97).toFixed(1)+'%;top:'+rnd(3,90).toFixed(1)+'%;--c:'+pick()+';--d:'+rnd(2.5,6).toFixed(1)+'s;animation-delay:-'+rnd(0,5).toFixed(1)+'s')};
+  if(k==='gemini'){for(let i=0;i<3;i++)h+=el('b','left:'+rnd(-10,40).toFixed(0)+'%;top:'+rnd(0,70).toFixed(0)+'%;--c:'+C[i%C.length]+';--d:'+rnd(14,22).toFixed(0)+'s;animation-delay:-'+rnd(0,10).toFixed(0)+'s');stars(12)}
+  else if(k==='gptoss'){for(let i=0;i<4;i++)h+=el('r','--c:'+pick()+';--d:7s;animation-delay:-'+(i*1.75)+'s');stars(6)}
+  else if(k==='qwen'){for(let i=0;i<6;i++)h+=el('w','top:'+rnd(5,92).toFixed(0)+'%;--c:'+pick()+';--d:'+rnd(5,10).toFixed(1)+'s;animation-delay:-'+rnd(0,8).toFixed(1)+'s')}
+  else if(k==='deepseek'){for(let i=0;i<12;i++){const z=rnd(8,26).toFixed(0)+'px';h+=el('u','left:'+rnd(2,96).toFixed(0)+'%;--z:'+z+';--x:'+rnd(-30,30).toFixed(0)+'px;--c:'+pick()+';--d:'+rnd(8,16).toFixed(1)+'s;animation-delay:-'+rnd(0,14).toFixed(1)+'s')}}
+  else if(k==='kimi'){for(let i=0;i<3;i++)h+=el('k','left:'+rnd(60,100).toFixed(0)+'%;top:'+rnd(0,40).toFixed(0)+'%;--d:'+rnd(5,9).toFixed(1)+'s;animation-delay:-'+rnd(0,8).toFixed(1)+'s');stars(14)}
+  else if(k==='img'){for(let i=0;i<5;i++)h+=el('p','left:'+rnd(-5,75).toFixed(0)+'%;top:'+rnd(0,80).toFixed(0)+'%;--z:'+rnd(110,200).toFixed(0)+'px;--x:'+rnd(-40,40).toFixed(0)+'px;--y:'+rnd(-40,40).toFixed(0)+'px;--c:'+C[i%C.length]+';--d:'+rnd(9,16).toFixed(0)+'s;animation-delay:-'+rnd(0,9).toFixed(0)+'s')}
+  else{h+=el('c','');stars(12)}
+  fx.className='fx-'+k;fx.innerHTML=h;
+}
+function applyFx(id){
+  const k=fxKey(id);
+  bot.dataset.mix=(k==='mix')?'1':'0';
+  bot.style.setProperty('--bcrgb',FX_RGB[k]);
+  if(k===fxKeyNow)return;
+  const had=!!fxKeyNow;fxKeyNow=k;
+  const fx=$('#fx');
+  if(!had){buildFx(k);return}
+  fx.style.opacity=0;setTimeout(()=>{buildFx(k);fx.style.opacity=1},380);
+}
+setMood('neutral');applyFx('gemini');
+
 /* ===== المحادثات المحفوظة ===== */
 const LS='astra_store_v2',MEM_LS='astra_memory_v1';
 let mem={enabled:true,name:'',custom:'',facts:[]};
@@ -555,7 +662,7 @@ $('#aboutModal').onclick=e=>{if(e.target===$('#aboutModal'))$('#aboutModal').hid
 let emo=false;try{emo=localStorage.getItem('ryn_emo')==='1'}catch(e){}
 function paintEmo(){$('#mEmo').textContent=emo?'💗 وضع المشاعر: شغّال':'💗 وضع المشاعر: طافي'}
 paintEmo();
-$('#mEmo').onclick=()=>{emo=!emo;try{localStorage.setItem('ryn_emo',emo?'1':'0')}catch(e){}paintEmo();$('#menu').hidden=true;toast(emo?'💗 صار عندي مشاعر هلق':'تم إيقاف وضع المشاعر')};
+$('#mEmo').onclick=()=>{emo=!emo;try{localStorage.setItem('ryn_emo',emo?'1':'0')}catch(e){}paintEmo();$('#menu').hidden=true;toast(emo?'💗 صار عندي مشاعر هلق':'تم إيقاف وضع المشاعر');if(emo){setMood('happy',4500);say('😄 يلا نحكي!')}else setMood('neutral')};
 $('#memClose').onclick=closeMemModal;
 $('#memModal').onclick=e=>{if(e.target===$('#memModal'))closeMemModal()};
 $('#memAddBtn').onclick=()=>{const v=$('#memNew').value.trim();if(v){addMemFact(v);$('#memNew').value='';toast('انضافت للذاكرة 🧠')}};
@@ -767,7 +874,7 @@ async function send(){
         if(aborted)break;
         const j=await (await api('/api/job/'+d.job)).json();
         if(aborted)break;
-        if(j.status==='done'){
+        if(j.status==='done'){moodFromNote(j.note);
           if(j.image){const img=await shrink(j.image,720);M().push({role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img})}
           else{const full=j.text||'(رد فاضي)';if(Array.isArray(j.memories)&&j.memories.length){let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك')}const df=j.file?{name:j.file.name,url:'/api/download/'+j.file.id,ext:j.file.ext,size:j.file.size}:null;if(df)say('جهزتلك ملف التحميل 💾');M().push({role:'model',text:full,note:j.note,reveal:full.length<6000&&!df,dfile:df})}
           done=true}
@@ -898,7 +1005,7 @@ async function setModel(id){
   try{
     const r=await api('/api/model',{method:'POST',body:JSON.stringify({id})});const d=await r.json();
     if(!r.ok){toast(d.error||'ما انبدّل');loadModels();return}
-    current=id;$('#mname').textContent=label(id);drawFloating();setPh();
+    current=id;$('#mname').textContent=label(id);drawFloating();setPh();applyFx(id);
     M().push({role:'sys',text:'تم تفعيل: '+label(id)+' ✅'});render();saveStore();
     setBot('happy',1200);say('تمام! صرت '+label(id));
   }catch(x){}
@@ -907,7 +1014,7 @@ async function loadModels(){
   try{
     const d=await (await api('/api/models')).json();
     models=d.options;current=d.current;hasGroq=!!d.groq;codeAuto=!!d.code_auto;
-    $('#mname').textContent=label(current);drawFloating();setPh();
+    $('#mname').textContent=label(current);drawFloating();setPh();applyFx(current);
     if(d.file)showChip(d.file,!!d.file_image);
   }catch(e){}
 }
