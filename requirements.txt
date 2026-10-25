@@ -2,3 +2,4 @@ flask
 pyTelegramBotAPI
 google-genai
 pypdf
+pyflakes
