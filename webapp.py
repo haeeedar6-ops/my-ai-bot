@@ -11,6 +11,10 @@ import hashlib
 import threading
 import logging
 import io
+import ast
+import shutil
+import subprocess
+import tempfile
 import socket
 import ipaddress
 from html.parser import HTMLParser
@@ -26,7 +30,7 @@ except Exception as _e:  # اختياري: الموقع بيشتغل بدونه�
 
 log = logging.getLogger("web")
 WEB_ID = "web"                 # محادثة الموقع (نفس المحادثة من أي جهاز)
-MAX_UPLOAD = 15 * 1024 * 1024
+MAX_UPLOAD = 30 * 1024 * 1024
 APP_NAME = os.environ.get("APP_NAME", "Ryn")
 
 ICON_192 = base64.b64decode("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")
@@ -302,7 +306,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 @keyframes fxdrift{from{transform:translate(-10%,0) scale(1)}to{transform:translate(14%,12%) scale(1.3)}}
 #fx i.s{width:3px;height:3px;border-radius:50%;background:rgb(var(--c));box-shadow:0 0 6px rgb(var(--c));animation:fxtw var(--d) ease-in-out infinite}
 @keyframes fxtw{0%,100%{opacity:.08;transform:scale(.6)}50%{opacity:.95;transform:scale(1.5)}}
-#fx i.r{left:50%;top:36%;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;border:1.5px solid rgba(var(--c),.6);animation:fxring var(--d) ease-out infinite}
+#fx i.r{left:50%;top:var(--ty,15%);width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;border:1.5px solid rgba(var(--c),.6);animation:fxring var(--d) ease-out infinite}
 @keyframes fxring{0%{transform:scale(.4);opacity:.75}100%{transform:scale(10);opacity:0}}
 #fx i.w{left:-40%;width:70%;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,rgba(var(--c),.65),transparent);animation:fxstreak var(--d) linear infinite}
 @keyframes fxstreak{from{transform:translateX(-30%) rotate(-18deg)}to{transform:translateX(330%) rotate(-18deg)}}
@@ -335,6 +339,28 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 .robot[data-mood=upset]:not(.thinking):not(.speaking) .float{animation:shake .5s linear infinite}
 .robot .steam path{animation:puff 1.1s ease-out infinite;transform-box:fill-box}
 @keyframes puff{0%{opacity:0;transform:translateY(4px)}50%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
+
+#fx i.g{top:-6%;font:600 var(--fs) ui-monospace,Consolas,"Courier New",monospace;direction:ltr;unicode-bidi:isolate;white-space:nowrap;color:rgb(var(--c));opacity:0;text-shadow:0 0 8px rgba(var(--c),.55);animation:fxfall var(--d) linear infinite}
+@keyframes fxfall{0%{transform:translateY(0);opacity:0}10%{opacity:var(--o)}90%{opacity:var(--o)}100%{transform:translateY(112vh);opacity:0}}
+#fx i.e{bottom:-4%;font:italic 500 var(--fs) Cambria,"Times New Roman",Georgia,serif;direction:ltr;unicode-bidi:isolate;white-space:nowrap;color:rgb(var(--c));opacity:0;text-shadow:0 0 10px rgba(var(--c),.5);animation:fxfloat var(--d) ease-in-out infinite}
+@keyframes fxfloat{0%{transform:translate(0,0) rotate(var(--r));opacity:0}15%{opacity:var(--o)}85%{opacity:var(--o)}100%{transform:translate(var(--x),-92vh) rotate(calc(var(--r)*-1));opacity:0}}
+#fx i.a{width:var(--z);height:var(--z);color:rgb(var(--c));opacity:.2;animation:fxwander var(--d) ease-in-out infinite alternate}
+#fx i.a svg{width:100%;height:100%;display:block;filter:drop-shadow(0 0 6px rgba(var(--c),.5))}
+@keyframes fxwander{0%{transform:translate(0,0) rotate(var(--r0));opacity:.15}50%{opacity:.55}100%{transform:translate(var(--x),var(--y)) rotate(var(--r1));opacity:.22}}
+#fx i.core{left:50%;top:var(--ty,15%);width:130%;aspect-ratio:1;margin:-65% 0 0 -65%;border-radius:50%;background:radial-gradient(circle,rgba(250,204,21,.38) 0%,rgba(167,139,250,.30) 16%,rgba(56,189,248,.18) 34%,transparent 62%);animation:fxcore 3s ease-in-out infinite}
+@keyframes fxcore{0%,100%{transform:scale(.8);opacity:.6}50%{transform:scale(1.12);opacity:1}}
+#fx i.c{top:var(--ty,15%);margin:-75% 0 0 -75%;opacity:1;animation-duration:14s}
+#fx i.c2{left:50%;top:var(--ty,15%);width:90%;aspect-ratio:1;margin:-45% 0 0 -45%;border-radius:50%;
+ background:conic-gradient(rgba(251,146,60,.55),transparent 22%,rgba(56,189,248,.55) 50%,transparent 72%,rgba(52,211,153,.5));
+ -webkit-mask:radial-gradient(circle,transparent 52%,#000 56%,transparent 64%);mask:radial-gradient(circle,transparent 52%,#000 56%,transparent 64%);animation:fxspinr 9s linear infinite}
+@keyframes fxspinr{to{transform:rotate(-360deg)}}
+#fx i.r.m{border:2px solid rgba(var(--c),.85);box-shadow:0 0 14px rgba(var(--c),.65),inset 0 0 14px rgba(var(--c),.4)}
+#fx i.z{bottom:-2%;width:4px;height:4px;border-radius:50%;background:rgb(var(--c));box-shadow:0 0 10px 2px rgba(var(--c),.8);opacity:0;animation:fxspark var(--d) ease-out infinite}
+@keyframes fxspark{0%{transform:translateY(0) scale(.7);opacity:0}15%{opacity:1}100%{transform:translateY(-78vh) scale(.2);opacity:0}}
+@media(prefers-reduced-motion:reduce){#fx i.g,#fx i.e{opacity:.18!important}}
+.ib.rec{animation:recpulse 1s ease-in-out infinite}
+.ib.rec svg{stroke:var(--red)}
+@keyframes recpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 </style>
 </head>
 <body>
@@ -402,6 +428,8 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <div id="menu" hidden>
     <button id="mNew">✨ محادثة جديدة</button>
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
+    <button id="mFix">🐞 تصحيح كود</button>
+    <button id="mAdl">⬇️ تنزيل الكود تلقائياً: شغّال</button>
     <button id="mEmo">💗 وضع المشاعر: طافي</button>
     <button id="mAbout">ℹ️ عن __APP_NAME__</button>
     <button id="mFile">📎 حذف الملف المرفق</button>
@@ -429,6 +457,9 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <div class="pill">
       <textarea id="inp" rows="1" placeholder="اكتب رسالة..."></textarea>
       <div class="ups">
+        <button class="ib" id="micBtn" aria-label="تسجيل صوت" title="تسجيل صوت">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+        </button>
         <button class="ib" id="imgBtn" aria-label="رفع صورة" title="رفع صورة">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         </button>
@@ -436,8 +467,8 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
         </button>
       </div>
-      <input type="file" id="imgFile" hidden accept="image/*">
-      <input type="file" id="docFile" hidden accept=".pdf,.docx,.txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.log,.yaml,.yml,.lua,.java,.c,.cpp,.cs,.sql">
+      <input type="file" id="imgFile" hidden accept="image/*" multiple>
+      <input type="file" id="docFile" hidden multiple>
     </div>
     <button class="dbtn" id="send" aria-label="إرسال" title="إرسال">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -478,7 +509,9 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <div class="mbody about">
       <p><b>__APP_NAME__</b> مساعد برمجي بالذكاء الاصطناعي بالعربي: بيكتب الكود وبيصلّحو وبيشرحو، وبيجاوب كمان على أي سؤال عام.</p>
       <ul class="alist">
-        <li>💻 <b>برمجة</b>: كتابة وتصحيح وشرح كود بكل اللغات.</li>
+        <li>💻 <b>برمجة</b>: كتابة وشرح كود بكل اللغات، وبيقرا كود طويل وملفات ومشاريع zip كاملة.</li>
+        <li>🐞 <b>تصحيح الكود</b>: فحص آلي للصياغة، وبيصلّح، وبيتأكد إنو الكود المصحّح سليم قبل ما يعطيك ياه.</li>
+        <li>🎙️ <b>تسجيل صوت</b> بيتحوّل لنص، و⬇️ <b>الكود بينزل بملف</b> تلقائياً.</li>
         <li>💬 <b>عدة موديلات</b>: Gemini وQwen وGPT-OSS وDeepSeek، بتختار يلي بدك ياه.</li>
         <li>🧩 <b>Ryn mix</b>: الموديلات بيجاوبوا سوا وبيندمجوا بجواب واحد أدق.</li>
         <li>🎨 <b>توليد صور</b> واقعية حسب وصفك.</li>
@@ -589,20 +622,44 @@ function fxKey(id){
 }
 const FX_RGB={gemini:'167,139,250',gptoss:'52,211,153',qwen:'251,146,60',deepseek:'56,189,248',kimi:'203,213,225',img:'244,114,182',mix:'250,204,21'};
 const FX_COLS={gemini:['167,139,250','96,165,250','244,114,182'],gptoss:['52,211,153','16,185,129','110,231,183'],qwen:['251,146,60','250,204,21','56,189,248'],
-  deepseek:['56,189,248','59,130,246','99,102,241'],kimi:['203,213,225','148,163,184','226,232,240'],img:['244,114,182','251,146,60','56,189,248','163,230,53'],
+  deepseek:['56,189,248','59,130,246','129,140,248'],kimi:['203,213,225','148,163,184','226,232,240'],img:['244,114,182','251,146,60','56,189,248','163,230,53','192,132,252'],
   mix:['167,139,250','52,211,153','56,189,248','251,146,60']};
 function rnd(a,b){return a+Math.random()*(b-a)}
+const ht=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const FX_CODE=['{ }','</>','=>','0101','fn()','#!','&&','||','[ ]','0x1F','i++','if(x)','def','->','1010','$_','::','x=42','404','200','0xFF','a1b2','for','int','null','===','1','0','7','3.14','async'];
+const FX_MATH=['E = mc²','∫ f(x) dx','∑ n²','e^{iπ} + 1 = 0','∇·E = ρ/ε₀','a² + b² = c²','lim sin x / x = 1','∂u/∂t = α∇²u','π ≈ 3.14159','√(x² + y²)','Δx·Δp ≥ ħ/2','f′(x)','x = (−b ± √Δ) / 2a','∞','n! = n·(n−1)!','sin²θ + cos²θ = 1','log₂ 8 = 3','Σ 1/n²'];
+const FX_ICO={
+ brush:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4L10.5 13.5"/><path d="M10.5 13.5c-3-1-5.5 1-5.5 3.5 0 1.3-.8 2.2-2 2.8 4.5 1.2 9.5-.3 9.5-4.6 0-.7-.4-1.3-.9-1.7z" fill="currentColor" fill-opacity=".28"/></svg>',
+ book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="3" width="14" height="18" rx="2" fill="currentColor" fill-opacity=".14"/><path d="M9.5 3v18"/><path d="M12.5 8h5M12.5 12h5M12.5 16h3"/><path d="M5.5 7h-2.2M5.5 12h-2.2M5.5 17h-2.2"/></svg>',
+ pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16.5 4.5l3 3L8 19z" fill="currentColor" fill-opacity=".2"/><path d="M14 7l3 3"/></svg>'};
 function buildFx(k){
   const fx=$('#fx'),C=FX_COLS[k],pick=()=>C[Math.floor(Math.random()*C.length)];let h='';
-  const el=(cls,st)=>'<i class="'+cls+'" style="'+st+'"></i>';
-  const stars=n=>{for(let i=0;i<n;i++)h+=el('s','left:'+rnd(3,97).toFixed(1)+'%;top:'+rnd(3,90).toFixed(1)+'%;--c:'+pick()+';--d:'+rnd(2.5,6).toFixed(1)+'s;animation-delay:-'+rnd(0,5).toFixed(1)+'s')};
-  if(k==='gemini'){for(let i=0;i<3;i++)h+=el('b','left:'+rnd(-10,40).toFixed(0)+'%;top:'+rnd(0,70).toFixed(0)+'%;--c:'+C[i%C.length]+';--d:'+rnd(14,22).toFixed(0)+'s;animation-delay:-'+rnd(0,10).toFixed(0)+'s');stars(12)}
-  else if(k==='gptoss'){for(let i=0;i<4;i++)h+=el('r','--c:'+pick()+';--d:7s;animation-delay:-'+(i*1.75)+'s');stars(6)}
-  else if(k==='qwen'){for(let i=0;i<6;i++)h+=el('w','top:'+rnd(5,92).toFixed(0)+'%;--c:'+pick()+';--d:'+rnd(5,10).toFixed(1)+'s;animation-delay:-'+rnd(0,8).toFixed(1)+'s')}
-  else if(k==='deepseek'){for(let i=0;i<12;i++){const z=rnd(8,26).toFixed(0)+'px';h+=el('u','left:'+rnd(2,96).toFixed(0)+'%;--z:'+z+';--x:'+rnd(-30,30).toFixed(0)+'px;--c:'+pick()+';--d:'+rnd(8,16).toFixed(1)+'s;animation-delay:-'+rnd(0,14).toFixed(1)+'s')}}
-  else if(k==='kimi'){for(let i=0;i<3;i++)h+=el('k','left:'+rnd(60,100).toFixed(0)+'%;top:'+rnd(0,40).toFixed(0)+'%;--d:'+rnd(5,9).toFixed(1)+'s;animation-delay:-'+rnd(0,8).toFixed(1)+'s');stars(14)}
-  else if(k==='img'){for(let i=0;i<5;i++)h+=el('p','left:'+rnd(-5,75).toFixed(0)+'%;top:'+rnd(0,80).toFixed(0)+'%;--z:'+rnd(110,200).toFixed(0)+'px;--x:'+rnd(-40,40).toFixed(0)+'px;--y:'+rnd(-40,40).toFixed(0)+'px;--c:'+C[i%C.length]+';--d:'+rnd(9,16).toFixed(0)+'s;animation-delay:-'+rnd(0,9).toFixed(0)+'s')}
-  else{h+=el('c','');stars(12)}
+  const el=(cls,st,inner)=>'<i class="'+cls+'" style="'+st+'">'+(inner||'')+'</i>';
+  const f1=(v,n)=>v.toFixed(n==null?1:n);
+  const stars=n=>{for(let i=0;i<n;i++)h+=el('s','left:'+f1(rnd(3,97))+'%;top:'+f1(rnd(3,92))+'%;--c:'+pick()+';--d:'+f1(rnd(2.5,6))+'s;animation-delay:-'+f1(rnd(0,5))+'s')};
+  if(k==='gemini'){
+    for(let i=0;i<2;i++)h+=el('b','left:'+f1(rnd(-10,40),0)+'%;top:'+f1(rnd(10,70),0)+'%;--c:'+C[i]+';--d:'+f1(rnd(16,24),0)+'s;animation-delay:-'+f1(rnd(0,10),0)+'s');
+    for(let i=0;i<5;i++)h+=el('r','--c:'+C[i%C.length]+';--d:8.5s;animation-delay:-'+(i*1.7).toFixed(1)+'s');
+    stars(8);
+  }else if(k==='gptoss'){
+    for(let i=0;i<20;i++){const fs=Math.round(rnd(11,19));h+=el('g','left:'+f1(rnd(1,94))+'%;--fs:'+fs+'px;--o:'+f1(rnd(.16,.36),2)+';--c:'+pick()+';--d:'+f1(rnd(9,20))+'s;animation-delay:-'+f1(rnd(0,18))+'s',ht(FX_CODE[Math.floor(Math.random()*FX_CODE.length)]))}
+  }else if(k==='qwen'){
+    for(let i=0;i<6;i++)h+=el('w','top:'+f1(rnd(5,92),0)+'%;--c:'+pick()+';--d:'+f1(rnd(5,10))+'s;animation-delay:-'+f1(rnd(0,8))+'s');
+  }else if(k==='deepseek'){
+    for(let i=0;i<11;i++){const fs=Math.round(rnd(13,21));h+=el('e','left:'+f1(rnd(0,66),0)+'%;--fs:'+fs+'px;--o:'+f1(rnd(.22,.45),2)+';--r:'+f1(rnd(-8,8),0)+'deg;--x:'+f1(rnd(-30,50),0)+'px;--c:'+pick()+';--d:'+f1(rnd(12,22))+'s;animation-delay:-'+f1(rnd(0,20))+'s',ht(FX_MATH[Math.floor(Math.random()*FX_MATH.length)]))}
+  }else if(k==='kimi'){
+    for(let i=0;i<3;i++)h+=el('k','left:'+f1(rnd(60,100),0)+'%;top:'+f1(rnd(0,40),0)+'%;--d:'+f1(rnd(5,9))+'s;animation-delay:-'+f1(rnd(0,8))+'s');
+    stars(14);
+  }else if(k==='img'){
+    for(let i=0;i<2;i++)h+=el('p','left:'+f1(rnd(-5,60),0)+'%;top:'+f1(rnd(0,70),0)+'%;--z:'+f1(rnd(150,220),0)+'px;--x:30px;--y:30px;--c:'+C[i]+';--d:'+f1(rnd(12,18),0)+'s;animation-delay:-'+f1(rnd(0,9),0)+'s');
+    const ico=['brush','book','pencil','brush','book','book','pencil','brush','book'];
+    ico.forEach(n=>{h+=el('a','left:'+f1(rnd(0,88),0)+'%;top:'+f1(rnd(4,86),0)+'%;--z:'+f1(rnd(26,46),0)+'px;--x:'+f1(rnd(-60,60),0)+'px;--y:'+f1(rnd(-70,70),0)+'px;--r0:'+f1(rnd(-35,35),0)+'deg;--r1:'+f1(rnd(-60,60),0)+'deg;--c:'+pick()+';--d:'+f1(rnd(9,17))+'s;animation-delay:-'+f1(rnd(0,12))+'s',FX_ICO[n])});
+  }else{ /* mix: قوة */
+    h+=el('core','');h+=el('c','');h+=el('c2','');
+    for(let i=0;i<4;i++)h+=el('r m','--c:'+C[i]+';--d:4.8s;animation-delay:-'+(i*1.2).toFixed(1)+'s');
+    for(let i=0;i<14;i++)h+=el('z','left:'+f1(rnd(2,97),0)+'%;--c:'+pick()+';--d:'+f1(rnd(2.6,6))+'s;animation-delay:-'+f1(rnd(0,6))+'s');
+    for(let i=0;i<3;i++)h+=el('w','top:'+f1(rnd(10,85),0)+'%;--c:'+pick()+';--d:'+f1(rnd(2.5,4.5))+'s;animation-delay:-'+f1(rnd(0,4))+'s');
+  }
   fx.className='fx-'+k;fx.innerHTML=h;
 }
 function applyFx(id){
@@ -713,7 +770,7 @@ const curChat=()=>store.chats.find(c=>c.id===store.cur);
 const M=()=>curChat().msgs;
 function saveStore(){
   let chats=store.chats.slice(0,25).map(c=>({id:c.id,title:c.title,ts:c.ts,
-    msgs:c.msgs.slice(-80).map(m=>({role:m.role,text:String(m.text).slice(0,8000),note:m.note,err:m.err,file:m.file,dfile:m.dfile,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
+    msgs:c.msgs.slice(-80).map(m=>({role:m.role,text:String(m.text).slice(0,40000),note:m.note,err:m.err,file:m.file,dfile:m.dfile,dfiles:m.dfiles,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
   for(;;){
     try{localStorage.setItem(LS,JSON.stringify({cur:store.cur,chats}));return}
     catch(e){if(chats.length<=2)return;chats.pop()}
@@ -783,8 +840,10 @@ function render(){
     const pic=(m.img&&String(m.img).startsWith('data:image/'))?'<img class="pic" data-i="'+i+'" src="'+m.img+'" alt="صورة">':'';
     const ext=m.file?(String(m.file).includes('.')?String(m.file).split('.').pop().slice(0,5):'FILE'):'';
     const fbox=m.file?'<div class="fcard"><div class="fico">'+esc(ext)+'</div><div class="fmeta"><b>'+esc(m.file)+'</b><small>ملف مرفق 📎</small></div></div>':'';
-    const dbox=m.dfile?'<a class="fcard dl" href="'+m.dfile.url+'" download="'+esc(m.dfile.name)+'" title="اضغط لتحميل الملف"><div class="fico">'+esc(String(m.dfile.ext).toUpperCase())+'</div><div class="fmeta"><b>'+esc(m.dfile.name)+'</b><small>💾 ملف جاهز للتحميل'+(m.dfile.size?(m.dfile.size>1024?' · '+Math.round(m.dfile.size/1024)+' KB':' · '+m.dfile.size+' B'):'')+'</small></div><div class="dlico">⬇️</div></a>':'';
-    const body=pic+fbox+dbox+(m.reveal?'':md(m.text));
+    const dls=(m.dfiles&&m.dfiles.length)?m.dfiles:(m.dfile?[m.dfile]:[]);
+    const dbox=dls.map(f=>'<a class="fcard dl" href="'+f.url+'" download="'+esc(f.name)+'" title="اضغط لتحميل الملف"><div class="fico">'+esc(String(f.ext).toUpperCase())+'</div><div class="fmeta"><b>'+esc(f.name)+'</b><small>💾 ملف جاهز للتحميل'+(f.size?(f.size>1024?' · '+Math.round(f.size/1024)+' KB':' · '+f.size+' B'):'')+'</small></div><div class="dlico">⬇️</div></a>').join('');
+    const shown=(me&&String(m.text).length>3000)?String(m.text).slice(0,3000)+'\n… (انرسل كامل: '+String(m.text).length+' حرف)':m.text;
+    const body=pic+fbox+dbox+(m.reveal?'':md(shown));
     return '<div class="bubble '+(me?'me':'bot')+(m.err?' err':'')+'"'+(m.reveal?' data-rev="1"':'')+'>'+body+'</div>'+
       (m.note?'<div class="note">'+esc(m.note)+'</div>':'')+
       (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button></div>');
@@ -876,7 +935,7 @@ async function send(){
         if(aborted)break;
         if(j.status==='done'){moodFromNote(j.note);
           if(j.image){const img=await shrink(j.image,720);M().push({role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img})}
-          else{const full=j.text||'(رد فاضي)';if(Array.isArray(j.memories)&&j.memories.length){let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك')}const df=j.file?{name:j.file.name,url:'/api/download/'+j.file.id,ext:j.file.ext,size:j.file.size}:null;if(df)say('جهزتلك ملف التحميل 💾');M().push({role:'model',text:full,note:j.note,reveal:full.length<6000&&!df,dfile:df})}
+          else{const full=j.text||'(رد فاضي)';if(Array.isArray(j.memories)&&j.memories.length){let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك')}const dfs=(j.files&&j.files.length?j.files:(j.file?[j.file]:[])).map(f=>({name:f.name,url:'/api/download/'+f.id,ext:f.ext,size:f.size,auto:!!f.auto}));if(dfs.length)say(dfs.some(f=>f.auto)?'نزّلتلك الكود بملف 💾':'جهزتلك ملف التحميل 💾');M().push({role:'model',text:full,note:j.note,reveal:full.length<6000&&!dfs.length,dfiles:dfs});if(autoDl)dfs.filter(f=>f.auto).forEach((f,i)=>setTimeout(()=>autoDownload(f),500+800*i))}
           done=true}
         else if(j.status!=='running'){M().push({role:'model',text:j.text||'صار خطأ',err:true});ok=false;done=true}
       }
@@ -922,38 +981,49 @@ async function prepImage(f){
 }
 async function toMemory(f){const buf=await f.arrayBuffer();return new File([buf],f.name||'file',{type:f.type||'application/octet-stream'})}
 let pendingThumb=null,pendingFile=null;
-async function upload(f,isImg){
-  if(!f)return;
-  const looksImg=isImg||(f.type&&f.type.startsWith('image/'))||/\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(f.name||'');
-  toast(looksImg?'عم أجهّز الصورة...':'عم أرفع الملف...');setBot('thinking');
-  let thumb=null,origName=f.name||(looksImg?'photo.jpg':'file');
-  try{if(looksImg){const p=await prepImage(f);f=p.file;thumb=p.thumb}f=await toMemory(f)}
-  catch(e){dbg('prep failed: '+e.name+' '+e.message);toast('ما قدرت أقرا الملف من الجهاز');setBot('error',1800);return}
-  if(f.size>15*1024*1024){toast('الملف أكبر من 15 ميجا');setBot('error',1800);return}
+async function uploadMany(list,isImg){
+  list=(list||[]).filter(Boolean).slice(0,10);if(!list.length)return;
+  toast(list.length>1?'عم أجهّز '+list.length+' ملفات...':'عم أجهّز الملف...');setBot('thinking');
+  const fd=new FormData();let thumb=null,okCount=0,codeish=0;
+  for(const f0 of list){
+    let f=f0;
+    const looksImg=(f.type&&f.type.startsWith('image/'))||/\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(f.name||'')||(isImg&&!f.type&&!/\.\w+$/.test(f.name||''));
+    const origName=f.name||(looksImg?'photo.jpg':'file');
+    try{if(looksImg){const p=await prepImage(f);f=p.file;if(!thumb)thumb=p.thumb}f=await toMemory(f)}
+    catch(e){dbg('prep failed: '+e.name+' '+e.message);toast('ما قدرت أقرا: '+origName);continue}
+    if(f.size>30*1024*1024){toast(origName+': أكبر من 30 ميجا');continue}
+    if(/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|php|go|rs|kt|swift|rb|sh|sql|lua|yaml|yml|xml|zip|h|hpp|vue)$/i.test(origName))codeish++;
+    fd.append('file',f,origName);okCount++;
+  }
+  if(!okCount){setBot('error',1800);return}
   for(let attempt=0;attempt<2;attempt++){
     try{
-      const fd=new FormData();fd.append('file',f,origName);
       const r=await api('/api/upload',{method:'POST',body:fd});
       let d={};try{d=await r.json()}catch(e){}
       if(!r.ok){toast(d.error||('فشل الرفع ('+r.status+')'));setBot('error',1800);
-        dbg('upload http '+r.status+' '+(d.error||'')+' size='+f.size+' type='+f.type+' standalone='+standalone);return}
-      const fname=d.name||origName;
-      if(d.image){pendingThumb=thumb;pendingFile=null}
-      else{pendingFile=fname;pendingThumb=null}
-      showChip(fname,!!d.image,pendingThumb);
-      if(!inp.value.trim()){inp.value=d.image?'شو بالصورة؟ اشرحلي إياها.':'لخّصلي هالملف واذكر أهم النقاط.';grow()}
-      inp.focus();setBot('happy',1200);say(d.image?'شفت الصورة 👀 شو بدك فيها؟':'استلمت الملف 📎 شو بدك منه؟');return;
+        dbg('upload http '+r.status+' '+(d.error||'')+' n='+okCount+' standalone='+standalone);return}
+      const n=d.count||okCount,fname=d.name||'ملف';
+      if(d.skipped&&d.skipped.length)toast('تخطّيت: '+d.skipped.slice(0,2).join('، '));
+      else if(d.truncated)toast('انقطع جزء من الملف لأنه كبير جداً');
+      pendingThumb=thumb;pendingFile=(d.image&&n===1)?null:fname;
+      showChip(fname,!!d.image,thumb);
+      if(!inp.value.trim()){
+        inp.value=d.image?(n>1?'قارنلي بين هالصور واشرحلي كل وحدة.':'شو بالصورة؟ اشرحلي إياها.')
+          :(codeish?'راجع الكود وصحّح أي أخطاء فيه، وقلّي شو كان الغلط.':'لخّصلي هالملفات واذكر أهم النقاط.');grow()}
+      inp.focus();setBot('happy',1200);
+      say(d.image?(n>1?'شفت '+n+' صور 👀':'شفت الصورة 👀 شو بدك فيها؟'):(n>1?'استلمت '+n+' ملفات 📎':'استلمت الملف 📎 شو بدك منه؟'));return;
     }catch(e){
       if(e.message==='auth')return;
-      dbg('upload exception try'+attempt+': '+e.name+' '+e.message+' size='+f.size+' type='+f.type+' standalone='+standalone+' swctl='+(!!(navigator.serviceWorker&&navigator.serviceWorker.controller)));
+      dbg('upload exception try'+attempt+': '+e.name+' '+e.message+' n='+okCount+' standalone='+standalone);
       if(attempt===1){toast('فشل الرفع: '+e.name+' - '+e.message);setBot('error',1800)}else await sleep(700);
     }
   }
 }
+function upload(f,isImg){return uploadMany(f?[f]:[],isImg)}
 $('#imgBtn').onclick=()=>$('#imgFile').click();
 $('#docBtn').onclick=()=>$('#docFile').click();
-$('#imgFile').onchange=e=>{const f=e.target.files[0];e.target.value='';upload(f,true)};
-$('#docFile').onchange=e=>{const f=e.target.files[0];e.target.value='';upload(f,false)};
+$('#imgFile').onchange=e=>{const fs=Array.from(e.target.files);e.target.value='';uploadMany(fs,true)};
+$('#docFile').onchange=e=>{const fs=Array.from(e.target.files);e.target.value='';uploadMany(fs,false)};
 inp.addEventListener('paste',e=>{const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(x=>x.type.startsWith('image/'));
   if(it){e.preventDefault();upload(it.getAsFile(),true)}});
 function showChip(name,img,thumb){
@@ -964,6 +1034,51 @@ function showChip(name,img,thumb){
 function hideChip(){$('#chip').hidden=true;pendingThumb=null;pendingFile=null}
 async function clearFile(){try{await api('/api/clearfile',{method:'POST'})}catch(e){}hideChip()}
 $('#chipX').onclick=clearFile;
+
+
+/* ===== تسجيل الصوت ===== */
+let rec=null,recChunks=[],recT=null,recStart=0;
+function stopRec(){if(rec&&rec.state!=='inactive')rec.stop()}
+async function sendAudio(blob){
+  const ext=blob.type.indexOf('mp4')>=0?'m4a':(blob.type.indexOf('ogg')>=0?'ogg':'webm');
+  const fd=new FormData();fd.append('audio',blob,'voice.'+ext);
+  try{
+    const r=await api('/api/transcribe',{method:'POST',body:fd});let d={};try{d=await r.json()}catch(e){}
+    if(!r.ok){toast(d.error||'ما قدرت أفرّغ الصوت');setBot('error',1800);return}
+    inp.value=(inp.value?inp.value+' ':'')+d.text;grow();inp.focus();setBot('happy',1200);say('سمعتك 🎧 راجع النص وابعتو');
+  }catch(e){if(e.message!=='auth'){toast('فشل إرسال الصوت');setBot('error',1800)}}
+}
+async function micToggle(){
+  if(rec){stopRec();return}
+  if(!navigator.mediaDevices||!window.MediaRecorder){toast('المتصفح ما بيدعم تسجيل الصوت');return}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+    const mr=new MediaRecorder(stream,mt?{mimeType:mt}:{});rec=mr;recChunks=[];
+    mr.ondataavailable=e=>{if(e.data&&e.data.size)recChunks.push(e.data)};
+    mr.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());clearInterval(recT);$('#micBtn').classList.remove('rec');
+      const blob=new Blob(recChunks,{type:mr.mimeType||mt||'audio/webm'});rec=null;
+      if(blob.size<1500){toast('التسجيل قصير');setBot('idle');return}
+      setBot('thinking');toast('عم أفرّغ الصوت...');await sendAudio(blob)};
+    mr.start();recStart=Date.now();$('#micBtn').classList.add('rec');setBot('listening');toast('🎙️ عم أسجّل... اضغط الميكروفون مرة تانية للإيقاف');
+    recT=setInterval(()=>{if(Date.now()-recStart>180000)stopRec()},1000);
+  }catch(e){rec=null;toast('ما قدرت أفتح الميكروفون (اسمح بالإذن من إعدادات المتصفح)')}
+}
+$('#micBtn').onclick=micToggle;
+
+/* ===== تنزيل الكود تلقائياً + تصحيح كود ===== */
+let autoDl=true;try{autoDl=localStorage.getItem('ryn_adl')!=='0'}catch(e){}
+function paintAdl(){$('#mAdl').textContent=autoDl?'⬇️ تنزيل الكود تلقائياً: شغّال':'⬇️ تنزيل الكود تلقائياً: طافي'}
+paintAdl();
+$('#mAdl').onclick=()=>{autoDl=!autoDl;try{localStorage.setItem('ryn_adl',autoDl?'1':'0')}catch(e){}paintAdl();$('#menu').hidden=true;toast(autoDl?'⬇️ الكود رح ينزل بملف تلقائياً':'تم إيقاف التنزيل التلقائي (بيضل زر التحميل)')};
+function autoDownload(f){try{const a=document.createElement('a');a.href=f.url;a.download=f.name;document.body.appendChild(a);a.click();a.remove()}catch(e){}}
+$('#mFix').onclick=()=>{
+  $('#menu').hidden=true;
+  const head='صحّح هالكود وقلّي شو كان الغلط:\n```\n';
+  inp.value=head+'\n```';grow();inp.focus();inp.setSelectionRange(head.length,head.length);
+  toast('الصق الكودك بين العلامتين (أو ارفع الملف بالمشبك 📎)');
+};
 
 /* ===== القائمة والموديلات ===== */
 $('#menuBtn').onclick=e=>{e.stopPropagation();$('#menu').hidden=!$('#menu').hidden};
@@ -1680,6 +1795,478 @@ def describe(mid, ready=True, model=""):
     return ""
 
 
+# ---------- مكتبة تصحيح الأكواد: فحص آلي + تأكد من الإصلاح ----------
+_FIX_RE = re.compile(
+    r"(صلّ?ح|اصلح|إصلاح|اصلاح|صحّ?ح|تصحيح|فحص|راجع|دبّ?غ|\bfix\b|debug|\bbug\b|خطأ|خطا|غلط|error|traceback|exception|"
+    r"ما\s*(?:بي|عم)?\s*يشتغل|ما\s*اشتغل|مو\s*شغّ?ال|لا\s*يعمل|مشكل|عطلان|crash|syntax)", re.I)
+_FENCE_RE = re.compile(r"```[ \t]*([\w+#.\-]*)[^\n]*\n(.*?)```", re.S)
+_LANG_ALIAS = {"py": "python", "python": "python", "python3": "python", "js": "js", "javascript": "js", "node": "js",
+               "jsx": "js", "mjs": "js", "ts": "ts", "typescript": "ts", "tsx": "ts", "html": "html", "htm": "html",
+               "css": "css", "json": "json", "java": "java", "c": "c", "cpp": "cpp", "c++": "cpp", "cs": "cs",
+               "csharp": "cs", "c#": "cs", "php": "php", "sh": "sh", "bash": "sh", "shell": "sh", "sql": "sql",
+               "lua": "lua", "yaml": "yaml", "yml": "yaml", "xml": "xml", "go": "go", "rust": "rs", "rs": "rs",
+               "kotlin": "kt", "kt": "kt", "swift": "swift", "ruby": "rb", "rb": "rb"}
+_EXT_OF = {"python": "py", "js": "js", "ts": "ts", "html": "html", "css": "css", "json": "json", "java": "java",
+           "c": "c", "cpp": "cpp", "cs": "cs", "php": "php", "sh": "sh", "sql": "sql", "lua": "lua",
+           "yaml": "yaml", "xml": "xml", "go": "go", "rs": "rs", "kt": "kt", "swift": "swift", "rb": "rb"}
+_C_LIKE = {"js", "ts", "java", "c", "cpp", "cs", "php", "go", "rs", "kt", "swift", "css"}
+
+CODEFIX_RULES = (
+    "[وضع تصحيح الكود. معك نتيجة فحص آلي (ممكن تكون ناقصة، فراجع الكود بنفسك كمان).\n"
+    "1) اشرح الأخطاء بنقاط قصيرة: رقم السطر + السبب + الحل.\n"
+    "2) اعطي الكود المصحّح كامل ببلوك واحد بنفس اللغة، بدون أي اختصار أو '...'.\n"
+    "3) لا تغيّر منطق الكود أو أسماءه إلا للضرورة، وقول إذا غيّرت شي.\n"
+    "4) إذا ما لقيت خطأ حقيقي قول هيك بصراحة وما تخترع.]\n"
+)
+
+
+def extract_blocks(text):
+    """بلوكات الكود المسيّجة بـ ``` : [(لغة، كود)]."""
+    return [(m.group(1) or "", m.group(2).strip("\n")) for m in _FENCE_RE.finditer(text or "") if m.group(2).strip()]
+
+
+def guess_lang(hint, code):
+    h = _LANG_ALIAS.get((hint or "").strip().lower())
+    if h:
+        return h
+    c = (code or "").strip()
+    if c.startswith("<") and re.search(r"<(!doctype|html|div|body|head|script)", c, re.I):
+        return "html"
+    if c[:1] in ("{", "["):
+        try:
+            json.loads(c)
+            return "json"
+        except ValueError:
+            pass
+    if re.search(r"^\s*(def |class |import |from \w+ import )", c, re.M) and not re.search(r";\s*$", c, re.M):
+        return "python"
+    if re.search(r"\b(function|const|let|var)\b[^\n]*[=({]|=>", c):
+        return "js"
+    return ""
+
+
+def _check_python(code):
+    errs, warns = [], []
+    try:
+        ast.parse(code)
+    except SyntaxError as e:
+        line = (e.text or "").strip()
+        errs.append("خطأ صياغة بالسطر %s: %s%s" % (e.lineno, e.msg, (" ← «%s»" % line[:80]) if line else ""))
+        return errs, warns
+    try:
+        from pyflakes.api import check as pf_check
+        from pyflakes.reporter import Reporter
+        out = io.StringIO()
+        pf_check(code, "code", Reporter(out, io.StringIO()))
+        for ln in out.getvalue().splitlines()[:15]:
+            m = re.match(r"code:(\d+):(?:\d+:?)?\s*(.*)", ln)
+            warns.append("سطر %s: %s" % (m.group(1), m.group(2)) if m else ln)
+    except Exception:
+        pass
+    return errs, warns
+
+
+def _check_json(code):
+    try:
+        json.loads(code)
+    except ValueError as e:
+        return ["JSON مو صالح بالسطر %s، العمود %s: %s" % (getattr(e, "lineno", "?"), getattr(e, "colno", "?"),
+                                                           getattr(e, "msg", str(e))[:80])], []
+    return [], []
+
+
+_HTML_VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+_HTML_OPTIONAL = {"p", "li", "dt", "dd", "tr", "td", "th", "thead", "tbody", "tfoot", "option", "optgroup", "html", "head", "body"}
+
+
+class _TagCheck(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack, self.msgs = [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in _HTML_VOID:
+            self.stack.append((tag, self.getpos()[0]))
+
+    def handle_endtag(self, tag):
+        if tag in _HTML_VOID:
+            return
+        for i in range(len(self.stack) - 1, -1, -1):
+            if self.stack[i][0] == tag:
+                for t, ln in self.stack[i + 1:]:
+                    if t not in _HTML_OPTIONAL:
+                        self.msgs.append("الوسم <%s> بالسطر %d ما انسكّر" % (t, ln))
+                del self.stack[i:]
+                return
+        self.msgs.append("وسم الإغلاق </%s> بالسطر %d بدون فتح" % (tag, self.getpos()[0]))
+
+
+def _check_html(code):
+    p = _TagCheck()
+    try:
+        p.feed(code)
+        p.close()
+    except Exception:
+        return []
+    msgs = list(p.msgs) + ["الوسم <%s> بالسطر %d ما انسكّر" % (t, ln) for t, ln in p.stack if t not in _HTML_OPTIONAL]
+    return msgs[:10]
+
+
+def _check_brackets(code, lang):
+    """موازنة الأقواس مع تجاهل النصوص والتعليقات (تقريبي، لهيك بيطلع تحذير بس إلا بالـ CSS)."""
+    pairs = {")": "(", "]": "[", "}": "{"}
+    stack, msgs = [], []
+    i, n, line = 0, len(code), 1
+    slashes = lang in _C_LIKE and lang != "css"
+    hashc = lang in ("sh", "yaml", "php", "rb")
+    while i < n and len(msgs) < 6:
+        ch, two = code[i], code[i:i + 2]
+        if ch == "\n":
+            line += 1
+            i += 1
+        elif two == "/*" and (slashes or lang == "css"):
+            j = code.find("*/", i + 2)
+            if j < 0:
+                msgs.append("تعليق /* بالسطر %d ما انسكّر" % line)
+                break
+            line += code.count("\n", i, j)
+            i = j + 2
+        elif two == "//" and slashes:
+            j = code.find("\n", i)
+            i = n if j < 0 else j
+        elif ch == "#" and hashc:
+            j = code.find("\n", i)
+            i = n if j < 0 else j
+        elif ch in "\"'`" and lang != "css":
+            q, j, start = ch, i + 1, line
+            while j < n:
+                if code[j] == "\\":
+                    j += 2
+                    continue
+                if code[j] == q:
+                    break
+                if code[j] == "\n":
+                    line += 1
+                    if q != "`":
+                        break
+                j += 1
+            if j >= n or code[j] != q:
+                msgs.append("نص مفتوح (%s) بالسطر %d ما انسكّر" % (q, start))
+            i = j + 1
+        elif ch in "([{":
+            stack.append((ch, line))
+            i += 1
+        elif ch in ")]}":
+            if stack and stack[-1][0] == pairs[ch]:
+                stack.pop()
+            elif stack:
+                msgs.append("القوس %s بالسطر %d ما بيطابق %s المفتوح بالسطر %d" % (ch, line, stack[-1][0], stack[-1][1]))
+                stack.pop()
+            else:
+                msgs.append("القوس %s بالسطر %d ما إلو فتح مطابق" % (ch, line))
+            i += 1
+        else:
+            i += 1
+    for ch, ln in stack[-3:]:
+        msgs.append("القوس %s بالسطر %d ما انسكّر" % (ch, ln))
+    return msgs[:8]
+
+
+def _check_node(code):
+    """فحص صياغة JS عبر node --check (إذا node موجود). ما بينفّذ الكود."""
+    node = shutil.which("node")
+    if not node or re.search(r"\bReact\b|return\s*\(\s*<|<\w+[^>]*>\s*[\w{(]", code):
+        return None   # الفاحص مو متاح لهالكود
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            fp = os.path.join(d, "x.mjs")
+            with open(fp, "w", encoding="utf-8") as f:
+                f.write(code)
+            r = subprocess.run([node, "--check", fp], capture_output=True, text=True, timeout=6, cwd=d)
+        if r.returncode == 0:
+            return []
+        err = r.stderr or ""
+        m = re.search(r"x\.mjs:(\d+)", err)
+        msg = re.search(r"(SyntaxError:[^\n]*)", err)
+        return ["خطأ صياغة بالسطر %s: %s" % (m.group(1) if m else "?", (msg.group(1) if msg else "SyntaxError")[:100])]
+    except Exception:
+        return None
+
+
+def check_code(lang, code, use_node=True):
+    """(أخطاء صياغة أكيدة، تحذيرات). الأخطاء بس هي يلي بتستدعي إعادة الإصلاح."""
+    code = (code or "")[:200000]
+    if lang == "python":
+        return _check_python(code)
+    if lang == "json":
+        return _check_json(code)
+    if lang == "html":
+        return [], _check_html(code)
+    if lang == "js":
+        errs = _check_node(code) if use_node else None
+        if errs is None:   # node مو موجود: بنعتمد على موازنة الأقواس كتحذير
+            return [], _check_brackets(code, lang)
+        return errs, []
+    if lang == "css":
+        return _check_brackets(code, lang), []
+    if lang in _C_LIKE or lang in ("sh", "php", "rb"):
+        return [], _check_brackets(code, lang)
+    return [], []
+
+
+def diagnose(items):
+    """items: [(تسمية، لغة، كود)] -> نص تقرير للموديل (بيعرض الملفات يلي فيها مشاكل بس)."""
+    bad, clean, nojs, skipped = [], 0, 0, 0
+    for label, lang, code in items[:40]:
+        use_node = nojs < 6
+        if lang == "js":
+            nojs += 1
+        errs, warns = check_code(lang, code, use_node)
+        known = lang in ("python", "json", "html", "css", "js") or lang in _C_LIKE
+        head = "%s (%s، %d سطر):" % (label, lang or "لغة غير معروفة", code.count("\n") + 1)
+        if errs or warns:
+            bad.append(head + "\n" + "\n".join(["  ❌ " + e for e in errs] + ["  ⚠️ " + w for w in warns[:10]]))
+        elif known:
+            clean += 1
+        else:
+            skipped += 1
+    out = ["[فحص آلي للكود: %d ملف/بلوك]" % min(len(items), 40)]
+    out += bad[:8]
+    if len(bad) > 8:
+        out.append("(وفي %d ملفات تانية فيها ملاحظات)" % (len(bad) - 8))
+    if clean:
+        out.append("✅ %d ما لقى الفاحص فيهم أخطاء صياغة، فركّز على الأخطاء المنطقية." % clean)
+    if skipped:
+        out.append("(%d بلغات ما إلها فاحص آلي، راجعها يدوياً)" % skipped)
+    return "\n".join(out)[:4000] + "\n"
+
+
+def doc_code_items(ctx):
+    """بيطلّع كود من الملفات المرفقة (أسماؤها بامتداد كود)."""
+    items = []
+    if not ctx:
+        return items
+    for p in (ctx.get("alt") or ctx.get("parts") or []):
+        t = getattr(p, "text", None)
+        m = re.match(r"\[محتوى الملف: (.+?)\]\n", t or "")
+        if not m:
+            continue
+        ext = os.path.splitext(m.group(1).lower())[1].lstrip(".")
+        lang = _LANG_ALIAS.get(ext)
+        if lang:
+            items.append((m.group(1), lang, t[m.end():][:200000]))
+    return items
+
+
+def code_ascii_base(req, fixed=False):
+    words = re.findall(r"[A-Za-z][A-Za-z0-9]{2,}", req or "")[:3]
+    base = "-".join(w.lower() for w in words) or "code"
+    return ("fixed-" if fixed else "") + base + "-" + time.strftime("%y%m%d-%H%M")
+
+
+# ---------- قراءة وكتابة كود بأي حجم: رفع متعدد + zip + Gemini للمدخلات الكبيرة + إكمال الردود المقطوعة ----------
+TEXT_CAP = 1500000       # أقصى حروف من ملف نصي/كود واحد
+PROJECT_CAP = 2500000    # أقصى حروف من مشروع zip كامل
+BIG_CHARS = 30000        # فوق هالحجم بيروح الطلب لـ Gemini (سياق كبير) بدل موديلات Groq الصغيرة
+_SKIP_DIRS = {"node_modules", ".git", "__pycache__", "dist", "build", "venv", ".venv", "env", ".idea", ".vscode",
+              "target", "vendor", ".next", ".cache", "coverage", ".gradle", ".dart_tool"}
+_BIN_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".svg", ".pdf", ".zip", ".gz", ".tar", ".7z",
+            ".rar", ".mp3", ".mp4", ".wav", ".ogg", ".mov", ".avi", ".woff", ".woff2", ".ttf", ".otf", ".eot",
+            ".pyc", ".pyo", ".so", ".dll", ".exe", ".bin", ".class", ".jar", ".o", ".a", ".dat", ".db", ".sqlite",
+            ".lock", ".map", ".psd", ".ai", ".docx", ".xlsx", ".pptx"}
+
+
+def decode_text(data):
+    """بيفك ترميز نص/كود، وبيرجّع None إذا الملف ثنائي."""
+    if b"\x00" in data[:8192]:
+        if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+            try:
+                return data.decode("utf-16")
+            except Exception:
+                return None
+        return None
+    for enc in ("utf-8-sig", "cp1256", "latin-1"):
+        try:
+            txt = data.decode(enc)
+        except Exception:
+            continue
+        sample = txt[:4000]
+        if sample and sum(1 for ch in sample if ord(ch) < 32 and ch not in "\n\r\t\f") > len(sample) * 0.1:
+            return None
+        return txt
+    return None
+
+
+def text_file_parts(T, name, data):
+    txt = decode_text(data)
+    if txt is None:
+        raise ValueError("unsupported")
+    txt = txt.strip()
+    if not txt:
+        raise ValueError("empty")
+    trunc = len(txt) > TEXT_CAP
+    if trunc:
+        txt = txt[:TEXT_CAP] + "\n...[انقطع الملف لأنه كبير جداً]"
+    return [T.Part(text="[محتوى الملف: %s]\n%s" % (name, txt))], trunc
+
+
+def zip_parts(T, name, data):
+    """مشروع zip: شجرة الملفات + محتوى ملفات الكود (بدون node_modules والملفات الثنائية)."""
+    import zipfile
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(data))
+    except Exception:
+        raise ValueError("bad_zip")
+    infos = [i for i in zf.infolist() if not i.is_dir()]
+    if sum(i.file_size for i in infos) > 250 * 1024 * 1024:
+        raise ValueError("zip_big")
+    tree, keep = [], []
+    for i in infos[:5000]:
+        path = i.filename.replace("\\", "/")
+        segs = path.split("/")
+        if path.startswith("/") or ".." in segs or any(sg in _SKIP_DIRS for sg in segs):
+            continue
+        ext = os.path.splitext(path.lower())[1]
+        if ext in _BIN_EXT or i.file_size > 600000:
+            tree.append(path + "  (تجاوزته: ثنائي أو كبير)")
+            continue
+        tree.append(path)
+        keep.append(i)
+    parts, total, trunc = [], 0, False
+    for i in keep[:600]:
+        try:
+            txt = decode_text(zf.read(i))
+        except Exception:
+            continue
+        if not txt or not txt.strip():
+            continue
+        if total + len(txt) > PROJECT_CAP:
+            trunc = True
+            break
+        total += len(txt)
+        parts.append(T.Part(text="[محتوى الملف: %s]\n%s" % (i.filename, txt.strip())))
+    if not parts:
+        raise ValueError("empty")
+    head = "[مشروع مضغوط: %s — %d ملف]\n%s" % (name, len(tree), "\n".join(tree[:400]))
+    return [T.Part(text=head)] + parts, trunc
+
+
+def contents_size(contents):
+    n = 0
+    for c in contents:
+        for p in c.parts:
+            t = getattr(p, "text", None)
+            if t:
+                n += len(t)
+    return n
+
+
+BIG_HINT = (
+    "\n\nعندك سياق كبير: اقرا كل الكود المرفق بتمعّن، وانتبه للتفاصيل بين الملفات. "
+    "إذا طُلب تعديل ملف اعطِ الجزء المعدّل أو الملف كامل حسب الطلب، وبدون أي اختصار مثل '...'."
+)
+
+
+def big_gemini(b, contents, extra=""):
+    """Gemini بسياق كبير ومهلة طويلة، للمدخلات الكبيرة."""
+    T = b.types
+    models, seen = [], set()
+    for m in list(getattr(b, "DEEP_MODELS", []) or []) + list(getattr(b, "FAST_MODELS", []) or []):
+        if isinstance(m, str) and m not in seen:
+            seen.add(m)
+            models.append(m)
+    last = None
+    for model in models[:3]:
+        for max_out in (int(os.environ.get("GEMINI_MAX_OUT", "60000")), None):
+            try:
+                kw = {"system_instruction": b.get_system_prompt() + extra,
+                      "http_options": T.HttpOptions(timeout=170000)}
+                if max_out:
+                    kw["max_output_tokens"] = max_out
+                resp = b.client.models.generate_content(model=model, contents=contents,
+                                                       config=T.GenerateContentConfig(**kw))
+                t = (resp.text or "").strip()
+                if t:
+                    return t
+            except Exception as e:
+                last = e
+                log.warning("big_gemini %s فشل: %s", model, str(e)[:160])
+    raise last or RuntimeError("Gemini ما رد")
+
+
+def verify_code(b, answer, contents, call, rounds=2):
+    """بيفحص كود الرد (بايثون/JSON/CSS/JS) وإذا فيه خطأ صياغة بيطلب من الموديل يصلّحو (لحد مرتين)."""
+    T = b.types
+
+    def bad_blocks(ans):
+        bad, checked = [], 0
+        for lg, cd in extract_blocks(ans):
+            lang = guess_lang(lg, cd)
+            if lang not in ("python", "json", "js", "css") or cd.count("\n") < 2:
+                continue
+            if re.search(r"(^|\n)[ \t]*(#|//)[ \t]*\.\.\.|\.\.\.[ \t]*(\n|$)", cd):
+                continue   # كود جزئي مقصود
+            if lang == "js" and not shutil.which("node"):
+                continue   # ما في فاحص موثوق لـ JS
+            checked += 1
+            errs, _w = check_code(lang, cd)
+            if errs:
+                bad.append((lang, errs[0]))
+        return bad, checked
+
+    bad, checked = bad_blocks(answer)
+    if not checked:
+        return answer, None
+    for _ in range(rounds):
+        if not bad:
+            return answer, True
+        msg = ("الكود يلي كتبتو فيه خطأ صياغة حسب الفحص الآلي:\n" + "\n".join("- (%s) %s" % x for x in bad)
+               + "\nصحّحو وأعطيني الكود كامل بدون اختصار.")
+        msgs = list(contents) + [T.Content(role="model", parts=[T.Part(text=answer)]),
+                                 T.Content(role="user", parts=[T.Part(text=msg)])]
+        try:
+            ans2 = call(msgs)
+        except Exception as e:
+            log.warning("إعادة الإصلاح فشلت: %s", str(e)[:120])
+            break
+        if not ans2 or not ans2.strip():
+            break
+        answer = continue_if_cut(b, ans2, contents, call)
+        bad, checked = bad_blocks(answer)
+    return answer, (not bad)
+
+
+def merge_continuation(prev, cont):
+    c = (cont or "").lstrip("\n")
+    c = re.sub(r"^```[\w+#.\-]*[ \t]*\n", "", c, count=1)
+    p = prev.rstrip("\n")
+    last = p.split("\n")[-1] if p else ""
+    if last.strip() and c.startswith(last):
+        p = p[:-len(last)]
+    return p + ("" if p.endswith("\n") or not p else "\n") + c
+
+
+def continue_if_cut(b, answer, contents, call, max_rounds=5):
+    """إذا الرد انقطع بنص بلوك كود (``` ناقصة)، بيكمّل لحد ما ينتهي."""
+    T = b.types
+    for _ in range(max_rounds):
+        if (answer or "").count("```") % 2 == 0:
+            break
+        msgs = list(contents) + [
+            T.Content(role="model", parts=[T.Part(text=answer)]),
+            T.Content(role="user", parts=[T.Part(
+                text="الرد انقطع. كمّل الكود من آخر سطر كتبتو بالضبط وبنفس البلوك، بدون تكرار وبدون شرح، وسكّر البلوك بـ ``` بالآخر.")])]
+        try:
+            more = call(msgs)
+        except Exception as e:
+            log.warning("إكمال الرد فشل: %s", str(e)[:120])
+            break
+        if not more or not more.strip():
+            break
+        answer = merge_continuation(answer, more)
+    return answer
+
+
 def register(app, b):
     """بيركّب الموقع على تطبيق Flask تبع البوت. b = وحدة bot.py (للوصول لدوالها)."""
     def load_users():
@@ -1707,7 +2294,7 @@ def register(app, b):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("WEB_SECURE_COOKIE", "1") == "1",
         PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 30,
-        MAX_CONTENT_LENGTH=MAX_UPLOAD + 1024 * 1024,
+        MAX_CONTENT_LENGTH=64 * 1024 * 1024,
     )
     jobs, jlock = {}, threading.Lock()
     fails = {}  # ip -> أوقات المحاولات الغلط
@@ -1761,6 +2348,26 @@ def register(app, b):
             fid = uuid.uuid4().hex
             files[fid] = {"name": name, "mime": mime, "data": data, "exp": now + FILE_TTL}
             return fid
+
+    def auto_code_files(answer, req, fixed=False):
+        """بلوكات الكود الكبيرة (12 سطر وأكتر) بتتحول لملفات تحميل تلقائياً."""
+        out, used = [], set()
+        for lg, cd in extract_blocks(answer):
+            if cd.strip().count("\n") + 1 < 12:
+                continue
+            lang = guess_lang(lg, cd)
+            ext = _EXT_OF.get(lang) or "txt"
+            base = code_ascii_base(req, fixed)
+            name, k = "%s.%s" % (base, ext), 2
+            while name in used:
+                name, k = "%s-%d.%s" % (base, k, ext), k + 1
+            used.add(name)
+            data = (cd.strip("\n") + "\n").encode("utf-8")
+            out.append({"id": store_file(name, "text/plain; charset=utf-8", data), "name": name,
+                        "ext": ext, "size": len(data), "auto": True})
+            if len(out) >= 3:
+                break
+        return out
 
     def pick_or(match):
         try:
@@ -1921,9 +2528,11 @@ def register(app, b):
             if not isinstance(m, dict):
                 continue
             role = "model" if m.get("role") == "model" else "user"
-            text = str(m.get("text", ""))[:6000]
+            text = str(m.get("text", ""))[:150000]
             if text.strip():
                 out.append((role, text))
+        while len(out) > 1 and sum(len(t) for _, t in out) > 450000:   # ميزانية السياق: بنشيل الأقدم
+            out.pop(0)
         while out and out[0][0] != "user":
             out.pop(0)
         return out
@@ -1963,9 +2572,15 @@ def register(app, b):
                 else:
                     mem_prompt = UPSET_PROMPT % (mood["reason"] or "تصرّف ما عجبه") + mem_prompt
             contents = [T.Content(role=r, parts=[T.Part(text=t)]) for r, t in history]
-            pctx = page_context(b, text)
+            pctx = page_context(b, text) if len(text) < 3000 else ""
             if pctx:
                 mem_prompt = pctx + mem_prompt
+            fix_intent = bool(_FIX_RE.search(text))
+            if fix_intent:   # فحص آلي لكود الرسالة وللملفات المرفقة
+                items = [("بلوك %d" % i, guess_lang(lg, cd), cd) for i, (lg, cd) in enumerate(extract_blocks(text), 1)]
+                items += doc_code_items(b.get_doc(W))
+                if items:
+                    mem_prompt = CODEFIX_RULES + diagnose(items) + mem_prompt
             full_user_text = (mem_prompt + text) if mem_prompt else text
             ctx = b.get_doc(W)
             if ctx:
@@ -1975,11 +2590,13 @@ def register(app, b):
                 parts = [T.Part(text=full_user_text)]
             contents.append(T.Content(role="user", parts=parts))
             deep = b.is_deep_question(text)
+            big = contents_size(contents) > BIG_CHARS
+            code_req = fix_intent or b.is_code_request(text)
             answer = note = None
             kind = ""
             yt = [m.group(0) for m in YT_RE.finditer(text)]
             net_fail = ""
-            if not net and not wm(u)["mix"] and b.client:
+            if not net and not wm(u)["mix"] and b.client and len(text) < 1500 and "```" not in text:
                 net = needs_web(text)
             if (net or yt) and b.client:
                 try:
@@ -1989,6 +2606,13 @@ def register(app, b):
                     log.warning("البحث/الفيديو فشل: %s", str(e)[:200])
                     answer = None
                     net_fail = " (الإنترنت ما اشتغل هلق، جاوبت من معلوماتي)"
+            if not answer and big and b.client:   # مدخل كبير: Gemini بسياقو الكبير
+                try:
+                    answer = big_gemini(b, contents, BIG_HINT)
+                    note, kind = "Gemini", "clean"
+                except Exception as e:
+                    log.warning("big_gemini فشل: %s", str(e)[:200])
+                    answer = None
             if answer:
                 pass
             elif wm(u)["mix"] and b._text_only(contents):
@@ -2005,6 +2629,17 @@ def register(app, b):
                 note = short_name(note, labels.get(sel, "Gemini"))
             if net_fail:
                 note = note + " · ⚠️ بدون إنترنت"
+            verified = None
+            if answer and (code_req or big or "```" in answer):
+                call = (lambda m: big_gemini(b, m, BIG_HINT)) if (big and b.client) else \
+                       (lambda m: b.ask_model(W, m, deep=False, code=True)[0])
+                answer = continue_if_cut(b, answer, contents, call)   # كمّل إذا انقطع بنص كود
+                if code_req:
+                    answer, verified = verify_code(b, answer, contents, call)
+            if verified is True:
+                note = note + " · ✅ مفحوص"
+            elif verified is False:
+                note = note + " · ⚠️ فيه خطأ ما انحلّ"
             if is_cancelled(job_id):
                 return
             if emo and answer:
@@ -2037,8 +2672,14 @@ def register(app, b):
                     log.info("ملف تحميل جاهز: %s (%s، %d بايت)", fname, fext, len(data))
                 except Exception:
                     log.exception("توليد ملف التحميل فشل")
+            files_out = [dl] if dl else []
+            if not dl and answer:
+                try:
+                    files_out = auto_code_files(answer, text, fix_intent)
+                except Exception:
+                    log.exception("توليد ملفات الكود التلقائية فشل")
             res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
-                   "file": dl}
+                   "file": (files_out[0] if files_out else None), "files": files_out}
         except Exception as e:
             log.exception("web chat error")
             msg = b.friendly_error(e)
@@ -2070,7 +2711,7 @@ def register(app, b):
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
             jobs[job_id] = {"status": "running", "ts": now, "uid": uid()}
-        threading.Thread(target=run_job, args=(job_id, text[:12000], clean_history(data.get("history")), mem_prompt, emo_on, uid()),
+        threading.Thread(target=run_job, args=(job_id, text[:400000], clean_history(data.get("history")), mem_prompt, emo_on, uid()),
                          daemon=True).start()
         return jsonify(job=job_id)
 
@@ -2091,30 +2732,108 @@ def register(app, b):
         bad = guard()
         if bad:
             return bad
-        f = request.files.get("file")
-        if not f or not f.filename:
+        fl = [f for f in request.files.getlist("file") if f and f.filename][:10]
+        if not fl:
             return jsonify(error="ما وصل ملف"), 400
-        data = f.read()
-        if len(data) > MAX_UPLOAD:
-            return jsonify(error="الملف أكبر من 15 ميجا"), 413
-        name = os.path.basename(f.filename)
-        mime = sniff_image(data)
-        if mime:  # صورة: بنعرفها من محتواها، مو من اسمها (أسماء صور الموبايل أحياناً بدون امتداد)
-            parts = [b.types.Part.from_bytes(data=data, mime_type=mime)]
-            b.set_doc(wid(), name, parts, None)
+        T = b.types
+        all_parts, alt_parts, names, skipped = [], [], [], []
+        any_alt = any_img = trunc = False
+        n_img = 0
+        reasons = {"unsupported": "نوع الملف مو مدعوم", "empty": "فاضي أو ما قدرت أقرأ نصه",
+                   "bad_zip": "ملف zip تالف", "zip_big": "zip كبير كتير"}
+        first_err = ""
+        multi = len(fl) > 1
+        for idx, f in enumerate(fl, 1):
+            data = f.read()
+            name = os.path.basename(f.filename) or "file"
+            if len(data) > MAX_UPLOAD:
+                skipped.append(name + " (أكبر من 30 ميجا)")
+                continue
+            alt = None
+            try:
+                mime = sniff_image(data)
+                low = name.lower()
+                if mime:   # صورة: بنعرفها من محتواها، مو من اسمها
+                    parts = [T.Part.from_bytes(data=data, mime_type=mime)]
+                    any_img = True
+                    n_img += 1
+                elif low.endswith(".zip"):
+                    parts, tr = zip_parts(T, name, data)
+                    trunc |= tr
+                elif low.endswith((".pdf", ".docx")) or os.path.splitext(low)[1] in getattr(b, "MIME_BY_EXT", {}):
+                    parts = b.build_doc_parts(name, data)
+                    alt = b.pdf_alt_parts(name, data) if low.endswith(".pdf") else None
+                else:
+                    parts, tr = text_file_parts(T, name, data)
+                    trunc |= tr
+            except ValueError as e:
+                msg = reasons.get(str(e), "ما قدرت أفتحو، يمكن تالف")
+                first_err = first_err or msg
+                skipped.append("%s (%s)" % (name, msg))
+                continue
+            label = [T.Part(text="[مرفق %d: %s]" % (len(names) + 1, name))] if multi else []
+            all_parts += label + parts
+            alt_parts += label + (alt or parts)
+            any_alt |= bool(alt)
+            names.append(name)
+        if not names:
+            return jsonify(error=first_err or "ما قدرت أقرأ الملفات"), 400
+        docname = names[0] if len(names) == 1 else "%d ملفات: %s%s" % (len(names), "، ".join(names[:3]), "…" if len(names) > 3 else "")
+        b.set_doc(wid(), docname, all_parts, alt_parts if any_alt else None)
+        if any_img:
             b.doc_ctx[wid()]["image"] = True
-            b.doc_ctx[wid()]["exp"] = time.time() + 600   # الصورة بتضل مرفقة 10 دقايق
-            return jsonify(ok=True, name=name, image=True)
-        try:
-            parts = b.build_doc_parts(name, data)
-        except ValueError as e:
-            reason = str(e)
-            msg = {"unsupported": "نوع الملف مو مدعوم (PDF، Word، صور JPG/PNG/WEBP، ونصوص/كود).",
-                   "empty": "الملف فاضي أو ما قدرت أقرأ نصه."}.get(reason, "ما قدرت أفتح الملف، يمكن تالف.")
-            return jsonify(error=msg), 400
-        alt = b.pdf_alt_parts(name, data) if name.lower().endswith(".pdf") else None
-        b.set_doc(wid(), name, parts, alt)
-        return jsonify(ok=True, name=name, image=False)
+            b.doc_ctx[wid()]["exp"] = time.time() + 600   # لو في صور: بتضل مرفقة 10 دقايق
+        return jsonify(ok=True, name=docname, image=(n_img == len(names)), count=len(names),
+                       skipped=skipped, truncated=trunc)
+
+    # ---------- تفريغ الصوت (تسجيل من الميكروفون) ----------
+    @app.post("/api/transcribe")
+    def api_transcribe():
+        bad = guard()
+        if bad:
+            return bad
+        f = request.files.get("audio")
+        data = f.read() if f else b""
+        if len(data) < 1000:
+            return jsonify(error="التسجيل قصير أو فاضي"), 400
+        if len(data) > 20 * 1024 * 1024:
+            return jsonify(error="التسجيل كبير كتير"), 413
+        mime = (f.mimetype or "audio/webm").split(";")[0].strip() or "audio/webm"
+        ext = {"audio/webm": "webm", "audio/ogg": "ogg", "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/wav": "wav",
+               "audio/x-m4a": "m4a"}.get(mime, "webm")
+        text, why = "", ""
+        if b._groq_ready():   # Whisper عبر Groq (بيقبل webm/mp4/ogg)
+            try:
+                form = {"model": os.environ.get("GROQ_STT_MODEL", "whisper-large-v3-turbo"), "response_format": "json",
+                        "prompt": "تفريغ كلام عربي شامي مع مصطلحات برمجة بالإنجليزي مثل Python وJavaScript وAPI."}
+                lang = os.environ.get("STT_LANGUAGE", "").strip()
+                if lang:
+                    form["language"] = lang
+                r = b.requests.post(b.GROQ_BASE + "/audio/transcriptions",
+                                    headers={"Authorization": "Bearer " + b._env_key("GROQ_API_KEY")},
+                                    files={"file": ("voice." + ext, data, mime)}, data=form, timeout=60)
+                if r.status_code == 200:
+                    text = str((r.json() or {}).get("text", "")).strip()
+                else:
+                    why = "Groq %s" % r.status_code
+            except Exception as e:
+                why = "Groq: " + str(e)[:80]
+        if not text and b.client:   # احتياط: Gemini بيسمع الصوت
+            try:
+                T = b.types
+                resp = b.client.models.generate_content(
+                    model=[m for m in b.FAST_MODELS if isinstance(m, str)][0],
+                    contents=[T.Content(role="user", parts=[
+                        T.Part.from_bytes(data=data, mime_type=mime),
+                        T.Part(text="فرّغ هالتسجيل الصوتي حرفياً بلغة المتحدث، بدون أي إضافة أو شرح.")])],
+                    config=T.GenerateContentConfig(http_options=T.HttpOptions(timeout=60000)))
+                text = (resp.text or "").strip()
+            except Exception as e:
+                why = (why + " | " if why else "") + "Gemini: " + str(e)[:80]
+        if not text:
+            log.warning("تفريغ الصوت فشل: %s", why)
+            return jsonify(error="ما قدرت أفرّغ الصوت. جرّب تحكي أوضح أو أطول شوي."), 502
+        return jsonify(ok=True, text=text)
 
     @app.post("/api/clientlog")
     def api_clientlog():
