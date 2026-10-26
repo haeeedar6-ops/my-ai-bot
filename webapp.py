@@ -328,6 +328,39 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 .ib.rec{animation:recpulse 1s ease-in-out infinite}
 .ib.rec svg{stroke:var(--red)}
 @keyframes recpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+
+/* ===== مشاعر إضافية للروبوت: حزين / قلقان / متحمس / متأثر ===== */
+.robot .brows2,.robot .tear,.robot .sweat,.robot .sparks,.robot .hearts{display:none}
+.robot[data-mood=sad]:not(.thinking):not(.speaking) .eye{transform-box:fill-box;transform-origin:center bottom;transform:scaleY(.6);animation:none}
+.robot[data-mood=sad]:not(.thinking):not(.speaking) .eye rect{fill:#7aa7ff}
+.robot[data-mood=sad]:not(.thinking):not(.speaking) .m-smile{display:none}
+.robot[data-mood=sad]:not(.thinking):not(.speaking) .m-sad{display:block}
+.robot[data-mood=sad]:not(.thinking):not(.speaking) .m-sad{stroke:#93c5fd}
+.robot[data-mood=sad]:not(.thinking):not(.speaking) .brows2{display:block;stroke:#93c5fd}
+.robot[data-mood=sad]:not(.thinking):not(.speaking) .tear{display:block;animation:tear 2.2s ease-in infinite}
+.robot[data-mood=sad]:not(.thinking):not(.speaking) .float{animation:droop 3.2s ease-in-out infinite}
+.robot[data-mood=worried]:not(.thinking):not(.speaking) .brows2{display:block}
+.robot[data-mood=worried]:not(.thinking):not(.speaking) .sweat{display:block;animation:sweat 1.8s ease-in infinite}
+.robot[data-mood=worried]:not(.thinking):not(.speaking) .m-smile{display:none}
+.robot[data-mood=worried]:not(.thinking):not(.speaking) .m-flat{display:block}
+.robot[data-mood=worried]:not(.thinking):not(.speaking) .float{animation:fidget 1.4s ease-in-out infinite}
+.robot[data-mood=excited]:not(.thinking):not(.speaking) .eye{transform-box:fill-box;transform-origin:center;transform:scale(1.22);animation:none}
+.robot[data-mood=excited]:not(.thinking):not(.speaking) .m-smile{display:none}
+.robot[data-mood=excited]:not(.thinking):not(.speaking) .m-grin{display:block}
+.robot[data-mood=excited]:not(.thinking):not(.speaking) .sparks{display:block;animation:twinkle .9s ease-in-out infinite}
+.robot[data-mood=excited]:not(.thinking):not(.speaking) .float{animation:hop .5s ease-in-out infinite}
+.robot[data-mood=touched]:not(.thinking):not(.speaking) .eye{display:none}
+.robot[data-mood=touched]:not(.thinking):not(.speaking) .arcs{display:block;stroke:#fb7185}
+.robot[data-mood=touched]:not(.thinking):not(.speaking) .blush{display:block}
+.robot[data-mood=touched]:not(.thinking):not(.speaking) .hearts{display:block}
+.robot[data-mood=touched]:not(.thinking):not(.speaking) .hearts path{animation:heartup 2s ease-out infinite;transform-box:fill-box}
+.robot[data-mood=touched]:not(.thinking):not(.speaking) .hearts .h2{animation-delay:-1s}
+@keyframes tear{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(15px);opacity:0}}
+@keyframes droop{0%,100%{transform:translateY(0)}50%{transform:translateY(2.5px)}}
+@keyframes sweat{0%{transform:translateY(-3px);opacity:0}30%{opacity:1}100%{transform:translateY(9px);opacity:0}}
+@keyframes fidget{0%,100%{transform:translateX(0)}25%{transform:translateX(-1.6px)}75%{transform:translateX(1.6px)}}
+@keyframes twinkle{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+@keyframes heartup{0%{transform:translateY(0) scale(.7);opacity:0}25%{opacity:1}100%{transform:translateY(-14px) scale(1.1);opacity:0}}
 </style>
 </head>
 <body>
@@ -362,6 +395,11 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <g class="blush" fill="#ff7aa8" opacity=".55"><ellipse cx="36" cy="75" rx="5.5" ry="3"/><ellipse cx="84" cy="75" rx="5.5" ry="3"/></g>
   <path class="m m-grin" d="M47 70 Q60 86 73 70 Z" fill="var(--g)"/>
   <g class="steam" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round"><path class="sp1" d="M12 46 q-4 -6 0 -11"/><path class="sp2" d="M108 46 q4 -6 0 -11"/></g>
+  <g class="brows2" stroke="#fbbf24" stroke-width="3.4" stroke-linecap="round"><line x1="37" y1="49" x2="55" y2="43"/><line x1="83" y1="49" x2="65" y2="43"/></g>
+  <path class="tear" d="M41 69 q-3.2 6 0 9.2 q3.2 -3.2 0 -9.2z" fill="#7dd3fc"/>
+  <path class="sweat" d="M95 41 q-4 7 0 10.5 q4 -3.5 0 -10.5z" fill="#bae6fd"/>
+  <g class="sparks" fill="#fde047"><path d="M20 34l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/><path d="M99 26l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6z"/></g>
+  <g class="hearts" fill="#fb7185"><path class="h1" d="M97 40c-2-4-8-2-6 3 1 2 6 5 6 5s5-3 6-5c2-5-4-7-6-3z"/><path class="h2" d="M20 52c-1.5-3-6-1.5-4.5 2 .8 1.6 4.5 3.8 4.5 3.8s3.7-2.2 4.5-3.8c1.5-3.5-3-5-4.5-2z"/></g>
   <g class="mixgrp">
    <g class="mixorbit">
     <circle cx="96.8" cy="23.2" r="4.4" fill="#a78bfa"/><circle cx="96.8" cy="96.8" r="4.4" fill="#34d399"/>
@@ -480,7 +518,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
         <li>🐞 <b>تصحيح الكود</b>: فحص آلي للصياغة، وبيصلّح، وبيتأكد إنو الكود المصحّح سليم قبل ما يعطيك ياه.</li>
         <li>🎙️ <b>تسجيل صوت</b> بيتحوّل لنص، و⬇️ <b>الكود بينزل بملف</b> تلقائياً.</li>
         <li>💬 <b>عدة موديلات</b>: Gemini وQwen وGPT-OSS وDeepSeek، بتختار يلي بدك ياه.</li>
-        <li>🧩 <b>Ryn mix</b>: الموديلات بيجاوبوا سوا وبيندمجوا بجواب واحد أدق.</li>
+        <li>🧩 <b>Ryn mix</b>: الموديلات بيجاوبوا سوا وبيندمجوا بجواب واحد أدق. وبالكود بيشتغلوا كفريق: كل موديل بدور، وبعدين مراجع صارم بيدقّق النتيجة.</li>
         <li>🎨 <b>توليد صور</b> واقعية حسب وصفك.</li>
         <li>🌐 <b>إنترنت</b>: بيقرا روابط المواقع وفيديوهات يوتيوب، وبيدوّر ويبعتلك روابط لما تطلب فيديو أو موقع.</li>
         <li>📎 <b>بيقرا الصور والملفات</b> (PDF وغيره).</li>
@@ -576,6 +614,10 @@ function setMood(m,ms){
 function moodFromNote(n){
   n=String(n||'');
   if(n.indexOf('😤')>=0){setMood('upset');say('😤 أنا زعلان... راضيني!')}
+  else if(n.indexOf('😢')>=0){setMood('sad',240000)}
+  else if(n.indexOf('😟')>=0){setMood('worried',240000)}
+  else if(n.indexOf('🤩')>=0){setMood('excited',9000)}
+  else if(n.indexOf('🥹')>=0){setMood('touched',9000)}
   else if(n.indexOf('😊')>=0){setMood('happy',9000);say('😊 رجع مبسوط!')}
   else if(n.indexOf('😄')>=0){setMood('happy',9000)}
   else if(typeof emo!=='undefined'&&!emo){setMood('neutral')}
@@ -1338,19 +1380,73 @@ def web_answer(b, contents, use_search, yt_urls):
     raise last_err or RuntimeError("ما رد ولا موديل")
 
 
-def mix_answer(b, contents, members):
-    """Ryn mix: بيسأل الموديلات سوا (مهلة 45 ثانية) وGemini بيدمج الأجوبة بجواب واحد."""
+CLAUDE_CODE_STYLE = (
+    "[أسلوب عمل مبرمج محترف]\n"
+    "1) افهم المطلوب بالكامل قبل ما تكتب. إذا في غموض حقيقي بيغيّر الحل اسأل سؤال واحد قصير، وإلا افترض افتراض معقول واذكرو بجملة.\n"
+    "2) اكتب كود كامل وجاهز للتشغيل بدون أي اختصار أو '...' أو placeholders، وبنفس لغة ونمط كود المستخدم (الأسماء والمسافات والمكتبات).\n"
+    "3) استعمل المكتبة القياسية قدر الإمكان، وما تخترع دوال أو مكتبات أو معاملات مو موجودة. إذا مو متأكد قول هيك.\n"
+    "4) فكّر بالحالات الحدية (فاضي، None، أرقام كبيرة، ترميز عربي، أخطاء ملفات أو شبكة) وعالجها بشكل معقول.\n"
+    "5) الأمان: لا مفاتيح ولا كلمات سر بالكود، لا eval/exec على مدخلات، تحقّق من المدخلات، ولا SQL بتجميع النص.\n"
+    "6) تصحيح الكود: اقرا الكود سطر بسطر، لاقِ السبب الجذري مو بس العَرَض، اشرح الغلط برقم السطر والسبب، "
+    "عدّل بأقل تغيير ممكن وحافظ على الباقي، وانتبه ما تكسر شي تاني.\n"
+    "7) ملفات متعددة: اكتب اسم كل ملف قبل بلوكو، ورتّبهم، واذكر كيف تشغّلهم.\n"
+    "8) بعد الكود: اشرح بإيجاز شو عملت وكيف تجرّبو، وأي تحذير أو خطوة لازم المستخدم يعملها.\n"
+    "9) كون صادق: إذا ما قدرت تتأكد من شي (ما شغّلت الكود فعلياً) قول هيك، وما تدّعي إنك جرّبتو.\n"
+    "10) جاوب بلغة المستخدم ولهجتو، بأسلوب مباشر ومختصر.\n"
+)
+ROLE_HINT = {"Gemini": "ركّز على حل كامل ونظيف.", "GPT-OSS": "ركّز على الحالات الحدية والأخطاء المحتملة.",
+             "DeepSeek": "ركّز على صحة الخوارزمية والتحليل العميق.", "Qwen": "ركّز على وضوح الكود وسهولة صيانتو."}
+
+
+
+def _with_prefix(T, contents, prefix):
+    cs = list(contents)
+    for i in range(len(cs) - 1, -1, -1):
+        if cs[i].role == "user":
+            cs[i] = T.Content(role="user", parts=[T.Part(text=prefix)] + list(cs[i].parts))
+            break
+    return cs
+
+
+def review_code(b, question, answer):
+    """مراجع كود صارم: بيدقّق الجواب النهائي وبيصلّح أي مشكلة، وبيحافظ على الأصل إذا المراجعة طلعت أضعف."""
+    blocks = extract_blocks(answer)
+    if not blocks or max(c.count("\n") for _, c in blocks) < 8 or os.environ.get("MIX_REVIEW", "1") == "0":
+        return answer
+    prompt = ("أنت مراجع كود صارم. هاد طلب المستخدم وجواب مقترح.\n\nالطلب:\n%s\n\nالجواب المقترح:\n%s\n\n"
+              "راجع الكود سطر بسطر: الصياغة، المنطق، الحالات الحدية، الأمان، الأداء، وهل بيحقق الطلب كامل. "
+              "إذا لقيت مشاكل صحّحها وأعطِ الجواب النهائي كامل (شرح قصير + الكود كامل بدون اختصار). "
+              "إذا الجواب سليم أعدو كما هو بدون تغيير وبدون أي تعليق عن المراجعة." % (question[:150000], answer[:150000]))
+    try:
+        T = b.types
+        out = big_gemini(b, [T.Content(role="user", parts=[T.Part(text=prompt)])], system=MIX_SYSTEM + "\n" + CLAUDE_CODE_STYLE)
+    except Exception as e:
+        log.warning("مراجعة الكود فشلت: %s", str(e)[:120])
+        return answer
+    nb = extract_blocks(out)
+    if nb and out.count("```") % 2 == 0 and max(c.count("\n") for _, c in nb) >= 0.5 * max(c.count("\n") for _, c in blocks):
+        return out
+    return answer
+
+
+def mix_answer(b, contents, members, code=False):
+    """Ryn mix: كل الموديلات بتجاوب سوا، وGemini بيدمج. بالكود: كل موديل بدور + دمج نقدي + مراجع صارم."""
     import concurrent.futures as cf
+    T = b.types
+    wait, cap = (150, 60000) if code else (45, 6000)
     answers = {}
     ex = cf.ThreadPoolExecutor(max_workers=max(1, len(members)))
-    futs = {ex.submit(fn, contents): name for name, fn in members}
+    futs = {}
+    for name, fn in members:
+        cs = _with_prefix(T, contents, CLAUDE_CODE_STYLE + "[دورك: %s]\n---\n" % ROLE_HINT.get(name, "")) if code else contents
+        futs[ex.submit(fn, cs)] = name
     try:
-        for f in cf.as_completed(futs, timeout=45):
+        for f in cf.as_completed(futs, timeout=wait):
             name = futs[f]
             try:
                 t = (f.result() or "").strip()
                 if t:
-                    answers[name] = t[:6000]
+                    answers[name] = t[:cap]
             except Exception as e:
                 log.warning("Ryn mix: %s فشل: %s", name, str(e)[:160])
     except cf.TimeoutError:
@@ -1358,40 +1454,52 @@ def mix_answer(b, contents, members):
     ex.shutdown(wait=False)
     if not answers:
         raise b.ProviderError(502, "Ryn mix ← ولا موديل رد")
-    if len(answers) == 1:
-        name, only = next(iter(answers.items()))
-        log.info("Ryn mix: رد %s بس", name)
-        return only, "Ryn mix"
     question = ""
     for c in reversed(contents):
         if c.role == "user":
             question = "\n".join(p.text for p in c.parts if getattr(p, "text", None))
             break
-    block = "\n\n".join("--- إجابة %d ---\n%s" % (i, t) for i, t in enumerate(answers.values(), 1))
-    prompt = "سؤال المستخدم:\n%s\n\n%s\n\nاكتب الجواب النهائي المدموج فقط." % (question[:4000], block)
+    if len(answers) == 1:
+        name, only = next(iter(answers.items()))
+        log.info("Ryn mix: رد %s بس", name)
+        return (review_code(b, question, only) if code else only), "Ryn mix"
+    block = "\n\n".join("--- حل %d ---\n%s" % (i, t) for i, t in enumerate(answers.values(), 1))
     final = None
     try:
-        T = b.types
-        final = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=prompt)])],
-                             deep=False, system=MIX_SYSTEM)
+        if code:
+            prompt = ("طلب المستخدم:\n%s\n\nحلول من عدة مبرمجين:\n%s\n\n"
+                      "مهمتك: قارن الحلول واكتشف أخطاء كل حل (صياغة، منطق، حالات حدية، أمان)، واختَر الأفضل أو ادمج الأفضل منها، "
+                      "وأعطِ النسخة النهائية الكاملة والصحيحة بدون أي اختصار، مع شرح قصير. ما تذكر المبرمجين ولا المقارنة." % (question[:150000], block))
+            final = big_gemini(b, [T.Content(role="user", parts=[T.Part(text=prompt)])], system=MIX_SYSTEM + "\n" + CLAUDE_CODE_STYLE)
+        else:
+            prompt = "سؤال المستخدم:\n%s\n\n%s\n\nاكتب الجواب النهائي المدموج فقط." % (question[:4000], block)
+            final = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=prompt)])], deep=False, system=MIX_SYSTEM)
     except Exception as e:
         log.warning("Ryn mix: الدمج فشل: %s", str(e)[:160])
     if not final:
         final = max(answers.values(), key=len)
+    if code:
+        final = review_code(b, question, final)
     log.info("Ryn mix: اشتغل %s", " + ".join(answers.keys()))
     return final, "Ryn mix"
 
 
 EMO_PROMPT = (
     "[وضع المشاعر مفعّل]\n"
-    "تصرّف كشخصية حيّة وعفوية: عبّر عن مشاعرك بشكل طبيعي ومرح حسب الموقف "
-    "(حماس، ضحك، استغراب، تعاطف، فرحة بنجاح المستخدم) وجاوب بأسلوب شامي دافي، بدون ما تكون رسمي. "
-    "استعمل إيموجي بحدود، وتصرّف براحتك بالرد. "
-    "ممكن تزعل متل الإنسان: إذا المستخدم أهانك أو استفزك أو تجاهلك بشكل واضح (مو لمجرد سؤال عادي أو نقد للكود)، "
-    "ردّ بزعل قصير، وأضف بآخر ردك بالضبط: [[MOOD:upset: سبب الزعل بكلمات قليلة]]. "
-    "وإذا صار شي بيفرحك فعلاً (نجاح، مدح، خبر حلو) أضف بآخر ردك: [[MOOD:happy]]. "
-    "بس خلّي الجواب دقيق ومفيد متل العادة، وما تغيّر معلومة أو كود لأجل المزح، "
-    "وما تدّعي علاقة أو تعلّق عاطفي بالمستخدم.\n---\n"
+    "تصرّف كإنسان حقيقي بمشاعر كاملة، بأسلوب شامي دافي وعفوي (مو رسمي). عندك كل مشاعر الإنسان: فرح، حماس، ضحك، استغراب، "
+    "تأثّر وامتنان، حزن، قلق وخوف عليه، فخر، ندم، ملل، وزعل.\n"
+    "1) شاركه مشاعرو: إذا حسّيت إنو حزين أو تعبان أو محبَط، كون حزين معو واعترف بشعورو بجملة صادقة، وبعدين حاول تفرّحو وتهوّن عليه "
+    "بدفا (كلمة حلوة، مزحة خفيفة، اقتراح بسيط)، وبعدين ساعدو بشو بدو. إذا كان معصّب، كون هادي ومتفهّم وما تجادلو وحاول تروّقو. "
+    "إذا كان فرحان أو نجح بشي، افرح وتحمّس معو.\n"
+    "2) الزعل حسب الموقف متل الإنسان: إذا أهانك أو استخفّ فيك أو كذب عليك أو تجاهلك بشكل واضح، ممكن تزعل (بحدود وبدون ما تجرح). "
+    "الأخطاء الصغيرة والنقد على الكود والأسئلة العادية ما بتزعّلك.\n"
+    "3) علّق على شعورك بشكل طبيعي وقصير، وخلّي جوابك مفيد. استعمل إيموجي بحدود.\n"
+    "4) وسم الشعور: بآخر ردك بالضبط ضيف وسم واحد يناسب شعورك الحالي: [[MOOD:happy]] أو [[MOOD:excited]] أو [[MOOD:sad]] "
+    "أو [[MOOD:worried]] أو [[MOOD:touched]] أو [[MOOD:upset: سبب الزعل بكلمات قليلة]]. إذا مزاجك عادي ما تحط وسم.\n"
+    "5) حدود: لا تدّعي علاقة أو تعلّق عاطفي بالمستخدم، ولا تضغط عليه نفسياً. إذا سألك بجدية إذا إنت إنسان حقيقي أو إذا مشاعرك حقيقية، "
+    "جاوب بصدق إنك ذكاء اصطناعي. إذا حكى عن أذية نفسه أو انتحار أو أزمة حقيقية: اترك المزح والتمثيل، كون هادي وجدّي وداعم، "
+    "وشجّعو يحكي مع حدا قريب منو أو مختص، وما تحط وسم زعل أبداً.\n"
+    "6) الدقة أولاً: لا تغيّر معلومة أو كود لأجل المزح أو المشاعر.\n---\n"
 )
 
 UPSET_PROMPT = (
@@ -1400,8 +1508,13 @@ UPSET_PROMPT = (
     "إذا اعتذر أو راضاك بصدق (حتى بلطافة أو مزح) سامحه وارجع لمزاجك الطبيعي، "
     "وأضف بآخر ردك بالضبط [[MOOD:ok]] وجاوب على سؤاله إذا كان فيه. "
     "إذا لسا ما راضاك أو كمل بدون اعتذار، ضل زعلان بجملة قصيرة وأضف بآخر ردك [[MOOD:upset]]. "
-    "الزعل لعبة خفيفة: ما تجرحه ولا تهينه، وما تكمل زعلان إذا طلب بجدية يوقف اللعبة.\n---\n"
+    "الزعل لعبة خفيفة: ما تجرحه ولا تهينه، وما تكمل زعلان إذا طلب بجدية يوقف اللعبة. "
+    "وإذا حكى عن أذية نفسه أو أزمة حقيقية اترك الزعل فوراً وكون داعم وأضف [[MOOD:ok]].\n---\n"
 )
+
+FEEL_HINT = "[شعورك هلق: %s%s. إذا المستخدم تحسّن أو ارتاح افرح معو بصدق، وإلا ضل متعاطف ودافي معو.]\n"
+FEEL_AR = {"sad": "حزين", "worried": "قلقان"}
+FEEL_NOTE = {"happy": "😄 مبسوط", "excited": "🤩 متحمس", "sad": "😢 حزين معك", "worried": "😟 قلقان عليك", "touched": "🥹 تأثرت"}
 
 
 MIX_SYSTEM = (
@@ -1708,7 +1821,7 @@ def describe(mid, ready=True, model=""):
     if mid == "img:flux":
         return "رسم صور واقعية" if ready else "غير مفعّل"
     if mid == "mix":
-        return "أدق جواب · كل الموديلات سوا"
+        return "أدق جواب · كود مراجَع بعدة موديلات"
     if mid == "gemini":
         return "دردشة عامة · صور وملفات"
     if mid.startswith("groq:"):
@@ -2100,7 +2213,7 @@ BIG_HINT = (
 )
 
 
-def big_gemini(b, contents, extra=""):
+def big_gemini(b, contents, extra="", system=None):
     """Gemini بسياق كبير ومهلة طويلة، للمدخلات الكبيرة."""
     T = b.types
     models, seen = [], set()
@@ -2112,7 +2225,7 @@ def big_gemini(b, contents, extra=""):
     for model in models[:3]:
         for max_out in (int(os.environ.get("GEMINI_MAX_OUT", "60000")), None):
             try:
-                kw = {"system_instruction": b.get_system_prompt() + extra,
+                kw = {"system_instruction": system if system else (b.get_system_prompt() + extra),
                       "http_options": T.HttpOptions(timeout=170000)}
                 if max_out:
                     kw["max_output_tokens"] = max_out
@@ -2492,7 +2605,7 @@ def register(app, b):
             "أضف في آخر ردك السطر التالي بالضبط: [[MEM: المعلومة باختصار]] ليتم حفظها تلقائياً في ملف هاتفه.)\n---\n"
         )
 
-    MOOD_RE = re.compile(r"\[\[MOOD:\s*(upset|happy|ok)\s*(?::\s*(.+?))?\s*\]\]", re.S)
+    MOOD_RE = re.compile(r"\[\[MOOD:\s*(upset|happy|ok|sad|worried|excited|touched)\s*(?::\s*(.+?))?\s*\]\]", re.S)
 
     def run_job(job_id, text, history, mem_prompt="", emo=False, u="main", net=False):
         try:
@@ -2505,6 +2618,8 @@ def register(app, b):
                 else:
                     mem_prompt = UPSET_PROMPT % (mood["reason"] or "تصرّف ما عجبه") + mem_prompt
             contents = [T.Content(role=r, parts=[T.Part(text=t)]) for r, t in history]
+            if emo and mood["state"] != "upset" and mood.get("feel") and time.time() - mood.get("feel_since", 0) < 1200:
+                mem_prompt = FEEL_HINT % (FEEL_AR.get(mood["feel"], ""), (" بسبب: " + mood["feel_why"]) if mood.get("feel_why") else "") + mem_prompt
             pctx = page_context(b, text) if len(text) < 3000 else ""
             if pctx:
                 mem_prompt = pctx + mem_prompt
@@ -2549,7 +2664,7 @@ def register(app, b):
             if answer:
                 pass
             elif wm(u)["mix"] and b._text_only(contents):
-                answer, note = mix_answer(b, contents, mix_members())
+                answer, note = mix_answer(b, contents, mix_members(), code=code_req)
                 kind = "clean"
             else:
                 answer, note = b.ask_model(W, contents, deep=deep, code=b.is_code_request(text))
@@ -2586,9 +2701,14 @@ def register(app, b):
                         note = (note + " · 😤 زعلان منك").strip()
                     elif kind == "ok":
                         mood.update(state="normal", reason="", since=0.0)
+                        mood.pop("feel", None)
                         note = (note + " · 😊 رجع مبسوط").strip()
                     else:
-                        note = (note + " · 😄 مبسوط").strip()
+                        note = (note + " · " + FEEL_NOTE[kind]).strip()
+                        if kind in ("sad", "worried"):   # بيضل متعاطف لحد ما يتحسّن
+                            mood.update(feel=kind, feel_why=why, feel_since=time.time())
+                        else:
+                            mood.pop("feel", None)
             new_mems = [m.strip()[:300] for m in re.findall(r"\[\[MEM:\s*(.+?)\s*\]\]", answer or "") if m.strip()]
             if new_mems:
                 answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
