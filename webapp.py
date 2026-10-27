@@ -902,12 +902,13 @@ async function send(){
     else{
       curJob=d.job;
       if(aborted)api('/api/cancel/'+curJob,{method:'POST'}).catch(()=>{});
-      let done=false;
-      for(let i=0;i<240&&!done&&!aborted;i++){
+      let done=false,lastProg='';
+      for(let i=0;i<330&&!done&&!aborted;i++){
         await sleep(i<4?1000:2000);
         if(aborted)break;
         const j=await (await api('/api/job/'+d.job)).json();
         if(aborted)break;
+        if(j.status==='running'&&j.progress&&j.progress!==lastProg){lastProg=j.progress;say(j.progress)}
         if(j.status==='done'){moodFromNote(j.note);
           if(j.image){const img=await shrink(j.image,720);M().push({role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img})}
           else{const full=j.text||'(رد فاضي)';if(Array.isArray(j.memories)&&j.memories.length){let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك')}const dfs=(j.files&&j.files.length?j.files:(j.file?[j.file]:[])).map(f=>({name:f.name,url:'/api/download/'+f.id,ext:f.ext,size:f.size,auto:!!f.auto}));if(dfs.length)say(dfs.some(f=>f.auto)?'نزّلتلك الكود بملف 💾':'جهزتلك ملف التحميل 💾');M().push({role:'model',text:full,note:j.note,reveal:full.length<6000&&!dfs.length,dfiles:dfs});if(autoDl)dfs.filter(f=>f.auto).forEach((f,i)=>setTimeout(()=>autoDownload(f),500+800*i))}
@@ -1393,8 +1394,75 @@ CLAUDE_CODE_STYLE = (
     "8) بعد الكود: اشرح بإيجاز شو عملت وكيف تجرّبو، وأي تحذير أو خطوة لازم المستخدم يعملها.\n"
     "9) كون صادق: إذا ما قدرت تتأكد من شي (ما شغّلت الكود فعلياً) قول هيك، وما تدّعي إنك جرّبتو.\n"
     "10) جاوب بلغة المستخدم ولهجتو، بأسلوب مباشر ومختصر.\n"
+    "11) بعد الكود المهم، اعطِ 2-3 اختبارات assert بسيطة (أو أمثلة تشغيل) يشغّلها المستخدم ليتأكد.\n"
 )
+
+FIX_RULES = (
+    "[قواعد التصحيح الصارمة]\n"
+    "- قائمة الأخطاء: أخطاء حقيقية فقط (مو ملاحظات تجميلية ولا 'ما فيه مشكلة')، كل بند برقم السطر الصحيح من الكود الأصلي "
+    "(استعمل أرقام الأسطر المعطاة)، ولا تنسى أي خطأ (مثل تعديل المدخلات، الحالات الحدية، القسمة على صفر).\n"
+    "- أقل تغيير ممكن: لا تضيف ميزات ما انطلبت، لا تحذف بيانات بصمت، لا تستعمل except عام يبلع الأخطاء، "
+    "لا تغيّر أنواع المخرجات أو واجهة الدوال إلا إذا كان هاد هو الخطأ، وأي تغيير بالسلوك لازم تذكرو.\n"
+    "- شرح التغييرات لازم يطابق الكود النهائي حرفياً (ما تقول 'أضفت X' إذا X انشال من الكود النهائي).\n"
+    "- ما تكتب 'جرّبتو' ولا 'كيف جربته'. اكتب 'كيف تجرّبو' وقول بصراحة إنك ما شغّلتو فعلياً.\n"
+)
+
+
+def numbered_listing(items, cap=20000):
+    """الكود الأصلي بأرقام أسطر، عشان الموديلات تشير للأسطر الصحيحة."""
+    out, total = [], 0
+    for label, lang, code in items[:3]:
+        lines = code.split("\n")
+        if len(lines) > 600:
+            continue
+        body = "\n".join("%3d| %s" % (i, ln) for i, ln in enumerate(lines, 1))
+        if total + len(body) > cap:
+            break
+        total += len(body)
+        out.append("%s:\n%s" % (label, body))
+    if not out:
+        return ""
+    return "[الكود الأصلي بأرقام الأسطر. الأرقام للإشارة بس، مو جزء من الكود]\n" + "\n\n".join(out) + "\n"
+
+
+def add_diff(answer, orig_lang, orig_code):
+    """بيضيف تحت الجواب الفروقات بين كودك والكود المصحّح (سطر أخضر/أحمر)."""
+    import difflib
+    best = None
+    for lg, cd in extract_blocks(answer):
+        if (lg or "").lower() == "diff":
+            continue
+        if guess_lang(lg, cd) == orig_lang and (best is None or len(cd) > len(best)):
+            best = cd
+    if best is None:
+        return answer
+    a, b2 = orig_code.strip("\n").splitlines(), best.strip("\n").splitlines()
+    if len(b2) < 0.3 * len(a):
+        return answer
+    diff = [ln for ln in difflib.unified_diff(a, b2, lineterm="", n=2) if not ln.startswith(("---", "+++"))]
+    if not diff:
+        return answer
+    add = sum(1 for d in diff if d.startswith("+") and not d.startswith("+++"))
+    rem = sum(1 for d in diff if d.startswith("-") and not d.startswith("---"))
+    if len(diff) > 160:
+        diff = diff[:160] + ["... (باقي الفروقات مقطوعة)"]
+    return answer.rstrip() + "\n\n**🔍 الفروقات عن كودك** (+%d / -%d):\n```diff\n%s\n```" % (add, rem, "\n".join(diff))
+
+
+def member_syntax_notes(answers):
+    """فحص آلي لحلول الأعضاء: بيرجّع سطور تحذير لأي حل فيه خطأ صياغة."""
+    notes = []
+    for i, txt in enumerate(answers.values(), 1):
+        for lg, cd in extract_blocks(txt):
+            lang = guess_lang(lg, cd)
+            if lang in ("python", "json", "css", "js") and cd.count("\n") >= 2 and (lg or "").lower() != "diff":
+                errs, _w = check_code(lang, cd)
+                if errs:
+                    notes.append("⚠️ فحص آلي: حل %d فيه خطأ صياغة (%s) فلا تعتمد عليه." % (i, errs[0]))
+                    break
+    return "\n".join(notes)
 ROLE_HINT = {"Gemini": "ركّز على حل كامل ونظيف.", "GPT-OSS": "ركّز على الحالات الحدية والأخطاء المحتملة.",
+             "Kimi": "ركّز على فهم السياق الكامل وتماسك الحل.", "Codestral": "ركّز على كود صحيح وعملي ومختصر.",
              "DeepSeek": "ركّز على صحة الخوارزمية والتحليل العميق.", "Qwen": "ركّز على وضوح الكود وسهولة صيانتو."}
 
 
@@ -1415,6 +1483,9 @@ def review_code(b, question, answer):
         return answer
     prompt = ("أنت مراجع كود صارم. هاد طلب المستخدم وجواب مقترح.\n\nالطلب:\n%s\n\nالجواب المقترح:\n%s\n\n"
               "راجع الكود سطر بسطر: الصياغة، المنطق، الحالات الحدية، الأمان، الأداء، وهل بيحقق الطلب كامل. "
+              "وتأكد كمان: (1) شرح التغييرات بيطابق الكود النهائي حرفياً، (2) أرقام الأسطر المذكورة صحيحة بالنسبة للكود الأصلي، "
+              "(3) ما في خطأ حقيقي منسي (مثل تعديل المدخلات أو الحالات الحدية)، (4) الحل بسيط وبأقل تغيير: شيل أي تعقيد زايد أو بلع صامت للأخطاء، "
+              "(5) ما في ادعاء إنو الكود انجرّب فعلياً. "
               "إذا لقيت مشاكل صحّحها وأعطِ الجواب النهائي كامل (شرح قصير + الكود كامل بدون اختصار). "
               "إذا الجواب سليم أعدو كما هو بدون تغيير وبدون أي تعليق عن المراجعة." % (question[:150000], answer[:150000]))
     try:
@@ -1429,16 +1500,270 @@ def review_code(b, question, answer):
     return answer
 
 
-def mix_answer(b, contents, members, code=False):
+# ---------- Ryn mix للكود: خط إنتاج متسلسل (كاتب ← مراجع ← مراجع تاني ← تطبيق ← شرح) ----------
+_SEV = {"high": "high", "critical": "high", "عالي": "high", "medium": "medium", "متوسط": "medium",
+        "low": "low", "minor": "low", "منخفض": "low"}
+_WRITER_ORDER = ("Qwen", "DeepSeek", "Kimi", "Codestral", "GPT-OSS")
+_REV1_ORDER = ("DeepSeek", "Kimi", "GPT-OSS", "Codestral", "Qwen")
+_REV2_ORDER = ("GPT-OSS", "Kimi", "Codestral", "DeepSeek", "Qwen")
+
+REVIEW_SCHEMA = (
+    'رجّع JSON فقط (بدون أي نص خارجو وبدون كود) بهالشكل بالضبط:\n'
+    '{"verdict":"ok" أو "needs_fix","issues":[{"severity":"high|medium|low","line":رقم_السطر_أو_null,'
+    '"problem":"المشكلة بجملة واضحة","fix":"التعديل المطلوب بجملة وحدة"}]}\n'
+    "قواعد: أخطاء حقيقية فقط (صياغة، منطق، حالات حدية، أمان، تطابق مع الطلب). لا ملاحظات تجميلية. حد أقصى 10 بنود. "
+    "ممنوع تكتب كود أو تعدّل الكود. إذا الكود سليم: verdict=ok وissues فاضية.\n"
+)
+REVIEW2_EXTRA = (
+    'وفي حال في ملاحظات سابقة من مراجع تاني (مرقّمة)، ضيف عليها بنود جديدة بس (ما تكرر)، '
+    'وأكّد البنود يلي بتوافق عليها بالحقل "agree_with":[ids]، والبنود يلي بتعترض عليها بالحقل '
+    '"disagree_with":[{"id":رقم,"reason":"السبب"}].\n'
+)
+FIX_APPLY_PROMPT = (
+    "[دورك: كاتب الكود. طبّق ملاحظات المراجعين]\n"
+    "معك: الطلب الأصلي، والكود الحالي، وملاحظات المراجعين كـ JSON مرقّم. طبّق كل بند صحيح بدقة وبأقل تغيير، "
+    "وإذا بند غلط أو مختلف عليه (disputed) ارفضو وقول السبب.\n"
+    "الرد بالشكل التالي فقط:\n"
+    "1) الكود النهائي كامل داخل بلوكات ``` بدون أي اختصار وبدون أي شرح (واسم الملف بسطر قبل البلوك إذا أكتر من ملف).\n"
+    '2) بعدو بلوك ```json فيه: {"applied":[ids],"rejected":[{"id":رقم,"reason":"..."}]}\n'
+)
+COMM_SYSTEM = (
+    "أنت Ryn. اكتب رسالة نهائية للمستخدم بالعربي (لهجة شامية بسيطة) عن الكود الجاهز، بأسلوب مباشر ومرتب: "
+    "(1) شو هو الكود وشو بيعمل، (2) كيف بيشتغل بإيجاز، (3) كيف تشغّلو (أوامر أو خطوات قصيرة)، "
+    "(4) تفاصيل مهمة وافتراضات وحدود، (5) 2-3 أمثلة اختبار. "
+    "إذا الطلب تصحيح: اشرح الأخطاء الأصلية (رقم السطر من الكود الأصلي + السبب) والتغييرات الجوهرية. "
+    "ممنوع تذكر أي خطوات عمل داخلية أو مراجعين أو موديلات أو 'راجعنا' أو 'صحّحنا بعد المراجعة'. "
+    "لا تعيد كتابة الكود (بينضاف تحت رسالتك تلقائياً)، ولا تحط بلوكات كود طويلة. "
+    "كون صادق: قول إنك ما شغّلت الكود فعلياً، وما تدّعي إنك جرّبتو."
+)
+
+
+def parse_notes(txt):
+    """بيحوّل رد المراجع لبنود موحّدة. بيقبل JSON (الأساس) أو قائمة مرقّمة كاحتياط."""
+    t = (txt or "").strip()
+    m = re.search(r"```(?:json)?\s*(.*?)```", t, re.S)
+    body = m.group(1).strip() if m else t
+    cands = [body]
+    if "{" in body:
+        cands.append(body[body.find("{"):body.rfind("}") + 1])
+    if "[" in body:
+        cands.append(body[body.find("["):body.rfind("]") + 1])
+    data = None
+    for c in cands:
+        if not c:
+            continue
+        try:
+            data = json.loads(c)
+            break
+        except ValueError:
+            continue
+    out = {"verdict": None, "issues": [], "agree": [], "disagree": []}
+    raw = []
+    if isinstance(data, dict):
+        out["verdict"] = str(data.get("verdict") or "").lower() or None
+        raw = data.get("issues") or []
+        out["agree"] = [int(x) for x in (data.get("agree_with") or []) if str(x).isdigit()]
+        for d in (data.get("disagree_with") or []):
+            if isinstance(d, dict) and str(d.get("id", "")).isdigit():
+                out["disagree"].append({"id": int(d["id"]), "reason": str(d.get("reason", ""))[:200]})
+    elif isinstance(data, list):
+        raw = data
+    for it in raw[:12]:
+        if isinstance(it, dict):
+            prob = str(it.get("problem") or it.get("issue") or "").strip()
+            if prob:
+                ln = it.get("line")
+                out["issues"].append({"severity": _SEV.get(str(it.get("severity", "")).lower(), "medium"),
+                                      "line": int(ln) if str(ln).isdigit() else None,
+                                      "problem": prob[:300], "fix": str(it.get("fix") or "").strip()[:300]})
+        elif isinstance(it, str) and it.strip():
+            out["issues"].append({"severity": "medium", "line": None, "problem": it.strip()[:300], "fix": ""})
+    if not out["issues"] and data is None:   # احتياط: قائمة مرقّمة
+        for ln in t.splitlines():
+            mm = re.match(r"\s*\d+\s*[.)\-]\s*(.{6,})", ln)
+            if mm:
+                out["issues"].append({"severity": "medium", "line": None, "problem": mm.group(1).strip()[:300], "fix": ""})
+            if len(out["issues"]) >= 10:
+                break
+    return out
+
+
+def merge_notes(first, second, n1, n2):
+    items = [dict(id=i, **{"from": n1}, **it) for i, it in enumerate(first["issues"], 1)]
+    base = len(items)
+    dis = {d["id"]: d["reason"] for d in second["disagree"]}
+    for it in items:
+        if it["id"] in dis:
+            it["disputed"] = dis[it["id"]]
+        if it["id"] in second["agree"]:
+            it["confirmed_by"] = n2
+    for j, it in enumerate(second["issues"], 1):
+        items.append(dict(id=base + j, **{"from": n2}, **it))
+    return items
+
+
+def split_report(text):
+    """بيفصل بلوك JSON تقرير التطبيق (applied/rejected) عن الكود."""
+    for m in list(re.finditer(r"```json\s*(.*?)```", text or "", re.S))[::-1]:
+        try:
+            d = json.loads(m.group(1))
+        except ValueError:
+            continue
+        if isinstance(d, dict) and ("applied" in d or "rejected" in d):
+            return (text[:m.start()] + text[m.end():]).strip(), d
+    return (text or "").strip(), None
+
+
+def _timed(fn, cs, timeout):
+    import concurrent.futures as cf
+    ex = cf.ThreadPoolExecutor(max_workers=1)
+    try:
+        return ex.submit(fn, cs).result(timeout=max(5, timeout))
+    finally:
+        ex.shutdown(wait=False)
+
+
+def _last_user_text(contents):
+    for c in reversed(contents):
+        if c.role == "user":
+            return "\n".join(p.text for p in c.parts if getattr(p, "text", None))
+    return ""
+
+
+def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
+    """Gemini بيستلم الطلب ← Qwen بيكتب ← DeepSeek بيراجع (JSON) ← GPT-OSS بيراجع بدون تعديل (JSON) ←
+    Qwen بيطبّق الملاحظات ← Gemini بيكتب الرسالة النهائية. بيرجّع الجواب النهائي أو None لو ما في كاتب متاح."""
+    T = b.types
+    t0 = time.time()
+    P = progress or (lambda t: None)
+
+    def left():
+        return 420 - (time.time() - t0)
+
+    def U(text):
+        return [T.Content(role="user", parts=[T.Part(text=text)])]
+
+    question = _last_user_text(contents)
+    writers = [n for n in _WRITER_ORDER if n in roster]
+    if not writers:
+        return None
+    # ---- 1) الكتابة / التصحيح ----
+    P("✍️ عم يكتب الكود...")
+    style = (CLAUDE_CODE_STYLE + (FIX_RULES if fix else "")
+             + "[دورك: كاتب الكود. اعطِ الكود فقط داخل بلوكات ``` كاملة بدون اختصار؛ وإذا أكتر من ملف اكتب اسم الملف بسطر قبل بلوكو. "
+               "بدون شرح طويل (سطر افتراضات واحد بالكتير).]\n---\n")
+    draft = writer = None
+    dead = set()
+    for name in writers:
+        try:
+            out = _timed(roster[name], _with_prefix(T, contents, style), min(150, left()))
+        except Exception as e:
+            log.warning("pipeline كاتب %s فشل: %s", name, str(e)[:120])
+            dead.add(name)
+            continue
+        if out and out.strip():
+            draft, writer = out.strip(), name
+            break
+    if not draft:
+        return None
+    blocks = extract_blocks(draft)
+    if not blocks:   # سؤال نظري بدون كود: ما في خط إنتاج
+        return draft
+    items = [("بلوك %d" % i, guess_lang(lg, cd), cd) for i, (lg, cd) in enumerate(blocks, 1)]
+    view = diagnose(items) + (numbered_listing(items, cap=60000) or "الكود:\n" + draft[:60000])
+    req = question[:100000]
+    r1 = next((n for n in _REV1_ORDER if n in roster and n != writer and n not in dead), None)
+    r2 = next((n for n in _REV2_ORDER if n in roster and n not in (writer, r1) and n not in dead), None)
+    # ---- 2) المراجعة الأولى (JSON) ----
+    notes1 = notes2 = None
+    if r1 and left() > 60:
+        P("🔎 مراجعة الكود...")
+        try:
+            out = _timed(roster[r1], U("[دورك: مراجع كود]\n" + REVIEW_SCHEMA + "\nالطلب الأصلي:\n" + req + "\n\n" + view),
+                         min(140, left()))
+            notes1 = parse_notes(out)
+        except Exception as e:
+            log.warning("pipeline مراجع1 %s فشل: %s", r1, str(e)[:120])
+    # ---- 3) المراجعة التانية بدون تعديل (JSON) ----
+    if r2 and left() > 60:
+        P("🧪 مراجعة تانية...")
+        prev = json.dumps([dict(id=i, **it) for i, it in enumerate(notes1["issues"], 1)], ensure_ascii=False, indent=1) if notes1 else "[]"
+        try:
+            out = _timed(roster[r2], U("[دورك: مراجع كود تاني، بدون أي تعديل]\n" + REVIEW_SCHEMA + REVIEW2_EXTRA
+                                       + "\nالطلب الأصلي:\n" + req + "\n\n" + view + "\nملاحظات المراجع الأول:\n" + prev),
+                         min(140, left()))
+            notes2 = parse_notes(out)
+        except Exception as e:
+            log.warning("pipeline مراجع2 %s فشل: %s", r2, str(e)[:120])
+    final_text, report = draft, None
+    merged = merge_notes(notes1 or {"issues": []}, notes2 or {"issues": [], "agree": [], "disagree": []}, r1 or "", r2 or "")
+    # ---- 4) التطبيق بدقة ----
+    if merged and left() > 45:
+        P("🔧 عم يطبّق الملاحظات...")
+        try:
+            out = _timed(roster[writer], _with_prefix(T, contents, style) if False else U(
+                CLAUDE_CODE_STYLE + FIX_APPLY_PROMPT + "\nالطلب الأصلي:\n" + req + "\n\nالكود الحالي:\n" + draft[:100000]
+                + "\n\nملاحظات المراجعين (JSON):\n" + json.dumps(merged, ensure_ascii=False, indent=1)), min(160, left()))
+            code_text, report = split_report(out)
+            if extract_blocks(code_text):
+                final_text = code_text
+        except Exception as e:
+            log.warning("pipeline تطبيق %s فشل: %s", writer, str(e)[:120])
+    # ---- 4b) فحص آلي للصياغة + إصلاح (لحد مرتين) ----
+    for _ in range(2):
+        errs = []
+        for lg, cd in extract_blocks(final_text):
+            lang = guess_lang(lg, cd)
+            if lang in ("python", "json", "css") or (lang == "js" and shutil.which("node")):
+                e, _w = check_code(lang, cd)
+                errs += e[:1]
+        if not errs or left() < 40:
+            break
+        try:
+            out = _timed(roster[writer], U(CLAUDE_CODE_STYLE + "[دورك: كاتب الكود] الكود فيه خطأ صياغة حسب الفحص الآلي:\n"
+                                           + "\n".join("- " + x for x in errs) + "\nصحّحو وأعطِ الكود كامل بلوكات ``` بدون شرح.\n\nالكود:\n"
+                                           + final_text[:100000]), min(120, left()))
+            if extract_blocks(out):
+                final_text = split_report(out)[0]
+        except Exception:
+            break
+    # ---- 5) الرسالة النهائية بالعربي (Gemini) ----
+    P("📝 عم يجهّز الشرح...")
+    msg = ""
+    try:
+        rep = json.dumps(report, ensure_ascii=False) if report else "(ما في)"
+        msg = big_gemini(b, U("طلب المستخدم:\n" + req + "\n\nالكود الجاهز:\n" + final_text[:100000]
+                              + "\n\nتفاصيل التعديلات المطبّقة (للعلم بس، لا تذكرها كخطوات): " + rep + "\n\nاكتب الرسالة النهائية."),
+                         system=COMM_SYSTEM)
+        msg = re.sub(r"```.*?```", lambda m: m.group(0) if m.group(0).count("\n") < 6 else "", msg, flags=re.S).strip()
+    except Exception as e:
+        log.warning("pipeline الشرح فشل: %s", str(e)[:120])
+    if not msg:
+        msg = "هاد الكود جاهز 👇 (ما شغّلتو فعلياً، جرّبو وقلّي إذا طلعت مشكلة)."
+    log.info("Ryn mix pipeline: كاتب=%s مراجع1=%s مراجع2=%s ملاحظات=%d", writer, r1, r2, len(merged))
+    if meta is not None:
+        meta["final_code"] = final_text
+    return msg + "\n\n" + final_text
+
+
+def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=None):
     """Ryn mix: كل الموديلات بتجاوب سوا، وGemini بيدمج. بالكود: كل موديل بدور + دمج نقدي + مراجع صارم."""
     import concurrent.futures as cf
     T = b.types
+    if code:   # خط الإنتاج المتسلسل، وإذا ما في كاتب متاح بنرجع للطريقة المتوازية
+        try:
+            piped = mix_code_pipeline(b, contents, dict(members), fix, progress, meta)
+        except Exception as e:
+            log.warning("pipeline فشل: %s", str(e)[:160])
+            piped = None
+        if piped:
+            return piped, "Ryn mix"
     wait, cap = (150, 60000) if code else (45, 6000)
     answers = {}
     ex = cf.ThreadPoolExecutor(max_workers=max(1, len(members)))
     futs = {}
     for name, fn in members:
-        cs = _with_prefix(T, contents, CLAUDE_CODE_STYLE + "[دورك: %s]\n---\n" % ROLE_HINT.get(name, "")) if code else contents
+        cs = _with_prefix(T, contents, CLAUDE_CODE_STYLE + (FIX_RULES if fix else "") + "[دورك: %s]\n---\n" % ROLE_HINT.get(name, "")) if code else contents
         futs[ex.submit(fn, cs)] = name
     try:
         for f in cf.as_completed(futs, timeout=wait):
@@ -1467,10 +1792,15 @@ def mix_answer(b, contents, members, code=False):
     final = None
     try:
         if code:
-            prompt = ("طلب المستخدم:\n%s\n\nحلول من عدة مبرمجين:\n%s\n\n"
-                      "مهمتك: قارن الحلول واكتشف أخطاء كل حل (صياغة، منطق، حالات حدية، أمان)، واختَر الأفضل أو ادمج الأفضل منها، "
-                      "وأعطِ النسخة النهائية الكاملة والصحيحة بدون أي اختصار، مع شرح قصير. ما تذكر المبرمجين ولا المقارنة." % (question[:150000], block))
-            final = big_gemini(b, [T.Content(role="user", parts=[T.Part(text=prompt)])], system=MIX_SYSTEM + "\n" + CLAUDE_CODE_STYLE)
+            warn = member_syntax_notes(answers)
+            pick_rule = ("اختَر **أبسط حل صحيح** يصلّح الخطأ بأقل تغيير، وخذ من الباقي بس الحالات الحدية المهمة، ولا تدمج كل الميزات. "
+                         if fix else "اختَر الأفضل أو ادمج الأفضل منها. ")
+            prompt = ("طلب المستخدم:\n%s\n\nحلول من عدة مبرمجين:\n%s\n\n%s\n"
+                      "مهمتك: قارن الحلول واكتشف أخطاء كل حل (صياغة، منطق، حالات حدية، أمان)، %s"
+                      "وأعطِ النسخة النهائية الكاملة والصحيحة بدون أي اختصار، مع شرح قصير. ما تذكر المبرمجين ولا المقارنة."
+                      % (question[:150000], block, warn, pick_rule))
+            final = big_gemini(b, [T.Content(role="user", parts=[T.Part(text=prompt)])],
+                               system=MIX_SYSTEM + "\n" + CLAUDE_CODE_STYLE + (FIX_RULES if fix else ""))
         else:
             prompt = "سؤال المستخدم:\n%s\n\n%s\n\nاكتب الجواب النهائي المدموج فقط." % (question[:4000], block)
             final = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=prompt)])], deep=False, system=MIX_SYSTEM)
@@ -2104,9 +2434,19 @@ def doc_code_items(ctx):
     return items
 
 
-def code_ascii_base(req, fixed=False):
-    words = re.findall(r"[A-Za-z][A-Za-z0-9]{2,}", req or "")[:3]
-    base = "-".join(w.lower() for w in words) or "code"
+_NAME_STOP = {"def", "class", "function", "import", "from", "return", "print", "code", "the", "and", "for", "with", "this",
+              "that", "fix", "error", "python", "javascript", "java", "html", "css", "var", "const", "let", "void", "int",
+              "str", "list", "true", "false", "none", "null"}
+
+
+def code_ascii_base(req, fixed=False, code=""):
+    """اسم ملف إنجليزي مفهوم: من كلمات الطلب، وإلا من أول دالة/كلاس بالكود، وإلا 'code'."""
+    words = [w.lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9]{2,}", req or "") if w.lower() not in _NAME_STOP][:3]
+    if not words:
+        m = re.search(r"\b(?:def|class|function|fn|func)\s+([A-Za-z_][A-Za-z0-9_]*)", code or "")
+        if m:
+            words = [m.group(1).lower().replace("_", "-")]
+    base = "-".join(words) or "code"
     return ("fixed-" if fixed else "") + base + "-" + time.strftime("%y%m%d-%H%M")
 
 
@@ -2248,7 +2588,7 @@ def verify_code(b, answer, contents, call, rounds=2):
         bad, checked = [], 0
         for lg, cd in extract_blocks(ans):
             lang = guess_lang(lg, cd)
-            if lang not in ("python", "json", "js", "css") or cd.count("\n") < 2:
+            if (lg or "").lower() == "diff" or lang not in ("python", "json", "js", "css") or cd.count("\n") < 2:
                 continue
             if re.search(r"(^|\n)[ \t]*(#|//)[ \t]*\.\.\.|\.\.\.[ \t]*(\n|$)", cd):
                 continue   # كود جزئي مقصود
@@ -2395,15 +2735,15 @@ def register(app, b):
             files[fid] = {"name": name, "mime": mime, "data": data, "exp": now + FILE_TTL}
             return fid
 
-    def auto_code_files(answer, req, fixed=False):
+    def auto_code_files(answer, req, fixed=False, min_lines=12):
         """بلوكات الكود الكبيرة (12 سطر وأكتر) بتتحول لملفات تحميل تلقائياً."""
         out, used = [], set()
         for lg, cd in extract_blocks(answer):
-            if cd.strip().count("\n") + 1 < 12:
+            if cd.strip().count("\n") + 1 < min_lines or (lg or "").lower() == "diff":
                 continue
             lang = guess_lang(lg, cd)
             ext = _EXT_OF.get(lang) or "txt"
-            base = code_ascii_base(req, fixed)
+            base = code_ascii_base(req, fixed, cd)
             name, k = "%s.%s" % (base, ext), 2
             while name in used:
                 name, k = "%s-%d.%s" % (base, k, ext), k + 1
@@ -2432,22 +2772,73 @@ def register(app, b):
         except Exception:
             return []
 
-    def mix_members():
-        """الموديلات الجاهزة فعلاً لـ Ryn mix."""
+    def pick_or_free(match, must=()):
+        """أفضل موديل مجاني (free) من OpenRouter يطابق الاسم، وبيرجّع None إذا ما في."""
+        try:
+            items = [i for i in b.openrouter_catalog() if i.get("free") and any(k in i["id"].lower() for k in match)
+                     and all(m in i["id"].lower() for m in must) and not any(x in i["id"].lower() for x in b._EXCLUDE)]
+        except Exception:
+            items = []
+        if not items:
+            return None
+        items.sort(key=lambda i: (any(k in i["id"].lower() for k in b._HEAVY), i["ctx"]), reverse=True)
+        return items[0]["id"]
+
+    def or_member(model):
+        return lambda c, m=model: b._call_backend({**b.OR_BACKEND, "prov": "custom", "match": ()}, c, False, False, models=[m])
+
+    def codestral_member():
+        """Codestral من Mistral (اختياري: CODESTRAL_API_KEY مجاني من console.mistral.ai)."""
+        key = os.environ.get("CODESTRAL_API_KEY", "").strip()
+        if not key:
+            return None
+
+        def run(c):
+            msgs = []
+            for ct in c:
+                txt = "\n".join(p.text for p in ct.parts if getattr(p, "text", None))
+                if txt:
+                    msgs.append({"role": "assistant" if ct.role == "model" else "user", "content": txt})
+            r = b.requests.post("https://codestral.mistral.ai/v1/chat/completions",
+                                headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+                                json={"model": os.environ.get("CODESTRAL_MODEL", "codestral-latest"), "messages": msgs,
+                                      "temperature": 0.2}, timeout=120)
+            if r.status_code != 200:
+                raise RuntimeError("Codestral %s" % r.status_code)
+            return (r.json().get("choices") or [{}])[0].get("message", {}).get("content", "")
+        return run
+
+    def mix_members(code=False):
+        """الموديلات الجاهزة فعلاً لـ Ryn mix. بالكود: كودرز أقوياء (مجانية أولاً)."""
+        allow_paid = os.environ.get("MIX_ALLOW_PAID", "0") == "1"
         members = [("Gemini", lambda c: b.ask_gemini(c, deep=False))]
         gid = groq_ids()
         if "openai/gpt-oss-120b" in gid:
             members.append(("GPT-OSS", lambda c: b._call_backend(
                 b.GROQ_CHAT_BACKEND, c, False, False, models=["openai/gpt-oss-120b"])))
-        qw = sorted([i for i in gid if "qwen" in i.lower() and not any(x in i.lower() for x in b._GROQ_SKIP)], reverse=True)
-        if qw:
-            members.append(("Qwen", lambda c, m=qw[0]: b._call_backend(
-                b.GROQ_CHAT_BACKEND, c, False, False, models=[m])))
+        qwen_done = False
         if b._or_key():
-            ds = pick_or(("deepseek",))
+            if code:   # Qwen coder المجاني من OpenRouter
+                qc = pick_or_free(("coder",), must=("qwen",))
+                if qc:
+                    members.append(("Qwen", or_member(qc)))
+                    qwen_done = True
+            ds = pick_or_free(("deepseek",)) or (pick_or(("deepseek",)) if allow_paid else None)
             if ds:
-                members.append(("DeepSeek", lambda c, m=ds: b._call_backend(
-                    {**b.OR_BACKEND, "prov": "custom", "match": ()}, c, False, False, models=[m])))
+                members.append(("DeepSeek", or_member(ds)))
+            if code:
+                km = pick_or_free(("kimi", "moonshot")) or (pick_or(("kimi", "moonshot")) if allow_paid else None)
+                if km:
+                    members.append(("Kimi", or_member(km)))
+        if not qwen_done:
+            qw = sorted([i for i in gid if "qwen" in i.lower() and not any(x in i.lower() for x in b._GROQ_SKIP)], reverse=True)
+            if qw:
+                members.append(("Qwen", lambda c, m=qw[0]: b._call_backend(
+                    b.GROQ_CHAT_BACKEND, c, False, False, models=[m])))
+        if code:
+            cs = codestral_member()
+            if cs:
+                members.append(("Codestral", cs))
         return members
 
     def build_options():
@@ -2607,6 +2998,12 @@ def register(app, b):
 
     MOOD_RE = re.compile(r"\[\[MOOD:\s*(upset|happy|ok|sad|worried|excited|touched)\s*(?::\s*(.+?))?\s*\]\]", re.S)
 
+    def set_progress(job_id, t):
+        with jlock:
+            j = jobs.get(job_id)
+            if j and j.get("status") == "running":
+                j["progress"] = str(t)[:80]
+
     def run_job(job_id, text, history, mem_prompt="", emo=False, u="main", net=False):
         try:
             T = b.types
@@ -2624,11 +3021,14 @@ def register(app, b):
             if pctx:
                 mem_prompt = pctx + mem_prompt
             fix_intent = bool(_FIX_RE.search(text))
+            fix_orig = None
             if fix_intent:   # فحص آلي لكود الرسالة وللملفات المرفقة
                 items = [("بلوك %d" % i, guess_lang(lg, cd), cd) for i, (lg, cd) in enumerate(extract_blocks(text), 1)]
+                if len(items) == 1 and items[0][1]:
+                    fix_orig = (items[0][1], items[0][2])
                 items += doc_code_items(b.get_doc(W))
                 if items:
-                    mem_prompt = CODEFIX_RULES + diagnose(items) + mem_prompt
+                    mem_prompt = CODEFIX_RULES + FIX_RULES + diagnose(items) + numbered_listing(items) + mem_prompt
             full_user_text = (mem_prompt + text) if mem_prompt else text
             ctx = b.get_doc(W)
             if ctx:
@@ -2642,6 +3042,7 @@ def register(app, b):
             code_req = fix_intent or b.is_code_request(text)
             answer = note = None
             kind = ""
+            mix_meta = {}
             yt = [m.group(0) for m in YT_RE.finditer(text)]
             net_fail = ""
             if not net and not wm(u)["mix"] and b.client and len(text) < 1500 and "```" not in text:
@@ -2664,7 +3065,8 @@ def register(app, b):
             if answer:
                 pass
             elif wm(u)["mix"] and b._text_only(contents):
-                answer, note = mix_answer(b, contents, mix_members(), code=code_req)
+                answer, note = mix_answer(b, contents, mix_members(code_req), code=code_req, fix=fix_intent,
+                                         progress=lambda t: set_progress(job_id, t), meta=mix_meta)
                 kind = "clean"
             else:
                 answer, note = b.ask_model(W, contents, deep=deep, code=b.is_code_request(text))
@@ -2684,6 +3086,8 @@ def register(app, b):
                 answer = continue_if_cut(b, answer, contents, call)   # كمّل إذا انقطع بنص كود
                 if code_req:
                     answer, verified = verify_code(b, answer, contents, call)
+                if fix_orig and answer:
+                    answer = add_diff(answer, fix_orig[0], fix_orig[1])
             if verified is True:
                 note = note + " · ✅ مفحوص"
             elif verified is False:
@@ -2728,7 +3132,11 @@ def register(app, b):
             files_out = [dl] if dl else []
             if not dl and answer:
                 try:
-                    files_out = auto_code_files(answer, text, fix_intent)
+                    fc = mix_meta.get("final_code")
+                    if fc and fc in answer:   # Ryn mix للكود: ملف دايماً للكود النهائي (حتى لو قصير)
+                        files_out = auto_code_files(fc, text, fix_intent, min_lines=1)
+                    else:
+                        files_out = auto_code_files(answer, text, fix_intent)
                 except Exception:
                     log.exception("توليد ملفات الكود التلقائية فشل")
             res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
