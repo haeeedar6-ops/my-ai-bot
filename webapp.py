@@ -1524,14 +1524,15 @@ FIX_APPLY_PROMPT = (
     "معك: الطلب الأصلي، والكود الحالي، وملاحظات المراجعين كـ JSON مرقّم. طبّق كل بند صحيح بدقة وبأقل تغيير، "
     "وإذا بند غلط أو مختلف عليه (disputed) ارفضو وقول السبب.\n"
     "الرد بالشكل التالي فقط:\n"
-    "1) الكود النهائي كامل داخل بلوكات ``` بدون أي اختصار وبدون أي شرح (واسم الملف بسطر قبل البلوك إذا أكتر من ملف).\n"
+    "1) الكود النهائي كامل داخل بلوكات ``` بدون أي اختصار وبدون أي شرح (واسم الملف بسطر لوحدو قبل كل بلوك بشكل **app.py** إذا أكتر من ملف)، "
+    "والتعليقات والرسائل داخل الكود بالإنجليزية، وبدون أوامر تشغيل، و__name__/__main__ كاملة بالشرطات.\n"
     '2) بعدو بلوك ```json فيه: {"applied":[ids],"rejected":[{"id":رقم,"reason":"..."}]}\n'
 )
 COMM_SYSTEM = (
     "أنت Ryn. اكتب رسالة نهائية للمستخدم بالعربي (لهجة شامية بسيطة) عن الكود الجاهز، بأسلوب مباشر ومرتب، "
     "وابدأ مباشرة بالمحتوى بدون ترحيب أو مجاملات أو دعاء: "
     "(1) شو هو الكود وشو بيعمل، (2) كيف بيشتغل بإيجاز، (3) كيف تشغّلو (أوامر أو خطوات قصيرة)، "
-    "(4) تفاصيل مهمة وافتراضات وحدود، (5) 2-3 أمثلة اختبار. "
+    "(4) تفاصيل مهمة وافتراضات وحدود، (5) أوامر التشغيل والاختبار (بلوكات bash قصيرة مسموحة). "
     "إذا الطلب تصحيح: اشرح الأخطاء الأصلية (رقم السطر من الكود الأصلي + السبب) والتغييرات الجوهرية. "
     "ممنوع تذكر أي خطوات عمل داخلية أو مراجعين أو موديلات أو 'راجعنا' أو 'صحّحنا بعد المراجعة'. "
     "لا تعيد كتابة الكود (بينضاف تحت رسالتك تلقائياً)، ولا تحط بلوكات كود طويلة. "
@@ -1616,22 +1617,11 @@ def split_report(text):
 
 
 def clean_code_text(text):
-    """بيشيل كلام الكاتب (ترحيب/شرح/عناوين فاضية) وبيخلّي بلوكات الكود بس، مع اسم الملف إذا أكتر من بلوك."""
-    blocks = list(_FENCE_RE.finditer(text or ""))
-    if not blocks:
+    """بيشيل كلام الكاتب (ترحيب/شرح/عناوين فاضية/أوامر تشغيل) وبيخلّي بلوكات الكود بس، مع اسم الملف إذا موجود."""
+    nb = drop_shell_blocks(named_blocks(text))
+    if not nb:
         return (text or "").strip()
-    multi, parts, pos = len(blocks) > 1, [], 0
-    for m in blocks:
-        head = ""
-        if multi:
-            before = (text[pos:m.start()]).strip().splitlines()
-            cand = before[-1].strip() if before else ""
-            mm = re.search(r"([\w./\\-]+\.\w{1,6})[\s`*:]*$", cand)
-            if mm:
-                head = "**%s**\n" % mm.group(1)
-        parts.append(head + m.group(0).strip())
-        pos = m.end()
-    return "\n\n".join(parts)
+    return "\n\n".join(("**%s**\n" % n if n else "") + "```%s\n%s\n```" % (lg, c) for n, lg, c in nb)
 
 
 _CODE_START = re.compile(r"^\s*(def |class |import |from [\w.]+ import |@\w|for .+:|while .+:|if .+:|try:|with .+:|print\(|"
@@ -1686,7 +1676,9 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
     # ---- 1) الكتابة / التصحيح ----
     P("✍️ عم يكتب الكود...")
     style = (CLAUDE_CODE_STYLE + (FIX_RULES if fix else "")
-             + "[دورك: كاتب الكود. اعطِ الكود فقط داخل بلوكات ``` كاملة بدون اختصار؛ وإذا أكتر من ملف اكتب اسم الملف بسطر قبل بلوكو. "
+             + "[دورك: كاتب الكود. اعطِ الكود فقط داخل بلوكات ``` كاملة بدون اختصار؛ وإذا أكتر من ملف اكتب اسم الملف بسطر لوحدو قبل كل بلوك "
+               "بهالشكل: **app.py**. التعليقات والـ docstrings ورسائل الأخطاء داخل الكود بالإنجليزية الواضحة (إلا إذا طلب المستخدم عربي). "
+               "لا تحط أوامر تشغيل أو pip أو curl ببلوكات (هدول للشرح). انتبه تكتب __name__ و__main__ بالشرطات التحتية كاملة. "
                "بدون شرح طويل (سطر افتراضات واحد بالكتير).]\n---\n")
     draft = writer = None
     dead = set()
@@ -1751,8 +1743,8 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
         for lg, cd in extract_blocks(final_text):
             lang = guess_lang(lg, cd)
             if lang in ("python", "json", "css") or (lang == "js" and shutil.which("node")):
-                e, _w = check_code(lang, cd)
-                errs += e[:1]
+                e, _w = check_code(lang, cd, strict=True)
+                errs += e[:2]
         if not errs or left() < 40:
             break
         try:
@@ -1766,14 +1758,25 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
     # ---- 5) الرسالة النهائية بالعربي (Gemini) ----
     P("📝 عم يجهّز الشرح...")
     msg = ""
-    try:
-        rep = json.dumps(report, ensure_ascii=False) if report else "(ما في)"
-        msg = big_gemini(b, U("طلب المستخدم:\n" + req + "\n\nالكود الجاهز:\n" + final_text[:100000]
-                              + "\n\nتفاصيل التعديلات المطبّقة (للعلم بس، لا تذكرها كخطوات): " + rep + "\n\nاكتب الرسالة النهائية."),
-                         system=COMM_SYSTEM)
-        msg = re.sub(r"```.*?```", lambda m: m.group(0) if m.group(0).count("\n") < 6 else "", msg, flags=re.S).strip()
-    except Exception as e:
-        log.warning("pipeline الشرح فشل: %s", str(e)[:120])
+    rep = json.dumps(report, ensure_ascii=False) if report else "(ما في)"
+    comm_user = ("طلب المستخدم:\n" + req + "\n\nالكود الجاهز:\n" + final_text[:100000]
+                 + "\n\nتفاصيل التعديلات المطبّقة (للعلم بس، لا تذكرها كخطوات): " + rep + "\n\nاكتب الرسالة النهائية.")
+    attempts = [("Gemini", lambda: big_gemini(b, U(comm_user), system=COMM_SYSTEM))]
+    for nm in ("GPT-OSS", "DeepSeek", "Kimi", "Qwen"):
+        if nm in roster:
+            attempts.append((nm, lambda nm=nm: _timed(roster[nm], U(COMM_SYSTEM + "\n---\n" + comm_user), min(90, max(20, left())))))
+    for nm, fn in attempts:
+        try:
+            msg = (fn() or "").strip()
+        except Exception as e:
+            log.warning("pipeline الشرح %s فشل: %s", nm, str(e)[:120])
+            continue
+        def _keep(mt):
+            lg = (mt.group(1) or "").lower()
+            return mt.group(0) if (lg in _SHELL_LANGS or mt.group(0).count("\n") < 6) else ""
+        msg = re.sub(r"```([\w+#.\-]*)[^\n]*\n.*?```", _keep, msg, flags=re.S).strip()
+        if msg:
+            break
     if not msg:
         msg = "هاد الكود جاهز 👇 (ما شغّلتو فعلياً، جرّبو وقلّي إذا طلعت مشكلة)."
     final_text = clean_code_text(final_text)   # بدون ترحيب الكاتب ولا عناوين فاضية
@@ -2233,6 +2236,40 @@ CODEFIX_RULES = (
 )
 
 
+_FILEGEN_BYPASS = {"txt", "py", "js", "ts", "css", "sql", "java", "cpp", "cs", "php", "sh", "lua", "yaml", "xml"}
+_SHELL_LANGS = {"bash", "sh", "shell", "console", "terminal", "cmd", "powershell", "ps1", "zsh", "text", "txt"}
+_NAME_LINE = re.compile(r"[#>*`\s\-]*(?:(?:ملف|الملف|file|filename)\s*[:：]?\s*)?([\w./\\-]+\.\w{1,6})[\s`*:：]*", re.I)
+_NAME_IN_FIRST = re.compile(r"^\s*(?:#|//|--|<!--|/\*)\s*(?:file(?:name)?\s*[:=]\s*)?([\w./\\-]+\.\w{1,6})\s*(?:-->|\*/)?\s*$", re.I)
+
+
+def named_blocks(text):
+    """بلوكات الكود مع اسم الملف إذا انكتب قبل البلوك أو بأول سطر فيه: [(اسم أو None، لغة، كود)]."""
+    out, pos = [], 0
+    for m in _FENCE_RE.finditer(text or ""):
+        lg, code = (m.group(1) or ""), m.group(2).strip("\n")
+        before = (text[pos:m.start()]).strip().splitlines()
+        pos = m.end()
+        if not code.strip() or lg.lower() == "diff":
+            continue
+        name = None
+        if before and len(before[-1]) <= 120:
+            mm = _NAME_LINE.fullmatch(before[-1].strip())
+            if mm:
+                name = mm.group(1).replace("\\", "/")
+        if not name:
+            mm = _NAME_IN_FIRST.match(code.split("\n", 1)[0])
+            if mm:
+                name = mm.group(1)
+        out.append((name, lg, code))
+    return out
+
+
+def drop_shell_blocks(blocks):
+    """إذا في بلوكات كود مصدرية، بنشيل بلوكات الأوامر (pip/curl/...) غير المسمّاة: مكانها شرح التشغيل."""
+    has_src = any(lg.lower() not in _SHELL_LANGS for _n, lg, _c in blocks)
+    return [b for b in blocks if not (has_src and b[1].lower() in _SHELL_LANGS and not b[0])]
+
+
 def extract_blocks(text):
     """بلوكات الكود المسيّجة بـ ``` : [(لغة، كود)]."""
     return [(m.group(1) or "", m.group(2).strip("\n")) for m in _FENCE_RE.finditer(text or "") if m.group(2).strip()]
@@ -2258,7 +2295,7 @@ def guess_lang(hint, code):
     return ""
 
 
-def _check_python(code):
+def _check_python(code, strict=False):
     errs, warns = [], []
     try:
         ast.parse(code)
@@ -2276,6 +2313,14 @@ def _check_python(code):
             warns.append("سطر %s: %s" % (m.group(1), m.group(2)) if m else ln)
     except Exception:
         pass
+    if strict:   # للكود النهائي الكامل: أسماء غير معرّفة + __name__/__main__ مكسورة (شرطات ضايعة)
+        undefined = [w for w in warns if "undefined name" in w]
+        warns = [w for w in warns if "undefined name" not in w]
+        errs += undefined[:3]
+        if re.search(r"\bif\s+name\s*==\s*['\"]main['\"]", code):
+            errs.append("`if name == 'main'` غلط: لازم `if __name__ == '__main__'` (الشرطات __ ضايعة)")
+        if re.search(r"\bFlask\(\s*name\s*\)", code):
+            errs.append("`Flask(name)` غلط: لازم `Flask(__name__)` (الشرطات __ ضايعة)")
     return errs, warns
 
 
@@ -2406,11 +2451,11 @@ def _check_node(code):
         return None
 
 
-def check_code(lang, code, use_node=True):
+def check_code(lang, code, use_node=True, strict=False):
     """(أخطاء صياغة أكيدة، تحذيرات). الأخطاء بس هي يلي بتستدعي إعادة الإصلاح."""
     code = (code or "")[:200000]
     if lang == "python":
-        return _check_python(code)
+        return _check_python(code, strict)
     if lang == "json":
         return _check_json(code)
     if lang == "html":
@@ -2773,23 +2818,42 @@ def register(app, b):
             return fid
 
     def auto_code_files(answer, req, fixed=False, min_lines=12):
-        """بلوكات الكود الكبيرة (12 سطر وأكتر) بتتحول لملفات تحميل تلقائياً."""
+        """بلوكات الكود بتتحول لملفات تحميل تلقائياً: ملف لكل بلوك، أو zip إذا مشروع بعدة ملفات مسمّاة."""
+        nb = [b for b in drop_shell_blocks(named_blocks(answer)) if b[0] or b[2].strip().count("\n") + 1 >= min_lines]
+        if not nb:
+            return []
+        named = [b for b in nb if b[0]]
+        if len(named) >= 2:   # مشروع: zip فيه كل الملفات بأسمائها
+            import zipfile
+            buf, used = io.BytesIO(), set()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for i, (name, lg, cd) in enumerate(nb[:20], 1):
+                    ext = _EXT_OF.get(guess_lang(lg, cd)) or "txt"
+                    safe = os.path.normpath(name or "file-%d.%s" % (i, ext)).replace("\\", "/").lstrip("/")
+                    if ".." in safe.split("/") or safe in used:
+                        continue
+                    used.add(safe)
+                    z.writestr(safe, cd.strip("\n") + "\n")
+            data = buf.getvalue()
+            zname = "project-%s.zip" % time.strftime("%y%m%d-%H%M")
+            return [{"id": store_file(zname, "application/zip", data), "name": zname, "ext": "zip",
+                     "size": len(data), "auto": True}]
         out, used = [], set()
-        for lg, cd in extract_blocks(answer):
-            if cd.strip().count("\n") + 1 < min_lines or (lg or "").lower() == "diff":
-                continue
+        for name, lg, cd in nb[:3]:
             lang = guess_lang(lg, cd)
             ext = _EXT_OF.get(lang) or "txt"
-            base = code_ascii_base(req, fixed, cd)
-            name, k = "%s.%s" % (base, ext), 2
-            while name in used:
-                name, k = "%s-%d.%s" % (base, k, ext), k + 1
-            used.add(name)
+            if name:
+                fname = os.path.basename(name)
+                ext = os.path.splitext(fname)[1].lstrip(".") or ext
+            else:
+                base = code_ascii_base(req, fixed, cd)
+                fname, k = "%s.%s" % (base, ext), 2
+                while fname in used:
+                    fname, k = "%s-%d.%s" % (base, k, ext), k + 1
+            used.add(fname)
             data = (cd.strip("\n") + "\n").encode("utf-8")
-            out.append({"id": store_file(name, "text/plain; charset=utf-8", data), "name": name,
+            out.append({"id": store_file(fname, "text/plain; charset=utf-8", data), "name": fname,
                         "ext": ext, "size": len(data), "auto": True})
-            if len(out) >= 3:
-                break
         return out
 
     def pick_or(match):
@@ -3162,6 +3226,9 @@ def register(app, b):
                 answer = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", answer or "").strip()
             dl = None
             fext = filegen.detect_file_request(text) if filegen else None
+            asked_file = bool(fext)
+            if fext in _FILEGEN_BYPASS and answer and extract_blocks(answer):
+                fext = None   # الكود بينحمّل من بلوكاتو حرفياً (filegen بيشيل __ و` وبياخد أول بلوك بس)
             if fext and answer:
                 try:
                     fname, mime, data = filegen.make_file(fext, answer, text)
@@ -3177,7 +3244,7 @@ def register(app, b):
                     if fc and fc in answer:   # Ryn mix للكود: ملف دايماً للكود النهائي (حتى لو قصير)
                         files_out = auto_code_files(fc, text, fix_intent, min_lines=1)
                     else:
-                        files_out = auto_code_files(answer, text, fix_intent)
+                        files_out = auto_code_files(answer, text, fix_intent, min_lines=(1 if asked_file else 12))
                 except Exception:
                     log.exception("توليد ملفات الكود التلقائية فشل")
             res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
