@@ -1528,7 +1528,8 @@ FIX_APPLY_PROMPT = (
     '2) بعدو بلوك ```json فيه: {"applied":[ids],"rejected":[{"id":رقم,"reason":"..."}]}\n'
 )
 COMM_SYSTEM = (
-    "أنت Ryn. اكتب رسالة نهائية للمستخدم بالعربي (لهجة شامية بسيطة) عن الكود الجاهز، بأسلوب مباشر ومرتب: "
+    "أنت Ryn. اكتب رسالة نهائية للمستخدم بالعربي (لهجة شامية بسيطة) عن الكود الجاهز، بأسلوب مباشر ومرتب، "
+    "وابدأ مباشرة بالمحتوى بدون ترحيب أو مجاملات أو دعاء: "
     "(1) شو هو الكود وشو بيعمل، (2) كيف بيشتغل بإيجاز، (3) كيف تشغّلو (أوامر أو خطوات قصيرة)، "
     "(4) تفاصيل مهمة وافتراضات وحدود، (5) 2-3 أمثلة اختبار. "
     "إذا الطلب تصحيح: اشرح الأخطاء الأصلية (رقم السطر من الكود الأصلي + السبب) والتغييرات الجوهرية. "
@@ -1612,6 +1613,41 @@ def split_report(text):
         if isinstance(d, dict) and ("applied" in d or "rejected" in d):
             return (text[:m.start()] + text[m.end():]).strip(), d
     return (text or "").strip(), None
+
+
+def clean_code_text(text):
+    """بيشيل كلام الكاتب (ترحيب/شرح/عناوين فاضية) وبيخلّي بلوكات الكود بس، مع اسم الملف إذا أكتر من بلوك."""
+    blocks = list(_FENCE_RE.finditer(text or ""))
+    if not blocks:
+        return (text or "").strip()
+    multi, parts, pos = len(blocks) > 1, [], 0
+    for m in blocks:
+        head = ""
+        if multi:
+            before = (text[pos:m.start()]).strip().splitlines()
+            cand = before[-1].strip() if before else ""
+            mm = re.search(r"([\w./\\-]+\.\w{1,6})[\s`*:]*$", cand)
+            if mm:
+                head = "**%s**\n" % mm.group(1)
+        parts.append(head + m.group(0).strip())
+        pos = m.end()
+    return "\n\n".join(parts)
+
+
+_CODE_START = re.compile(r"^\s*(def |class |import |from [\w.]+ import |@\w|for .+:|while .+:|if .+:|try:|with .+:|print\(|"
+                         r"[A-Za-z_]\w*\s*[=(]|function |const |let |var |#include|public |<[A-Za-z!])")
+
+
+def loose_code(text):
+    """كود ملصوق بدون ``` (شائع بالموبايل): بيلاقي أول سطر كود خلال أول 4 أسطر وبياخد الباقي."""
+    lines = (text or "").split("\n")
+    if len(lines) < 4:
+        return None
+    for i, ln in enumerate(lines[:4]):
+        if _CODE_START.match(ln):
+            code = "\n".join(lines[i:]).strip("\n")
+            return (guess_lang("", code), code) if code.count("\n") >= 2 else None
+    return None
 
 
 def _timed(fn, cs, timeout):
@@ -1740,6 +1776,7 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
         log.warning("pipeline الشرح فشل: %s", str(e)[:120])
     if not msg:
         msg = "هاد الكود جاهز 👇 (ما شغّلتو فعلياً، جرّبو وقلّي إذا طلعت مشكلة)."
+    final_text = clean_code_text(final_text)   # بدون ترحيب الكاتب ولا عناوين فاضية
     log.info("Ryn mix pipeline: كاتب=%s مراجع1=%s مراجع2=%s ملاحظات=%d", writer, r1, r2, len(merged))
     if meta is not None:
         meta["final_code"] = final_text
@@ -3023,7 +3060,11 @@ def register(app, b):
             fix_intent = bool(_FIX_RE.search(text))
             fix_orig = None
             if fix_intent:   # فحص آلي لكود الرسالة وللملفات المرفقة
-                items = [("بلوك %d" % i, guess_lang(lg, cd), cd) for i, (lg, cd) in enumerate(extract_blocks(text), 1)]
+                blocks_in = extract_blocks(text)
+                if not blocks_in:
+                    lc = loose_code(text)
+                    blocks_in = [("", lc[1])] if lc else []
+                items = [("بلوك %d" % i, guess_lang(lg, cd), cd) for i, (lg, cd) in enumerate(blocks_in, 1)]
                 if len(items) == 1 and items[0][1]:
                     fix_orig = (items[0][1], items[0][2])
                 items += doc_code_items(b.get_doc(W))
