@@ -237,6 +237,25 @@ main>:first-child{margin-top:auto}
 .ci button{background:none;border:0;color:var(--sub);font-size:15px;padding:4px}
 .ci button:hover{color:var(--red)}
 .dfoot{color:var(--sub);font-size:11px;text-align:center;margin-top:10px}
+/* ===== إضافة: البحث داخل الدرج ===== */
+.dsearch{display:flex;align-items:center;gap:6px;margin-bottom:10px;padding:0 9px;background:rgba(var(--acc-rgb),.08);border:1.5px solid rgba(var(--acc-rgb),.35);border-radius:12px;flex:none}
+.dsearch i{font-style:normal;color:var(--sub);font-size:14px}
+.dsearch input{flex:1;min-width:0;background:none;border:0;color:var(--txt);font-size:14px;padding:10px 2px}
+.dsearch input:focus{outline:none}
+.dsearch input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
+.dsearch input::placeholder{color:var(--sub);opacity:.7}
+.dsearch button{background:none;border:0;color:var(--sub);font-size:13px;padding:2px 4px;display:none}
+.dsearch.has button{display:block}
+.dcnt{background:rgba(var(--g-rgb),.18);color:var(--g);border-radius:9px;font-size:11.5px;padding:2px 8px;flex:none}
+.ci .t .sn{display:block;color:var(--sub);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.dempty{color:var(--sub);font-size:12.5px;text-align:center;padding:18px 8px;line-height:2}
+mark{background:rgba(var(--g-rgb),.3);color:var(--g);border-radius:4px;padding:0 2px}
+/* ===== إضافة: زر النزول لآخر رسالة ===== */
+.tob{position:absolute;left:16px;bottom:88px;width:42px;height:42px;border-radius:50%;z-index:11;
+background:rgba(14,10,40,.94);border:2px solid var(--g);color:var(--g);font-size:16px;
+display:flex;align-items:center;justify-content:center;cursor:pointer;
+box-shadow:0 0 18px rgba(var(--g-rgb),.5);transition:.25s ease}
+.tob.off{opacity:0;pointer-events:none;transform:translateY(14px) scale(.9)}
 
 #chip{position:relative;z-index:3;margin:0 4px 8px;padding:8px 12px;background:rgba(14,10,40,.94);border:1.5px solid rgba(var(--g-rgb),.55);border-radius:14px;font-size:13px;display:flex;justify-content:space-between;gap:8px;align-items:center;flex:none}
 #chip button{background:none;border:0;color:var(--red);font-size:16px}
@@ -451,6 +470,9 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <main id="msgs"></main>
 
   <div class="floating off" id="floating"></div>
+  <button class="tob off" id="toBottom" aria-label="النزول لآخر رسالة" title="النزول لآخر رسالة">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
   <div id="sheet" hidden></div>
 
   <div id="chip" hidden><span id="chipName"></span><button id="chipX" aria-label="حذف المرفق">✕</button></div>
@@ -484,8 +506,14 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   <aside class="drawer" id="drawer" aria-label="المحادثات السابقة">
     <div class="dh"><b>المحادثات</b><button id="dClose" aria-label="إغلاق">✕</button></div>
     <button class="dnew" id="dNew">＋ محادثة جديدة</button>
+    <div class="dsearch" id="dSearchBox">
+      <i>🔍</i>
+      <input type="search" id="dSearch" placeholder="ابحث بالعناوين والرسائل..." autocomplete="off">
+      <span class="dcnt" id="dCnt">0</span>
+      <button id="dSearchX" aria-label="مسح البحث">✕</button>
+    </div>
     <div id="dList"></div>
-    <div class="dfoot">محفوظة على هالجهاز (آخر 25 محادثة)</div>
+    <div class="dfoot" id="dFoot">محفوظة على هالجهاز (حتى 100 محادثة)</div>
   </aside>
 </div>
 
@@ -731,6 +759,8 @@ $('#memFileInp').onchange=async e=>{
     openMemModal();toast('تم استرجاع ملف التخصيص والذاكرة بنجاح 📂');say('رجعت كل ذكرياتك وتخصيصك من الملف! 💚');
   }catch(err){toast('الملف مو صالح أو تالف ❌')}
 };
+/* ===== إضافة: حد المحادثات المحفوظة (كان 25) ===== */
+const MAX_CHATS=100;
 let store={cur:null,chats:[]};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function titleOf(ms){const u=ms.find(m=>m.role==='user');return u?u.text.replace(/\s+/g,' ').trim().slice(0,34):'محادثة جديدة'}
@@ -744,11 +774,12 @@ function loadStore(){
 const curChat=()=>store.chats.find(c=>c.id===store.cur);
 const M=()=>curChat().msgs;
 function saveStore(){
-  let chats=store.chats.slice(0,25).map(c=>({id:c.id,title:c.title,ts:c.ts,
+  let chats=store.chats.slice(0,MAX_CHATS).map(c=>({id:c.id,title:c.title,ts:c.ts,
     msgs:c.msgs.slice(-80).map(m=>({role:m.role,text:String(m.text).slice(0,40000),note:m.note,err:m.err,file:m.file,dfile:m.dfile,dfiles:m.dfiles,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
   for(;;){
     try{localStorage.setItem(LS,JSON.stringify({cur:store.cur,chats}));return}
-    catch(e){if(chats.length<=2)return;chats.pop()}
+    // ما في مساحة: بينزّل الأقدم مرة واحدة (عشان ما تتجمّد الواجهة مع 100 محادثة)
+    catch(e){if(chats.length<=2)return;const k=chats.length>12?Math.max(1,Math.ceil(chats.length*.15)):1;chats.splice(chats.length-k,k)}
   }
 }
 function touch(){const c=curChat();c.ts=Date.now();c.title=titleOf(c.msgs);store.chats=[c].concat(store.chats.filter(x=>x!==c))}
@@ -767,8 +798,33 @@ function delChat(id){
   saveStore();render();drawDrawer();
 }
 function ago(ts){const s=(Date.now()-ts)/1000;if(s<60)return 'الآن';if(s<3600)return 'قبل '+Math.floor(s/60)+' د';if(s<86400)return 'قبل '+Math.floor(s/3600)+' س';return 'قبل '+Math.floor(s/86400)+' يوم'}
+/* ===== إضافة: بحث بالمحادثات (العنوان + نص الرسائل) ===== */
+let chatQ='';
+function hl(t,q){
+  t=String(t||'');if(!q)return esc(t);
+  const low=t.toLowerCase();let out='',i=0;
+  for(;;){const j=low.indexOf(q,i);if(j<0){out+=esc(t.slice(i));break}
+    out+=esc(t.slice(i,j))+'<mark>'+esc(t.slice(j,j+q.length))+'</mark>';i=j+q.length}
+  return out;
+}
+function chatHit(m,q){return m.role!=='sys'&&String(m.text||'').toLowerCase().includes(q)}
+function chatSnip(c,q){
+  for(const m of c.msgs){
+    if(m.role==='sys')continue;
+    const t=String(m.text||'').replace(/\s+/g,' ').trim(),i=t.toLowerCase().indexOf(q);
+    if(i>=0)return (i>20?'…':'')+t.slice(Math.max(0,i-20),i+60);
+  }
+  return '';
+}
+function visibleChats(){
+  const q=chatQ.trim().toLowerCase();
+  if(!q)return store.chats;
+  return store.chats.filter(c=>c.title.toLowerCase().includes(q)||c.msgs.some(m=>chatHit(m,q)));
+}
 function drawDrawer(){
-  $('#dList').innerHTML=store.chats.map(c=>'<div class="ci'+(c.id===store.cur?' on':'')+'" data-id="'+c.id+'"><div class="t"><b>'+esc(c.title)+'</b><small>'+ago(c.ts)+' · '+c.msgs.filter(m=>m.role!=='sys').length+' رسالة</small></div><button data-del="'+c.id+'" aria-label="حذف">🗑️</button></div>').join('');
+  const q=chatQ.trim().toLowerCase(),list=visibleChats();
+  $('#dCnt').textContent=list.length;
+  $('#dList').innerHTML=list.length?list.map(c=>'<div class="ci'+(c.id===store.cur?' on':'')+'" data-id="'+c.id+'"><div class="t"><b>'+hl(c.title,q)+'</b><small>'+ago(c.ts)+' · '+c.msgs.filter(m=>m.role!=='sys').length+' رسالة</small>'+(q?'<small class="sn">'+esc(chatSnip(c,q))+'</small>':'')+'</div><button data-del="'+c.id+'" aria-label="حذف">🗑️</button></div>').join(''):'<div class="dempty">ما في محادثة بهذا البحث 🔍<br>جرّب كلمة تانية</div>';
 }
 function openDrawer(){drawDrawer();$('#scrim').hidden=false;$('#drawer').classList.add('on')}
 function closeDrawer(){$('#drawer').classList.remove('on');$('#scrim').hidden=true}
@@ -780,6 +836,23 @@ $('#dList').addEventListener('click',e=>{
   const d=e.target.closest('[data-del]');if(d){e.stopPropagation();delChat(d.dataset.del);return}
   const c=e.target.closest('.ci');if(c)switchChat(c.dataset.id);
 });
+
+/* ===== إضافة: شغّل مربع البحث + زر النزول لآخر رسالة ===== */
+const dSearch=$('#dSearch'),dSearchBox=$('#dSearchBox');
+function setChatQ(v){
+  chatQ=v;dSearch.value=v;dSearchBox.classList.toggle('has',!!v);drawDrawer();
+}
+dSearch.addEventListener('input',()=>setChatQ(dSearch.value));
+dSearch.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();setChatQ('')}});
+$('#dSearchX').onclick=()=>{setChatQ('');dSearch.focus()};
+
+const toBottom=$('#toBottom');
+const atBottom=()=>msgs.scrollHeight-msgs.scrollTop-msgs.clientHeight<140;
+const updToBottom=()=>{try{toBottom.classList.toggle('off',atBottom()||!M().length)}catch(e){}};
+msgs.addEventListener('scroll',updToBottom);
+addEventListener('resize',updToBottom);
+new MutationObserver(updToBottom).observe(msgs,{childList:true,subtree:true});
+toBottom.onclick=()=>{try{msgs.scrollTo({top:msgs.scrollHeight,behavior:'smooth'})}catch(e){msgs.scrollTop=msgs.scrollHeight}};
 
 /* ===== عرض الرسائل ===== */
 function md(text){
