@@ -2534,6 +2534,14 @@ def _last_user_text(contents):
     return ""
 
 
+_CODE_STRONG = re.compile(
+    r"(```|\bdef \w+\(|\bimport \w+|#include|console\.log|\bSELECT\b.+\bFROM\b|<\s*(div|html|script)\b|"
+    r"\b(python|javascript|typescript|java|c\+\+|c#|php|html|css|sql|bash|react|flask|django|node\.?js|kotlin|swift|rust|golang|regex)\b|"
+    r"بايثون|جافاسكربت|جافا سكربت|\bجافا\b)",
+    re.I | re.S,
+)
+
+
 def is_mix_engineering_request(text, ctx=None):
     """تحديد ما إذا كان الطلب في Ryn mix مهمة برمجية/تطويرية/مراجعة مشروع تستدعي خط الإنتاج الهندسي ذا المراحل العشر."""
     t = (text or "").strip()
