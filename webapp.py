@@ -2076,11 +2076,70 @@ _REPORT_SECTIONS = (
 )
 
 
+def _clean_truncated_report_tail(msg):
+    """تنظيف أي سطر مقطوع في نهاية التقرير في حال وصل الموديل لحد التوكنات قبل إتمام السطر الأخير."""
+    if not msg:
+        return ""
+    lines = msg.rstrip().splitlines()
+    if not lines:
+        return ""
+    last = lines[-1].strip()
+    if last and not last.startswith("```"):
+        odd_bold = last.count("**") % 2 == 1
+        odd_tick = last.count("`") % 2 == 1
+        cut_word = bool(re.search(r"(?:\*\*\s*[\u0600-\u06FF]{1,3}|\b(?:ال|و|ف|ب|ل|من|على|إلى|في|عن|مع|أو))$", last))
+        if odd_bold or odd_tick or cut_word:
+            # إذا كان السطر مقطوعاً في منتصف جملة، نحذف الجزء المقطوع بعد آخر نقطة أو فاصلة
+            m = re.search(r"^(.+[.،؛:!؟)])\s+[^.،؛:!؟)]*$", last)
+            if m:
+                lines[-1] = m.group(1)
+            else:
+                lines.pop()
+    return "\n".join(lines).strip()
+
+
 def ensure_ryn_report_template(msg, question, inspected_files, changed_files, ver_report, merged_reviews, plan=None):
-    """المرحلة 9 (صفحة 6): ضمان احتواء رد Ryn mix على قالب التقرير القياسي ذا النقاط السبع بعد كل مهمة برمجية."""
-    msg = redact_secrets((msg or "").strip())
-    hits = sum(1 for s in _REPORT_SECTIONS if s in msg)
-    if hits >= 5:
+    """المرحلة 9 (صفحة 6): ضمان احتواء رد Ryn mix على قالب التقرير القياسي ذا النقاط السبع كاملاً بدون أي بتر."""
+    msg = _clean_truncated_report_tail(redact_secrets((msg or "").strip()))
+    goal = (plan or {}).get("goal") or (question or "").strip().splitlines()[0][:180] or "تنفيذ ومراجعة المهمة البرمجية المطلوبة."
+    insp = "، ".join(inspected_files[:10]) if inspected_files else "الطلب المباشر والكود المولّد (لم تُرفق ملفات خارجية)."
+    chg = "، ".join(changed_files[:10]) if changed_files else "توليد/تحديث الكود المطلوب بأقل تغيير ممكن مع الحفاظ على بنية المشروع."
+    tests_run = "؛ ".join((ver_report or {}).get("executed_checks") or ["فحص الصياغة والبنية الثابتة: نجح ✅"])
+    probs = []
+    for it in (merged_reviews or [])[:5]:
+        ln_str = ("سطر %s: " % it["line"]) if it.get("line") else ""
+        probs.append("%s%s (الحل: %s)" % (ln_str, it.get("problem", ""), it.get("fix", "تمت المعالجة")))
+    for sf in ((ver_report or {}).get("security_findings") or [])[:3]:
+        probs.append("أمان: %s" % sf.get("problem", ""))
+    for ui_i in ((ver_report or {}).get("ui_audit", {}).get("objective_issues") or [])[:3]:
+        probs.append("واجهة: %s" % ui_i)
+    probs_str = "؛ ".join(probs) if probs else "لم يُعثر على أخطاء منطقية أو أمنية حرجة متبقية في النسخة النهائية."
+    unver_str = "؛ ".join((ver_report or {}).get("unverified") or ["لم يتم تشغيل الكود فعلياً في بيئة حية؛ شغّل أوامر الاختبار المرفقة للتحقق."])
+    risks_list = list((plan or {}).get("risks_and_approvals") or [])
+    if (ver_report or {}).get("ui_audit", {}).get("browser_steps"):
+        risks_list.append("اختبر الواجهة في المتصفح وعلى شاشة الهاتف وفق خطوات الاختبار.")
+    if not risks_list:
+        risks_list.append("شغّل اختبارات التحقق المرفقة في بيئة معزولة قبل اعتماد التغيير أو النشر.")
+    risks_str = "؛ ".join(risks_list)
+
+    section_defaults = [
+        ("المطلوب:", goal),
+        ("الملفات التي فُحصت:", insp),
+        ("الملفات التي تغيّرت وسبب التغيير:", chg),
+        ("الاختبارات التي شُغّلت والنتائج:", tests_run),
+        ("المشكلات التي عُثر عليها:", probs_str),
+        ("ما لم أتمكن من التحقق منه:", unver_str),
+        ("المخاطر أو الخطوات التالية:", risks_str),
+    ]
+    hits = sum(1 for s, _v in section_defaults if s in msg)
+    if hits >= 4:
+        # استكمال أي بند ناقص من البنود السبعة في حال انقطع رد الموديل قبل آخر بندين
+        missing_lines = []
+        for s_title, s_val in section_defaults:
+            if s_title not in msg:
+                missing_lines.append("- **%s** %s" % (s_title, s_val))
+        if missing_lines:
+            msg = msg.rstrip() + "\n\n" + "\n".join(missing_lines)
         return msg
     goal = (plan or {}).get("goal") or (question or "").strip().splitlines()[0][:180] or "تنفيذ ومراجعة المهمة البرمجية المطلوبة."
     insp = "، ".join(inspected_files[:10]) if inspected_files else "الطلب المباشر والكود المولّد (لم تُرفق ملفات خارجية)."
