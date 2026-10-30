@@ -1838,6 +1838,10 @@ def static_edge_case_checks(lang, code):
                     for op, comp in zip(node.ops, node.comparators):
                         if isinstance(op, (ast.Eq, ast.NotEq)) and isinstance(comp, ast.Constant) and comp.value is None:
                             warns.append("سطر %d: مقارنة مع `None` باستخدام `==`/`!=` بدل `is None`/`is not None`." % node.lineno)
+            if "sqlite3" in (code or ""):
+                for idx, ln in enumerate((code or "").splitlines(), 1):
+                    if re.search(r"(?i)\bSELECT\b.+\bFOR\s+UPDATE\b", ln):
+                        warns.append("سطر %d: صياغة `FOR UPDATE` غير مدعومة في SQLite وتسبّب `sqlite3.OperationalError` (استخدم معاملات SQLite الذرية `BEGIN IMMEDIATE` أو `UPDATE ... WHERE points >= ?`)." % idx)
         except Exception:
             pass
     elif lang in ("js", "ts"):
@@ -2394,6 +2398,7 @@ COMM_SYSTEM = (
     "قواعد إضافية:\n"
     "- بعد القالب أعلاه، يمكنك إضافة بلوك أوامر تشغيل أو اختبار قصير (```bash) إذا لزم الأمر.\n"
     "- ممنوع ذكر أسماء الموديلات الداخلية أو المراجعين (لا تقل القاضي الأول أو المراجع الثاني).\n"
+    "- تطابق الشرح مع الكود النهائي حرفياً: افحص الكود النهائي الجاهز المرفق معك قبل كتابة أي سطر في التقرير؛ ممنوع تماماً أن تذكر أنك حذفت استيراداً أو أزلت عبارة (مثل FOR UPDATE) إذا كانت لا تزال موجودة في الكود النهائي، ولا تكرر ملخص الأخطاء مرتين تحت التقرير.\n"
     "- لا تعِد كتابة بلوكات الكود الطويلة داخل رسالتك لأن الكود النهائي الكامل والفروقات (diff) يُضافان تحت رسالتك تلقائياً."
 )
 
@@ -2726,7 +2731,7 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
                          r1 or "reviewer1", r2 or "reviewer2", extra_issues=extra_auto_issues)
 
     # ---- المرحلة 3 & 4c: تطبيق الملاحظات المؤكدة بأمان ----
-    actionable = [m for m in merged if not m.get("disputed") and m.get("severity") in ("high", "medium")]
+    actionable = [m for m in merged if not m.get("disputed")]
     if actionable and left() > 50:
         P("🔧 المرحلة 5: عم يطبّق الإصلاحات ويتحقق من النتيجة...")
         try:
@@ -2753,8 +2758,11 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
         errs = []
         for _lbl, lang, cd in cur_items:
             if lang in ("python", "json", "css") or (lang == "js" and shutil.which("node")):
-                e, _w = check_code(lang, cd, strict=True)
-                errs += e[:2]
+                e, w_py = check_code(lang, cd, strict=True)
+                errs += e[:3]
+                edge_w = static_edge_case_checks(lang, cd)
+                errs += [ew for ew in edge_w if "FOR UPDATE" in ew or "قابل للتعديل" in ew or "بلع صامت" in ew][:2]
+                errs += [uw for uw in w_py if "imported but unused" in uw][:2]
         diff_errs = check_diff_safety(orig_items, final_text, question)
         all_repair_reasons = errs + diff_errs[:2]
         if not all_repair_reasons or left() < 35:
