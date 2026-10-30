@@ -1,5 +1,5 @@
 // رابط قصير لموقع Ryn عبر Cloudflare (مجاني): الرابط القصير بيضل ظاهر ومبيتحوّل للرابط الطويل.
-const ORIGIN = "https://ryn-ai-1.onrender.com";   // رابط Render الحالي
+const ORIGIN = "ryn-ai-1.onrender.com";   // رابط Render الحالي
 
 export default {
   async fetch(request) {
