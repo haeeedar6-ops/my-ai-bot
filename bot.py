@@ -314,6 +314,7 @@ def review_answer(chat_id, question, answer):
 DEFAULT_PROVIDER = os.environ.get("DEFAULT_PROVIDER", "gemini").lower()
 PROVIDER_NAMES = {
     "gemini": "Gemini",
+    "mix": "Ryn mix",
     "chatgpt": "ChatGPT",
     "llama": "Llama 3",
     "claude": "Claude",
@@ -388,7 +389,7 @@ def _backend_ready(b):
     return bool(os.environ.get(b["key_env"]))
 
 def provider_ready(name):
-    return name == "gemini" or any(_backend_ready(b) for b in PROVIDERS.get(name, {}).get("backends", []))
+    return name in ("gemini", "mix") or any(_backend_ready(b) for b in PROVIDERS.get(name, {}).get("backends", []))
 
 def _text_only(contents):
     for c in contents:
@@ -755,17 +756,23 @@ def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
     raise ValueError(f"الموديل {_pname(prov)} مو متاح.")
 
 
-# ============ Ryn mix: Gemini + GPT-OSS + DeepSeek + Qwen بشخص واحد ============
+# ============ Ryn mix: محرك Ryn mix المطور (مستوحى من gstack) ============
 MIX_SYSTEM = (
     "أنت Ryn. وصلك سؤال المستخدم مع إجابات عدة موديلات ذكاء اصطناعي. "
     "ادمجهم بجواب واحد نهائي، صحيح ومرتب ومختصر: خذ الأدق من كل إجابة، "
     "وصحّح أي تناقض أو خطأ، وما تذكر أسماء الموديلات ولا إنك قارنت إجابات. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة. "
-    "إذا في اسم بلوك Craftland مو متأكد منو قول هيك وما تخترع."
+    "إذا في اسم بلوك Craftland أو معلومة مو متأكد منها قول هيك بصراحة وما تخترع."
 )
 
 
-def _mix_members(deep):
+def _redact_bot_secrets(text):
+    if webapp is not None and hasattr(webapp, "redact_secrets"):
+        return webapp.redact_secrets(text)
+    return text or ""
+
+
+def _mix_members(deep, code=False):
     """بيرجّع قائمة (الاسم، دالة بتاخد contents وبترجّع نص) للموديلات الجاهزة فعلاً."""
     members = [("Gemini", lambda c: ask_gemini(c, deep=False))]
     if _groq_ready():
@@ -782,21 +789,38 @@ def _mix_members(deep):
 
 
 def ask_mix(contents, deep=False):
-    """بيسأل الموديلات بنفس الوقت (مهلة 45 ثانية)، وبعدين Gemini بيدمج الأجوبة بجواب واحد."""
+    """يشغّل محرك Ryn mix المطور (خط الإنتاج الهندسي ذو المراحل العشر عند وجود كود/ملفات، أو الدمج الذكي للمحادثات)."""
     import concurrent.futures as cf
-    members = _mix_members(deep)
+    question = ""
+    for c in reversed(contents):
+        if c.role == "user":
+            question = "\n".join(p.text for p in c.parts if getattr(p, "text", None))
+            break
+    code_req = is_code_request(question)
+    if webapp is not None and hasattr(webapp, "mix_answer"):
+        try:
+            fix_req = bool(webapp._FIX_RE.search(question)) if hasattr(webapp, "_FIX_RE") else False
+            is_eng = webapp.is_mix_engineering_request(question) if hasattr(webapp, "is_mix_engineering_request") else (code_req or fix_req)
+            ans, note = webapp.mix_answer(
+                sys.modules[__name__], contents, _mix_members(deep, code=is_eng),
+                code=is_eng, fix=fix_req
+            )
+            return _redact_bot_secrets(ans), f"({note})"
+        except Exception as e:
+            log.warning("Ryn mix (webapp engine) fallback: %s", _redact_bot_secrets(str(e)[:160]))
+    members = _mix_members(deep, code=code_req)
     answers = {}
     ex = cf.ThreadPoolExecutor(max_workers=max(1, len(members)))
     futs = {ex.submit(fn, contents): name for name, fn in members}
     try:
-        for f in cf.as_completed(futs, timeout=45):
+        for f in cf.as_completed(futs, timeout=60 if code_req else 45):
             name = futs[f]
             try:
-                t = (f.result() or "").strip()
+                t = _redact_bot_secrets((f.result() or "").strip())
                 if t:
-                    answers[name] = t[:6000]
+                    answers[name] = t[:12000 if code_req else 6000]
             except Exception as e:
-                log.warning("Ryn mix: %s فشل: %s", name, str(e)[:160])
+                log.warning("Ryn mix: %s فشل: %s", name, _redact_bot_secrets(str(e)[:160]))
     except cf.TimeoutError:
         log.warning("Ryn mix: خلصت المهلة، بكمّل بالأجوبة يلي وصلت")
     ex.shutdown(wait=False)
@@ -805,27 +829,23 @@ def ask_mix(contents, deep=False):
     if len(answers) == 1:
         name, only = next(iter(answers.items()))
         return only, f"(Ryn mix: رد {name} بس، الباقي ما اشتغل)"
-    question = ""
-    for c in reversed(contents):
-        if c.role == "user":
-            question = "\n".join(p.text for p in c.parts if getattr(p, "text", None))
-            break
     block = "\n\n".join(f"--- إجابة {i} ---\n{t}" for i, t in enumerate(answers.values(), 1))
-    prompt = f"سؤال المستخدم:\n{question[:4000]}\n\n{block}\n\nاكتب الجواب النهائي المدموج فقط."
+    prompt = f"سؤال المستخدم:\n{_redact_bot_secrets(question[:6000])}\n\n{block}\n\nاكتب الجواب النهائي المدموج فقط."
     final = None
     try:
         final = ask_gemini([types.Content(role="user", parts=[types.Part(text=prompt)])],
                            deep=False, system=MIX_SYSTEM)
     except Exception as e:
-        log.warning("Ryn mix: الدمج فشل: %s", str(e)[:160])
+        log.warning("Ryn mix: الدمج فشل: %s", _redact_bot_secrets(str(e)[:160]))
     if not final:
         final = max(answers.values(), key=len)
-    return final, "(Ryn mix: " + " + ".join(answers.keys()) + ")"
+    return _redact_bot_secrets(final), "(Ryn mix: " + " + ".join(answers.keys()) + ")"
 
 
 def friendly_error(e):
     code = getattr(e, "code", None)
-    tag = f"\n(الخطأ: {str(e)[:350]})" if isinstance(e, ProviderError) else (f"\n(رمز: {code})" if code else f"\n({type(e).__name__})")
+    safe_err = _redact_bot_secrets(str(e)[:350])
+    tag = f"\n(الخطأ: {safe_err})" if isinstance(e, ProviderError) else (f"\n(رمز: {code})" if code else f"\n({type(e).__name__})")
     if code == 429:
         msg = "⏳ السيرفرات مضغوطة حالياً أو خلص الحد المجاني للطلب، جرّب بعد شوي."
     elif code in (500, 502, 503, 504):
@@ -1081,7 +1101,8 @@ def cmd_clearfile(message):
 def cmd_model(message):
     arg = (message.text or "").partition(" ")[2].strip().lower()
     aliases = {
-        "gemini": "gemini", "جيميني": "gemini", 
+        "gemini": "gemini", "جيميني": "gemini",
+        "mix": "mix", "ryn mix": "mix", "مكس": "mix", "راين مكس": "mix",
         "deepseek": "deepseek", "ديب سيك": "deepseek", "ديبسيك": "deepseek",
         "qwen": "qwen", "كوين": "qwen",
         "chatgpt": "chatgpt", "gpt": "chatgpt", "شات جي بي تي": "chatgpt",
@@ -1243,6 +1264,22 @@ def cmd_groqmodels(message):
     chosen = groq_code_models()
     bot.reply_to(message, "موديلات الكود المستعملة (بالترتيب):\n" + "\n".join(f"{n}) {m}" for n, m in enumerate(chosen, 1)) +
                  f"\n\nكل موديلات Groq ({len(ids)}):\n" + "\n".join(ids[:40]))
+
+
+@bot.message_handler(commands=["mixtest"])
+def cmd_mixtest(message):
+    """تشغيل اختبارات الجودة الذاتية لـ Ryn mix (المرحلة 10)."""
+    if webapp is None or not hasattr(webapp, "run_ryn_mix_quality_suite"):
+        bot.reply_to(message, "وحدة اختبارات Ryn mix غير متاحة حالياً.")
+        return
+    res = webapp.run_ryn_mix_quality_suite()
+    lines = [f"🧪 اختبارات جودة Ryn mix: {res['passed_count']}/{res['total']} نجحت"]
+    for t in res["tasks"]:
+        mark = "✅" if t["passed"] else "❌"
+        lines.append(f"\n{mark} {t['title']}:")
+        for d in t["details"]:
+            lines.append(f"  • {d}")
+    bot.reply_to(message, "\n".join(lines))
 
 
 @bot.message_handler(commands=["reset"])
