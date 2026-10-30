@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "webapp.py",
+      "src": "bot.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "webapp.py"
+      "dest": "bot.py"
     }
   ]
 }
