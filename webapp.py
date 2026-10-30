@@ -962,7 +962,7 @@ async function send(){
   inp.value='';grow();
   const isImg=current==='img:flux';
   const hist=M().filter(m=>m.role!=='sys').slice(-14).map(m=>({role:m.role,text:m.text}));
-  const um={role:'user',text};if(!isImg){if(pendingThumb){um.img=pendingThumb;pendingThumb=null}if(pendingFile){um.file=pendingFile;pendingFile=null}}
+  const um={role:'user',text};if(pendingThumb){um.img=pendingThumb;pendingThumb=null}if(!isImg&&pendingFile){um.file=pendingFile;pendingFile=null}
   M().push(um);touch();busy=true;aborted=false;curJob=null;setSendMode(true);
   setBot('thinking');
   say(isImg?'عم أرسم 🎨...':(/(python|javascript|html|css|sql|كود|برمج|code)/i.test(text)?'عم أكتب الكود 💻':($('#chip').hidden?'عم أفكّر...':'عم أقرا المرفق 📎')));
@@ -1057,7 +1057,7 @@ async function uploadMany(list,isImg){
       pendingThumb=thumb;pendingFile=(d.image&&n===1)?null:fname;
       showChip(fname,!!d.image,thumb);
       if(!inp.value.trim()){
-        inp.value=d.image?(n>1?'قارنلي بين هالصور واشرحلي كل وحدة.':'شو بالصورة؟ اشرحلي إياها.')
+        inp.value=d.image?(current==='img:flux'?'عدّل هالصورة وخلّي تفاصيلها وإضاءتها وملامحها واقعية طبيعية 100%.':(n>1?'قارنلي بين هالصور واشرحلي كل وحدة.':'شو بالصورة؟ اشرحلي إياها.'))
           :(codeish?'راجع الكود وصحّح أي أخطاء فيه، وقلّي شو كان الغلط.':'لخّصلي هالملفات واذكر أهم النقاط.');grow()}
       inp.focus();setBot('happy',1200);
       say(d.image?(n>1?'شفت '+n+' صور 👀':'شفت الصورة 👀 شو بدك فيها؟'):(n>1?'استلمت '+n+' ملفات 📎':'استلمت الملف 📎 شو بدك منه؟'));return;
@@ -1210,19 +1210,163 @@ $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 
 
 # ---------- رسم الصور: Gemini Nano Banana (أساسي) + FLUX عبر Cloudflare (احتياط) ----------
+
+# ---------- محرك الواقعية الفوتوغرافية الذكي وتعديل الصور (حسب طلب المستخدم) ----------
+# يطبّق كافة بنود ملف «تفاصل صوره» ديناميكياً بحسب عناصر المشهد في طلب المستخدم (إضاءة، بشر، ملابس، سوائل، بيئة، عدسة، ومنع عيوب الذكاء الاصطناعي)
+
+_NON_PHOTO_STYLE_RE = re.compile(
+    r"(?i)\b(anime|cartoon|manga|pixel\s*art|vector|logo|icon|flat\s*design|sketch|line\s*art|watercolor|oil\s*painting|"
+    r"comic|chibi|low\s*poly|isometric|أنمي|انمي|كرتون|مانغا|شعار|لوغو|لوجو|رسمة\s*يدوية|بكسل|فيكتور)\b"
+)
+
+_AI_BUZZWORDS_STRIP_RE = re.compile(
+    r"(?i)\b(8k|4k|16k|hyper-?realistic|ultra-?realistic|masterpiece|ultra\s*detailed|ultra\s*hd|hdr|"
+    r"3d\s*render|cgi|unreal\s*engine|octane\s*render|ray\s*tracing|flawless|perfect\s*skin|smooth\s*skin|"
+    r"airbrushed|doll-?like|plastic\s*skin|waxy|award-?winning|trending\s*on\s*artstation|vivid\s*colors)\b"
+)
+
+_HUMAN_CUE_RE = re.compile(
+    r"(?i)(\b(?:person|man|woman|boy|girl|child|kid|baby|elderly|old\s+man|old\s+woman|portrait|selfie|face|eyes|smile|"
+    r"hand|hands|fingers|doctor|engineer|worker|student|teacher|player|soldier|chef|driver|bride|groom|couple|family|crowd|"
+    r"human|character|model|actor|singer|gamer|barber|waiter)\b|"
+    r"شخص|رجل|شاب|امرأة|بنت|فتاة|طفل|ولد|صبي|ختيار|عجوز|شيخ|وجه|عيون|ابتسامة|بورتريه|سيلفي|يد|أصابع|اصابع|"
+    r"طبيب|مهندس|عامل|طالب|معلم|لاعب|جندي|طباخ|سائق|عريس|عروس|عائلة|ناس|بشر|انسان|إنسان|ملامح|بشرة|شعر|لحية|"
+    r"قاعد|واقف|ماشي|عم\s+ي|عم\s+ت|جالس|نايم|نائم|يقرأ|يشرب|يأكل|يضحك|يبكي|يفكر|يلعب|يركض|تعديل\s*الوجه|تعديل\s*الشخص)"
+)
+
+_CLOTH_ACC_CUE_RE = re.compile(
+    r"(?i)(\b(?:shirt|jacket|coat|suit|dress|jeans|pants|sweater|hoodie|wool|cotton|denim|linen|shoes|boots|sneakers|"
+    r"glasses|sunglasses|eyeglasses|watch|ring|necklace|chain|bracelet|hat|cap|scarf|tie|collar|zipper|buttons)\b|"
+    r"قميص|جاكيت|معطف|بدلة|فستان|جينز|بنطلون|كنزة|صوف|قطن|كتان|حذاء|بوط|نظارة|نظارات|ساعة|خاتم|سلسلة|طوق|"
+    r"اسوارة|قبعة|طاقية|وشاح|كوفية|ربطة\s*عنق|ياقة|سحاب|أزرار|ازرار|ملابس|لبس|قماش|ثياب)"
+)
+
+_LIQUID_GLASS_CUE_RE = re.compile(
+    r"(?i)(\b(?:cup|glass|mug|bottle|water|coffee|tea|juice|milk|drink|beverage|pour|pouring|spill|steam|smoke|vapor|"
+    r"ice|cold|condensation|droplets|rain|wet|mirror|window|reflection|refraction|plate|dish|table|cafe|restaurant|kitchen|bread|food)\b|"
+    r"كوب|كأس|كاسة|فنجان|قنينة|زجاجة|ماء|مي|قهوة|شاي|عصير|حليب|مشروب|بارد|مثلج|ثلج|ندى|قطرات|بخار|دخان|"
+    r"مطر|مبلل|مرآة|مراية|زجاج|شباك|نافذة|انعكاس|انكسار|صحن|طبق|طاولة|مقهى|كافيه|مطعم|مطبخ|خبز|طعام|أكل|سكب)"
+)
+
+_INDOOR_FURN_CUE_RE = re.compile(
+    r"(?i)(\b(?:room|living\s*room|bedroom|office|desk|chair|sofa|couch|cushion|pillow|bed|wall|floor|wood|wooden|"
+    r"ceramic|leather|house|home|apartment|shop|store|library|classroom|studio)\b|"
+    r"غرفة|صالون|مكتب|طاولة|كرسي|كنب|كنباية|أريكة|وسادة|مخدة|سرير|حائط|جدار|أرضية|خشب|سيراميك|جلد|بيت|منزل|شقة|محل|مكتبة|صف|استوديو)"
+)
+
+_OUTDOOR_NATURE_CUE_RE = re.compile(
+    r"(?i)(\b(?:street|road|alley|city|building|park|garden|tree|trees|plant|plants|leaf|leaves|grass|sky|horizon|"
+    r"sun|sunlight|sunbeam|sunset|sunrise|morning|afternoon|night|beach|sea|mountain|desert|forest|outdoor)\b|"
+    r"شارع|طريق|حارة|مدينة|بناية|مبنى|حديقة|شجرة|أشجار|نبات|نباتات|ورق\s*شجر|عشب|سماء|أفق|شمس|شعاع|غروب|شروق|صباح|ليل|بحر|شاطئ|جبل|صحراء|غابة|طبيعة)"
+)
+
+_IMG_EDIT_INTENT_RE = re.compile(
+    r"(?i)(عدّ?ل|تعديل|غيّ?ر|تغيير|بدّ?ل|تبديل|حسّ?ن|تحسين|خلّ?ي|اجعل|ضيف|أضف|اضف|إضافة|احذف|شيل|أزل|ازل|"
+    r"طبّ?ق|حول|حوّل|بالصورة|عالـ?صورة|بهالصورة|على\s+الصورة|نفس\s+الصورة|"
+    r"\b(?:edit|modify|change|replace|remove|add\s+to|enhance|fix|make\s+the\s+image|make\s+it|in\s+the\s+image|this\s+photo|this\s+image)\b)"
+)
+
+# القواعد الفيزيائية والبصرية الكاملة المستخرجة من ملف «تفاصل صوره»
+REALISM_BLOCKS = {
+    "lighting": (
+        "LIGHTING & SHADOWS: single unified primary light source direction across the entire scene; "
+        "shadow direction and length strictly matching the light angle; dark contact shadows (ambient occlusion) directly beneath every object touching the floor, table, or surface; "
+        "progressive shadow penumbra softening with distance from the surface; balanced dynamic range preserving crisp detail in both bright highlights and dark shadows without blown-out whites or crushed blacks; "
+        "natural environmental color bounce and spill onto nearby surfaces; irregular realistic specular reflections on semi-gloss surfaces (wood, ceramic, leather)."
+    ),
+    "camera": (
+        "CAMERA & LENS OPTICS: shot on a natural 35mm or 50mm lens at eye-level with a subtle candid handheld feel and natural edge framing/cropping of secondary elements; "
+        "natural progressive depth of field with sharp focus strictly on the main subject and soft non-uniform bokeh balls in the out-of-focus background; "
+        "subtle 35mm film grain / organic sensor noise; slight natural lens distortion near frame edges, subtle corner softness, micro chromatic aberration on high-contrast edges, and a gentle natural optical vignette; "
+        "muted natural color saturation, accurate white balance for the time and place, and moderate unfiltered RAW-photo contrast."
+    ),
+    "anti_ai": (
+        "ANTI-AI REALISM GUARD: strictly organic matte/natural textures with zero plastic or waxy shine on faces or surfaces; "
+        "asymmetrical lived-in arrangement of objects (no artificial geometric symmetry and no cloned/repeated faces or props in the background); "
+        "every object physically grounded by gravity with complete supporting legs/bases touching the floor."
+    ),
+    "human": (
+        "HUMAN ANATOMY & SKIN MICRO-DETAILS: natural skin texture with visible pores, fine expression lines around eyes and mouth, and ultra-fine vellus peach fuzz catching the light; "
+        "natural skin tone variation (subtle redness, small moles/freckles, faint capillaries, slight sun-tan difference between face, neck, and hands, and natural skin blanching/redness at grip pressure points); "
+        "subtle natural sebum sheen on forehead and nose tip (never waxy); natural subtle asymmetry between left and right facial halves; "
+        "gradual hairline transition with subtle scalp visibility at the part and random stray flyaway hairs; "
+        "individual eyebrow hairs and eyelashes of varying length and direction; natural micro-creases on lips (not glossy glass) and natural off-white ivory teeth with organic alignment; "
+        "crisp catchlights in the eyes, natural tear-film moisture and faint micro-capillaries in the sclera, unified gaze convergence on a single focal point, and pupil size matching the ambient light; "
+        "subsurface scattering of light through thin ear cartilage and fingertips, plus a subtle rim light along hair edges and shoulders; "
+        "anatomically correct hands with exactly 5 fingers per hand, knuckle wrinkles, natural fingernail curvature with subtle white free-edges, and realistic veins/tendons in hands and neck matching movement; "
+        "physically grounded body weight naturally compressing cushions/chair/ground; candid mid-action facial expression and hand gesture with slight motion blur on moving extremities, not staring stiffly into the camera."
+    ),
+    "clothing": (
+        "CLOTHING, FABRICS & ACCESSORIES: distinct micro-weave fabric texture (cotton, wool, denim, or linen threads) with subtle natural pilling, stray lint threads, and lived-in wear on clothes and shoes; "
+        "natural tension folds and creases at joints, elbows, and seated bends with gravity-accurate drape; "
+        "continuous intact stitching seams, buttons, collars, and zippers without melting or breaks; "
+        "accessories (watches, rings, chains, eyeglasses) resting physically on skin without clipping, and subtle distorted reflections on eyeglass lenses casting a soft frame shadow on the face."
+    ),
+    "liquids": (
+        "LIQUIDS, GLASS & MATERIALS PHYSICS: physically accurate optical refraction of background objects through glass cups and water; "
+        "subtle upward liquid meniscus curve where liquid meets glass walls; random condensation droplets and dew on cold glasses; "
+        "turbulent wispy steam or smoke rising and dissipating naturally into the air; casual liquid rings, water drops, or tiny bread crumbs near plates; "
+        "accurate geometry-matching reflections in mirrors, glass, and water."
+    ),
+    "environment": (
+        "ENVIRONMENT, ATMOSPHERE & PHYSICS: level horizon line and plumb vertical walls/columns with accurate linear perspective and subtle atmospheric perspective haze fading distant background contrast; "
+        "natural everyday lived-in clutter (crumpled napkins, mismatched dishes, casually placed items) and authentic surface wear (fine wood scratches, light dust, faint fingerprints on glass, slightly worn non-razor-sharp corners); "
+        "tiny dust motes visible only inside direct sunbeams, natural warm window sunlight mixing with cool indoor light, and organic plant leaves with slight tip yellowing or tiny pinholes; "
+        "clean background behind the subject's head (no poles or trees growing out of the head) and background text/signage softly out of focus."
+    ),
+}
+
+
+def select_realism_directives(user_text, is_edit=False, has_ref_image=False):
+    """تحليل طلب المستخدم واختيار قواعد الواقعية المناسبة لمحتوى الصورة المطلوبة فقط."""
+    txt = (user_text or "").strip()
+    if _NON_PHOTO_STYLE_RE.search(txt):
+        return ""
+    selected = [REALISM_BLOCKS["lighting"], REALISM_BLOCKS["camera"], REALISM_BLOCKS["anti_ai"]]
+    has_human = bool(_HUMAN_CUE_RE.search(txt)) or has_ref_image or is_edit
+    has_cloth = bool(_CLOTH_ACC_CUE_RE.search(txt)) or has_human
+    has_liquid = bool(_LIQUID_GLASS_CUE_RE.search(txt))
+    has_env = bool(_INDOOR_FURN_CUE_RE.search(txt) or _OUTDOOR_NATURE_CUE_RE.search(txt)) or not (has_human or has_liquid)
+
+    if has_human:
+        selected.append(REALISM_BLOCKS["human"])
+    if has_cloth:
+        selected.append(REALISM_BLOCKS["clothing"])
+    if has_liquid:
+        selected.append(REALISM_BLOCKS["liquids"])
+    if has_env or has_human:
+        selected.append(REALISM_BLOCKS["environment"])
+    return "\n".join(selected)
+
+
+def strip_ai_buzzwords(prompt_en):
+    """إزالة كلمات المبالغة الرقمية (8K, Hyperrealistic, Masterpiece, CGI, ...) كما ينص ملف تفاصيل الصورة."""
+    cleaned = _AI_BUZZWORDS_STRIP_RE.sub("", prompt_en or "")
+    cleaned = re.sub(r"\s*,\s*,+", ", ", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" ,.")
+    return cleaned
+
+
 IMG_SYS = (
-    "You write prompts for an AI image generator. Rewrite the user's idea (Arabic or English) "
-    "as ONE detailed English prompt. Keep every detail the user gave (subject, count, colors, place, clothing, mood) "
-    "and never add new main subjects. "
-    "STYLE: if the user wants a real photo, or gives no style, write it as an unedited candid photograph: "
-    "'RAW photo, amateur photography, shot on 35mm lens, natural skin texture with visible pores, "
-    "subtle film grain, natural imperfect lighting, shallow depth of field'. "
-    "If the user asks for a specific style (anime, cartoon, 3D, game art, logo, painting, pixel art, digital art, poster), "
-    "follow that style exactly and do NOT use photo wording. "
-    "Avoid these words unless the user asks for that style: vivid, hyper-realistic, ultra HD, 8k, smooth, flawless, perfect, CGI, 3D render. "
-    "Describe only what should appear (negative prompts are not supported). "
-    "If text must appear inside the image, keep it very short and put it in English quotes. "
-    "Output only the prompt, max 90 words.")
+    "You are an expert photographic director writing prompts for an AI image generator/editor. "
+    "Rewrite the user's idea (Arabic or English) into ONE rich, coherent, physically accurate English prompt (120 to 220 words). "
+    "1) Keep EVERY detail the user requested (subject, count, pose, action, colors, setting, clothing, time of day, mood) and never invent unrelated main subjects. "
+    "2) STYLE ROUTING: If the user explicitly asks for a non-photo style (anime, cartoon, 3D, game art, logo, painting, pixel art, vector), follow that exact style and do NOT apply photo-realism rules. "
+    "3) PHOTOREALISM DIRECTIVES: For any realistic photo or unspecified style, weave the provided SCENE REALISM DIRECTIVES naturally into the description so the image looks like an authentic, unedited 35mm/50mm RAW candid photograph. "
+    "4) STRICTLY FORBIDDEN WORDS: Never use digital hype words (8K, 4K, hyper-realistic, masterpiece, ultra detailed, ultra HD, flawless, perfect, smooth, CGI, 3D render, unreal engine). "
+    "5) Describe only what should visibly appear in the frame. If text must appear inside the image, keep it short in English quotes. "
+    "Output ONLY the final English prompt."
+)
+
+IMG_EDIT_SYS = (
+    "You are an expert photographic editor. The user attached a reference image and wants to edit or enhance it. "
+    "Write a clear, direct English image-editing instruction (100 to 180 words) that: "
+    "1) States clearly what to modify, add, remove, or enhance according to the user's request while preserving the identity, composition, and unrequested elements of the original image. "
+    "2) Integrates the provided SCENE REALISM DIRECTIVES (unified lighting direction, contact shadows, natural skin pores/peach fuzz/catchlights, accurate hand anatomy, fabric weave, optical lens physics, and zero plastic/waxy AI artifacts) so the edited result looks 100% like an authentic unedited RAW photograph. "
+    "3) Never use forbidden hype words (8K, hyper-realistic, masterpiece, CGI, flawless, smooth). "
+    "Output ONLY the English editing prompt."
+)
+
 
 _ASPECT_HINTS = (
     (r"أفقي|عريض|landscape|wide|16:9|16/9", "The image must be in landscape (wide) 16:9 format."),
@@ -1456,7 +1600,7 @@ def web_answer(b, contents, use_search, yt_urls):
 
 
 # ==============================================================================
-# RYN Mix × gstack Engine — المراحل العشر لتطوير RYN Mix (الدفعات A, B, C, D)
+# RYN Mix × gstack Engine — المراحل العشر + الإضافات الثماني المتقدمة
 # ==============================================================================
 
 # ---------- المرحلة 6 (الدفعة C): الأمان والخصوصية وحماية الأسرار وحدود الثقة ----------
@@ -1534,7 +1678,7 @@ _SECURITY_RULES = (
     ("medium", "فك تسلسل غير آمن (pickle.loads / yaml.load بدون SafeLoader)",
      re.compile(r"(?:\bpickle\.loads?\s*\(|\byaml\.load\s*\([^)]*(?!Loader\s*=))"),
      "استخدم json.loads أو yaml.safe_load لتجنب تنفيذ كود عشوائي."),
-    ("medium", "طلب شبكة خارجي بدون مهلة (timeout) أو مع تعطيل التحقق من شهادة SSL (verify=False)",
+    ("medium", "طلب شبكة خارجي مع تعطيل التحقق من شهادة SSL (verify=False)",
      re.compile(r"requests\.(?:get|post|put|delete|request)\s*\([^)]*verify\s*=\s*False"),
      "فعّل التحقق من الشهادة (verify=True) وحدد timeout واضحاً وتحقق من الرابط لمنع SSRF."),
 )
@@ -1554,7 +1698,6 @@ def scan_security_and_dependencies(items, raw_text=""):
     for label, lang, code in (items or [])[:30]:
         lines = (code or "").splitlines()
         low_label = (label or "").lower()
-        # فحص ملفات التبعيات (requirements.txt / package.json)
         if low_label.endswith("requirements.txt"):
             unpinned = []
             for idx, ln in enumerate(lines, 1):
@@ -1584,7 +1727,6 @@ def scan_security_and_dependencies(items, raw_text=""):
                             })
             except Exception:
                 pass
-        # فحص أنماط الأمان سطر بسطر
         for idx, ln in enumerate(lines, 1):
             if ln.strip().startswith(("#", "//")):
                 continue
@@ -1600,6 +1742,207 @@ def scan_security_and_dependencies(items, raw_text=""):
     return findings[:15]
 
 
+# ---------- الإضافة 5: اختيار الكاتب والمراجع حسب الأداء الفعلي (من benchmark-models) ----------
+_PERSIST_STATE_PATH = os.environ.get(
+    "RYN_PERSIST_FILE",
+    os.path.join(os.environ.get("RYN_DATA_DIR", tempfile.gettempdir()), "ryn_mix_persistent_state.json")
+)
+_perf_lock = threading.Lock()
+_DEFAULT_WRITER_ORDER = ("Qwen", "DeepSeek", "Kimi", "Codestral", "GPT-OSS", "Gemini")
+_DEFAULT_REV1_ORDER = ("DeepSeek", "Kimi", "GPT-OSS", "Codestral", "Qwen", "Gemini")
+_DEFAULT_REV2_ORDER = ("GPT-OSS", "Kimi", "Codestral", "DeepSeek", "Qwen", "Gemini")
+
+MODEL_PERF_STATS = {
+    name: {
+        "writer_runs": 0, "writer_success": 0, "writer_issues_total": 0, "writer_latency_total": 0.0,
+        "reviewer_runs": 0, "reviewer_confirmed_issues": 0, "reviewer_latency_total": 0.0,
+    }
+    for name in ("Qwen", "DeepSeek", "Kimi", "Codestral", "GPT-OSS", "Gemini")
+}
+USER_PERSISTENT_LEARNINGS = {}
+
+
+def _load_persistent_state():
+    try:
+        if os.path.isfile(_PERSIST_STATE_PATH):
+            with open(_PERSIST_STATE_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                for k, v in (data.get("model_stats") or {}).items():
+                    if k in MODEL_PERF_STATS and isinstance(v, dict):
+                        MODEL_PERF_STATS[k].update(v)
+                for u, lrns in (data.get("user_learnings") or {}).items():
+                    if isinstance(lrns, list):
+                        USER_PERSISTENT_LEARNINGS[u] = [str(x)[:260] for x in lrns[:40]]
+    except Exception:
+        pass
+
+
+def _save_persistent_state():
+    try:
+        with _perf_lock:
+            payload = {
+                "updated_at": time.time(),
+                "model_stats": MODEL_PERF_STATS,
+                "user_learnings": USER_PERSISTENT_LEARNINGS,
+            }
+            with open(_PERSIST_STATE_PATH, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+_load_persistent_state()
+
+
+def record_writer_performance(model_name, success, latency_sec, issues_count):
+    if not model_name:
+        return
+    with _perf_lock:
+        st = MODEL_PERF_STATS.setdefault(model_name, {
+            "writer_runs": 0, "writer_success": 0, "writer_issues_total": 0, "writer_latency_total": 0.0,
+            "reviewer_runs": 0, "reviewer_confirmed_issues": 0, "reviewer_latency_total": 0.0,
+        })
+        st["writer_runs"] += 1
+        if success:
+            st["writer_success"] += 1
+        st["writer_issues_total"] += max(0, int(issues_count))
+        st["writer_latency_total"] += max(0.1, float(latency_sec))
+    _save_persistent_state()
+
+
+def record_reviewer_performance(model_name, confirmed_count, latency_sec):
+    if not model_name:
+        return
+    with _perf_lock:
+        st = MODEL_PERF_STATS.setdefault(model_name, {
+            "writer_runs": 0, "writer_success": 0, "writer_issues_total": 0, "writer_latency_total": 0.0,
+            "reviewer_runs": 0, "reviewer_confirmed_issues": 0, "reviewer_latency_total": 0.0,
+        })
+        st["reviewer_runs"] += 1
+        st["reviewer_confirmed_issues"] += max(0, int(confirmed_count))
+        st["reviewer_latency_total"] += max(0.1, float(latency_sec))
+    _save_persistent_state()
+
+
+def _writer_score(name):
+    base_idx = _DEFAULT_WRITER_ORDER.index(name) if name in _DEFAULT_WRITER_ORDER else 9
+    st = MODEL_PERF_STATS.get(name) or {}
+    runs = st.get("writer_runs", 0)
+    if runs == 0:
+        return (0, -base_idx)
+    sr = st.get("writer_success", 0) / float(runs)
+    avg_iss = st.get("writer_issues_total", 0) / float(runs)
+    avg_lat = st.get("writer_latency_total", 0.0) / float(runs)
+    score = (sr * 100.0) - (avg_iss * 8.0) - min(25.0, avg_lat * 0.4)
+    return (1, round(score, 2), -base_idx)
+
+
+def _reviewer_score(name, default_order):
+    base_idx = default_order.index(name) if name in default_order else 9
+    st = MODEL_PERF_STATS.get(name) or {}
+    runs = st.get("reviewer_runs", 0)
+    if runs == 0:
+        return (0, -base_idx)
+    avg_conf = st.get("reviewer_confirmed_issues", 0) / float(runs)
+    avg_lat = st.get("reviewer_latency_total", 0.0) / float(runs)
+    score = (avg_conf * 20.0) + 50.0 - min(25.0, avg_lat * 0.4)
+    return (1, round(score, 2), -base_idx)
+
+
+def get_ranked_writers(roster):
+    cands = [n for n in _DEFAULT_WRITER_ORDER if n in roster]
+    for k in roster:
+        if k not in cands:
+            cands.append(k)
+    has_stats = any((MODEL_PERF_STATS.get(n) or {}).get("writer_runs", 0) > 0 for n in cands)
+    if not has_stats:
+        return cands
+    return sorted(cands, key=_writer_score, reverse=True)
+
+
+def get_ranked_reviewers(roster, exclude=(), second=False):
+    default_ord = _DEFAULT_REV2_ORDER if second else _DEFAULT_REV1_ORDER
+    cands = [n for n in default_ord if n in roster and n not in exclude]
+    for k in roster:
+        if k not in cands and k not in exclude:
+            cands.append(k)
+    has_stats = any((MODEL_PERF_STATS.get(n) or {}).get("reviewer_runs", 0) > 0 for n in cands)
+    if not has_stats:
+        return cands
+    return sorted(cands, key=lambda n: _reviewer_score(n, default_ord), reverse=True)
+
+
+# ---------- الإضافة 8: الدروس الدائمة لكل مستخدم (من learn — حفظ مزدوج مقاوم لتصفير Render) ----------
+def sync_learnings_from_client_memory(u, memory_dict):
+    if not isinstance(memory_dict, dict):
+        return
+    facts = [str(x).strip() for x in (memory_dict.get("facts") or []) if str(x).strip()]
+    custom = str(memory_dict.get("custom") or "").strip()
+    restored = USER_PERSISTENT_LEARNINGS.setdefault(u or "main", [])
+    for f in facts:
+        if (f.startswith("📚 درس:") or f.startswith("🛠 تفضيل:")) and f not in restored:
+            restored.append(f)
+    if custom and ("شامي" in custom or "فصحى" in custom or "بايثون" in custom or "اختصار" in custom):
+        pref = "🛠 تفضيل: " + custom[:160]
+        if pref not in restored:
+            restored.append(pref)
+
+
+def get_user_learnings_prompt(u="main"):
+    lrns = USER_PERSISTENT_LEARNINGS.get(u or "main") or []
+    if not lrns:
+        return ""
+    return (
+        "[دروس وتفضيلات دائمة متعلّمة لهذا المستخدم (من مهام سابقة — التزم بها وتجنب تكرار الأخطاء المذكورة)]\n"
+        + "\n".join("• " + x for x in lrns[-12:])
+        + "\n---\n"
+    )
+
+
+def extract_and_save_learnings(u, question, proj, merged_issues, final_text):
+    u = u or "main"
+    lrns = USER_PERSISTENT_LEARNINGS.setdefault(u, [])
+    new_client_memories = []
+
+    def _add_lesson(txt):
+        txt = redact_secrets(txt.strip()[:220])
+        if txt and txt not in lrns:
+            lrns.append(txt)
+            if len(lrns) > 35:
+                lrns.pop(0)
+            new_client_memories.append(txt)
+
+    all_code = "\n".join(cd for _fn, _lg, cd in (proj.get("all_items") or [])[:6]) + "\n" + (final_text or "")
+    frameworks = []
+    if "flask" in all_code.lower():
+        frameworks.append("Flask")
+    if "sqlite3" in all_code.lower():
+        frameworks.append("SQLite3")
+    if "telebot" in all_code.lower() or "pytelegrambotapi" in all_code.lower():
+        frameworks.append("pyTelegramBotAPI")
+    if "fastapi" in all_code.lower():
+        frameworks.append("FastAPI")
+    if "react" in all_code.lower():
+        frameworks.append("React")
+    if frameworks:
+        _add_lesson("📚 درس: بيئة مشاريع المستخدم تتضمن (%s) — راعِ توافق الكود والاستعلامات معها دائماً." % "، ".join(frameworks[:4]))
+
+    for iss in (merged_issues or []):
+        if iss.get("severity") == "high" and not iss.get("disputed") and iss.get("problem"):
+            prob_short = iss["problem"].split(" (")[0][:110]
+            _add_lesson("📚 درس: انتبه من تكرار خطأ سابق (%s)." % prob_short)
+            break
+
+    q = (question or "").strip()
+    if any(w in q for w in ("باختصار", "مختصر", "بدون تطويل")):
+        _add_lesson("🛠 تفضيل: المستخدم يفضل الشرح المختصر والمباشر بدون إطالة.")
+
+    if new_client_memories:
+        _save_persistent_state()
+    return new_client_memories[:2]
+
+
 # ---------- المرحلة 1 (الدفعة A): فهم الطلب وفحص المشروع وتحديد نقاط الدخول والمستدعين ----------
 _ENTRY_NAMES = {
     "bot.py", "main.py", "app.py", "webapp.py", "server.py", "wsgi.py", "asgi.py", "manage.py",
@@ -1612,7 +1955,6 @@ _CONFIG_NAMES = {
 
 
 def _extract_symbols_and_calls(lang, code):
-    """استخراج الدوال والكلاسات المعرّفة والمستدعاة داخل ملف كود لتتبع المستدعين (Callers)."""
     defs, calls = set(), set()
     if lang == "python":
         try:
@@ -1636,15 +1978,365 @@ def _extract_symbols_and_calls(lang, code):
     return defs, calls
 
 
+def _extract_python_symbol_details(code):
+    details = {}
+    try:
+        tree = ast.parse(code or "")
+    except Exception:
+        return details
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            total_args = len(node.args.args)
+            defaults_cnt = len(node.args.defaults)
+            req_args = max(0, total_args - defaults_cnt)
+            try:
+                norm_src = ast.unparse(node) if hasattr(ast, "unparse") else ast.dump(node)
+            except Exception:
+                norm_src = ast.dump(node)
+            details[node.name] = {
+                "kind": "function",
+                "lineno": node.lineno,
+                "total_args": total_args,
+                "req_args": req_args,
+                "has_vararg": node.args.vararg is not None,
+                "norm": norm_src,
+            }
+        elif isinstance(node, ast.ClassDef):
+            try:
+                norm_src = ast.unparse(node) if hasattr(ast, "unparse") else ast.dump(node)
+            except Exception:
+                norm_src = ast.dump(node)
+            details[node.name] = {
+                "kind": "class",
+                "lineno": node.lineno,
+                "total_args": 0,
+                "req_args": 0,
+                "has_vararg": True,
+                "norm": norm_src,
+            }
+        elif isinstance(node, ast.Assign):
+            for t in node.targets:
+                if isinstance(t, ast.Name) and t.id.isupper():
+                    try:
+                        norm_src = ast.unparse(node) if hasattr(ast, "unparse") else ast.dump(node)
+                    except Exception:
+                        norm_src = ast.dump(node)
+                    details[t.id] = {
+                        "kind": "constant",
+                        "lineno": node.lineno,
+                        "total_args": 0,
+                        "req_args": 0,
+                        "has_vararg": True,
+                        "norm": norm_src,
+                    }
+    return details
+
+
+# ---------- الإضافة 2: فحص "كل المستخدمين / المستهلكين" (All Consumers Trace بكود Python) ----------
+def find_all_consumers_of_modified_symbols(orig_items, new_items, all_project_items=None):
+    if not orig_items or not new_items:
+        return {"modified_symbols": [], "consumer_lines": [], "broken_callers": [], "report_text": ""}
+
+    search_pool = list(all_project_items or orig_items) + list(new_items)
+    orig_map = {os.path.basename(fn).lower(): (fn, lg, cd) for fn, lg, cd in orig_items}
+    modified_syms = {}
+
+    for idx, (n_fn, n_lg, n_cd) in enumerate(new_items):
+        lang = guess_lang(n_lg, n_cd)
+        target = None
+        if n_fn and os.path.basename(n_fn).lower() in orig_map:
+            target = orig_map[os.path.basename(n_fn).lower()]
+        elif len(orig_items) == 1 and guess_lang(orig_items[0][1], orig_items[0][2]) == lang:
+            target = orig_items[0]
+        elif idx < len(orig_items) and guess_lang(orig_items[idx][1], orig_items[idx][2]) == lang:
+            target = orig_items[idx]
+        if not target:
+            continue
+        o_fn, o_lg, o_cd = target
+        if lang == "python":
+            o_det = _extract_python_symbol_details(o_cd)
+            n_det = _extract_python_symbol_details(n_cd)
+            for sym, o_info in o_det.items():
+                if sym not in n_det:
+                    modified_syms[sym] = {"status": "deleted", "file": o_fn, "orig": o_info, "new": None}
+                elif n_det[sym]["norm"] != o_info["norm"]:
+                    modified_syms[sym] = {"status": "modified", "file": o_fn, "orig": o_info, "new": n_det[sym]}
+        else:
+            o_defs, _ = _extract_symbols_and_calls(o_lg, o_cd)
+            n_defs, _ = _extract_symbols_and_calls(lang, n_cd)
+            for sym in o_defs:
+                if sym not in n_defs:
+                    modified_syms[sym] = {"status": "deleted", "file": o_fn, "orig": {}, "new": None}
+                else:
+                    modified_syms[sym] = {"status": "modified", "file": o_fn, "orig": {}, "new": {}}
+
+    if not modified_syms:
+        return {"modified_symbols": [], "consumer_lines": [], "broken_callers": [], "report_text": ""}
+
+    consumer_lines = []
+    broken_callers = []
+    seen_consumer_keys = set()
+
+    for p_fn, p_lg, p_cd in search_pool[:25]:
+        lines = (p_cd or "").splitlines()
+        for sym, minfo in modified_syms.items():
+            pat = re.compile(r"\b" + re.escape(sym) + r"\b")
+            for lno, ln in enumerate(lines, 1):
+                s_ln = ln.strip()
+                if not s_ln or s_ln.startswith(("#", "//")) or re.match(r"^(?:def|class|async\s+def|function)\s+" + re.escape(sym) + r"\b", s_ln):
+                    continue
+                if pat.search(s_ln):
+                    key = (p_fn, lno, s_ln[:80])
+                    if key not in seen_consumer_keys:
+                        seen_consumer_keys.add(key)
+                        consumer_lines.append("• `%s` (ملف %s، سطر %d): `%s`" % (sym, p_fn, lno, s_ln[:110]))
+        if guess_lang(p_lg, p_cd) == "python":
+            try:
+                tree = ast.parse(p_cd)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Call):
+                        fn_name = node.func.id if isinstance(node.func, ast.Name) else (node.func.attr if isinstance(node.func, ast.Attribute) else None)
+                        if fn_name in modified_syms:
+                            minfo = modified_syms[fn_name]
+                            if minfo["status"] == "deleted":
+                                broken_callers.append("ملف `%s` سطر %d يستدعي الدالة المحذوفة `%s`!" % (p_fn, getattr(node, "lineno", 0), fn_name))
+                            elif minfo.get("new") and minfo["new"].get("kind") == "function":
+                                n_meta = minfo["new"]
+                                call_pos = len(node.args)
+                                call_kw = len(node.keywords)
+                                has_star = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
+                                if not has_star:
+                                    if call_pos + call_kw < n_meta["req_args"]:
+                                        broken_callers.append("ملف `%s` سطر %d يستدعي `%s` بـ %d معاملات بينما التوقيع الجديد يتطلب %d على الأقل!" % (
+                                            p_fn, getattr(node, "lineno", 0), fn_name, call_pos + call_kw, n_meta["req_args"]
+                                        ))
+                                    elif not n_meta["has_vararg"] and call_pos > n_meta["total_args"]:
+                                        broken_callers.append("ملف `%s` سطر %d يمرر %d معاملات موضعية لـ `%s` بينما تقبل %d كحد أقصى!" % (
+                                            p_fn, getattr(node, "lineno", 0), call_pos, fn_name, n_meta["total_args"]
+                                        ))
+            except Exception:
+                pass
+
+    rep_lines = ["[فحص كل المستخدمين / المستهلكين (All Consumers Trace — Python AST)]"]
+    rep_lines.append("• الرموز/الدوال التي تعدّلت: " + "، ".join("`%s` (%s)" % (k, v["status"]) for k, v in modified_syms.items()))
+    if consumer_lines:
+        rep_lines.append("• أماكن استدعاء واستخدام هذه الرموز عبر الملفات (تحقق من عدم انكسارها):\n  " + "\n  ".join(consumer_lines[:15]))
+    if broken_callers:
+        rep_lines.append("• ❌ استدعاءات مكسورة مؤكدة رصدها فاحص Python:\n  - " + "\n  - ".join(broken_callers[:8]))
+
+    return {
+        "modified_symbols": list(modified_syms.keys()),
+        "consumer_lines": consumer_lines[:15],
+        "broken_callers": broken_callers[:8],
+        "report_text": "\n".join(rep_lines) + "\n",
+    }
+
+
+# ---------- الإضافة 3: قفل النطاق (Scope Lock — من freeze) ----------
+def check_scope_lock(orig_items, final_text, question="", plan=None):
+    violations = []
+    if not orig_items or not final_text:
+        return violations
+    q = (question or "").strip()
+    q_low = q.lower()
+    broad_request = bool(re.search(r"(?i)(كل\s+الأخطاء|كل\s+المشاكل|راجع\s+هالكود|صلّ?ح\s+هالكود|افحص\s+هالكود|ملف\s+كامل|المشروع\s+كامل|all\s+bugs|entire\s+file)", q))
+
+    nb = named_blocks(final_text)
+    if not nb:
+        return violations
+
+    orig_map = {os.path.basename(fn).lower(): (fn, lg, cd) for fn, lg, cd in orig_items}
+    plan_text = json.dumps(plan or {}, ensure_ascii=False).lower()
+
+    for idx, (n_fn, n_lg, n_cd) in enumerate(nb):
+        lang = guess_lang(n_lg, n_cd)
+        if lang != "python":
+            continue
+        target = None
+        if n_fn and os.path.basename(n_fn).lower() in orig_map:
+            target = orig_map[os.path.basename(n_fn).lower()]
+        elif len(orig_items) == 1 and guess_lang(orig_items[0][1], orig_items[0][2]) == "python":
+            target = orig_items[0]
+        if not target:
+            continue
+        o_fn, _o_lg, o_cd = target
+        o_det = _extract_python_symbol_details(o_cd)
+        n_det = _extract_python_symbol_details(n_cd)
+        if len(o_det) < 2:
+            continue
+
+        named_in_q = [sym for sym in o_det if sym.lower() in q_low]
+        if not named_in_q and broad_request:
+            continue
+
+        for sym, o_info in o_det.items():
+            if sym not in n_det:
+                continue
+            if o_info["norm"] != n_det[sym]["norm"]:
+                sym_in_scope = (sym.lower() in q_low) or (sym.lower() in plan_text)
+                if not sym_in_scope and named_in_q:
+                    sym_sec = scan_security_and_dependencies([(o_fn, "python", o_info["norm"])])
+                    sym_edge = static_edge_case_checks("python", o_info["norm"])
+                    if not sym_sec and not sym_edge:
+                        violations.append(
+                            "خرق قفل النطاق (Scope Lock): تم تعديل الدالة `%s` في `%s` رغم أنها سليمة وخارج نطاق طلب المستخدم المحدد (%s) — يجب إبقاء `%s` كما كانت في الأصل دون تغيير."
+                            % (sym, o_fn, "، ".join(named_in_q), sym)
+                        )
+    return violations[:6]
+
+
+# ---------- الإضافة 4: منع تخفيف الفحوصات (Gate Integrity / Anti-Relaxation) ----------
+def check_gate_integrity(orig_items, final_text):
+    violations = []
+    if not final_text:
+        return violations
+    nb = named_blocks(final_text)
+    if not nb:
+        return violations
+
+    orig_map = {os.path.basename(fn).lower(): (fn, lg, cd) for fn, lg, cd in (orig_items or [])}
+
+    for idx, (n_fn, n_lg, n_cd) in enumerate(nb):
+        lang = guess_lang(n_lg, n_cd)
+        label = n_fn or ("بلوك %d" % (idx + 1))
+
+        if re.search(r"(?:#\s*(?:noqa|type:\s*ignore|pylint:\s*disable)|//\s*eslint-disable)", n_cd):
+            violations.append("انتهاك Gate Integrity (RH-13) في `%s`: تمت إضافة تعليقات لتعطيل الفاحص الآلي (`# noqa` / `type: ignore`)." % label)
+
+        if lang == "python":
+            try:
+                n_tree = ast.parse(n_cd)
+                for node in ast.walk(n_tree):
+                    if isinstance(node, ast.ExceptHandler):
+                        body_stmts = [st for st in node.body if not (isinstance(st, ast.Expr) and isinstance(getattr(st, "value", None), ast.Constant))]
+                        if len(body_stmts) == 1 and isinstance(body_stmts[0], ast.Pass):
+                            violations.append("انتهاك Gate Integrity (RH-16) في `%s` سطر %d: استخدام `except: pass` لبلع الخطأ بصمت بدلاً من معالجته." % (label, node.lineno))
+            except Exception:
+                pass
+
+        target = None
+        if n_fn and os.path.basename(n_fn).lower() in orig_map:
+            target = orig_map[os.path.basename(n_fn).lower()]
+        elif orig_items and len(orig_items) == 1 and guess_lang(orig_items[0][1], orig_items[0][2]) == lang:
+            target = orig_items[0]
+        if not target:
+            continue
+
+        o_fn, _o_lg, o_cd = target
+        if lang == "python":
+            try:
+                o_tree = ast.parse(o_cd)
+                n_tree = ast.parse(n_cd)
+                o_asserts = sum(1 for x in ast.walk(o_tree) if isinstance(x, ast.Assert))
+                n_asserts = sum(1 for x in ast.walk(n_tree) if isinstance(x, ast.Assert))
+                if o_asserts > 0 and n_asserts < o_asserts:
+                    violations.append("انتهاك Gate Integrity (RH-1) في `%s`: تم حذف عبارات `assert` كانت موجودة في الكود الأصلي (%d ← %d)." % (o_fn, o_asserts, n_asserts))
+
+                o_tests = {x.name for x in ast.walk(o_tree) if isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef)) and x.name.startswith("test_")}
+                n_tests = {x.name for x in ast.walk(n_tree) if isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef)) and x.name.startswith("test_")}
+                dropped_tests = o_tests - n_tests
+                if dropped_tests:
+                    violations.append("انتهاك Gate Integrity (RH-1) في `%s`: تم حذف دوال اختبار كانت موجودة في الأصل: %s." % (o_fn, "، ".join(sorted(dropped_tests))))
+
+                o_raises = sum(1 for x in ast.walk(o_tree) if isinstance(x, ast.Raise))
+                n_raises = sum(1 for x in ast.walk(n_tree) if isinstance(x, ast.Raise))
+                if o_raises > 0 and n_raises == 0:
+                    violations.append("انتهاك Gate Integrity (RH-15) في `%s`: تم حذف جميع عبارات رفع الاستثناءات `raise` التي كانت تحمي الشروط في الكود الأصلي." % o_fn)
+            except Exception:
+                pass
+    return violations[:8]
+
+
+# ---------- الإضافة 1: سبب جذري قبل أي إصلاح (Root Cause Investigation — من investigate) ----------
+INVESTIGATE_SYSTEM_PROMPT = (
+    "أنت محقق أخطاء برمجية في Ryn mix (تطبّق القانون الأول لمهارة gstack/investigate: لا إصلاح بدون تحقيق السبب الجذري أولاً).\n"
+    "المطلوب: افحص الكود والخطأ واكتب 2 إلى 3 فرضيات للسبب الجذري (Hypotheses)، واربط كل فرضية بدليل مباشر من الكود ورقم السطر، ثم حدّد الفرضية المؤكدة.\n"
+    "رجّع JSON فقط بالشكل التالي:\n"
+    '{"hypotheses":[{"id":1,"hypothesis":"الفرضية الأولى للسبب الجذري","evidence":"الدليل من الكود ورقم السطر","verdict":"confirmed|plausible|ruled_out"}],'
+    '"confirmed_root_cause":"ملخص السبب الجذري المؤكد الذي يجب أن يعالجه الإصلاح مباشرة بدلاً من معالجة الأعراض"}\n'
+)
+
+
+def parse_investigation_json(txt):
+    t = (txt or "").strip()
+    m = re.search(r"```(?:json)?\s*(.*?)```", t, re.S)
+    body = m.group(1).strip() if m else t
+    if "{" in body and "}" in body:
+        body = body[body.find("{"):body.rfind("}") + 1]
+    try:
+        d = json.loads(body)
+        if isinstance(d, dict):
+            hyps = []
+            for h in (d.get("hypotheses") or [])[:4]:
+                if isinstance(h, dict) and h.get("hypothesis"):
+                    hyps.append({
+                        "id": h.get("id", len(hyps) + 1),
+                        "hypothesis": redact_secrets(str(h.get("hypothesis", ""))[:240]),
+                        "evidence": redact_secrets(str(h.get("evidence", ""))[:220]),
+                        "verdict": str(h.get("verdict") or "confirmed").lower(),
+                    })
+            root = redact_secrets(str(d.get("confirmed_root_cause") or "").strip()[:300])
+            if hyps or root:
+                return {"hypotheses": hyps, "confirmed_root_cause": root}
+    except Exception:
+        pass
+    return None
+
+
+def build_fallback_investigation(orig_items, ver_initial, question):
+    hyps = []
+    for e in (ver_initial.get("errors") or [])[:2]:
+        hyps.append({"id": len(hyps) + 1, "hypothesis": "خطأ صياغة أو اسم غير معرّف يمنع التنفيذ", "evidence": e, "verdict": "confirmed"})
+    for w in (ver_initial.get("warnings") or [])[:2]:
+        hyps.append({"id": len(hyps) + 1, "hypothesis": "خلل منطقي في الحالات الحدية أو إدارة المعاملات", "evidence": w, "verdict": "confirmed"})
+    for s in (ver_initial.get("security_findings") or [])[:2]:
+        hyps.append({"id": len(hyps) + 1, "hypothesis": s["problem"], "evidence": "%s (سطر %s): %s" % (s.get("file"), s.get("line"), s.get("evidence")), "verdict": "confirmed"})
+    if not hyps:
+        hyps.append({"id": 1, "hypothesis": "خلل في منطق معالجة المدخلات أو الحالات الفارغة", "evidence": "فحص مسار الدوال المطلوبة في الطلب", "verdict": "plausible"})
+    root = "؛ ".join(h["hypothesis"] for h in hyps[:2])
+    return {"hypotheses": hyps[:3], "confirmed_root_cause": root}
+
+
+def format_investigation_for_writer(inv):
+    if not inv:
+        return ""
+    lines = ["[تحقيق السبب الجذري قبل الإصلاح — القانون الأول في investigate (عالج السبب الجذري لا العَرَض)]"]
+    for h in (inv.get("hypotheses") or [])[:3]:
+        lines.append("• فرضية %s (%s): %s | الدليل: %s" % (h.get("id"), h.get("verdict", "confirmed"), h.get("hypothesis"), h.get("evidence")))
+    if inv.get("confirmed_root_cause"):
+        lines.append("• السبب الجذري المؤكد للإصلاح: " + inv["confirmed_root_cause"])
+    return "\n".join(lines) + "\n---\n"
+
+
+# ---------- الإضافة 7: افتراضات ومواصفة من 5 نقاط بدل الأسئلة للطلبات الغامضة (من spec و autoplan) ----------
+def check_missing_essential_context(question, proj):
+    q = (question or "").strip()
+    has_code_or_files = bool(proj.get("all_items"))
+    if has_code_or_files:
+        return None
+    if re.search(r"(?i)(هاد\s+الكود|هذا\s+الكود|هالكود|الملف\s+المرفق|هاد\s+الملف|صلّ?حلي\s+ياه|وين\s+الغلط\s+هون|اشرح\s+هاد\s+الكود|fix\s+this\s+code|review\s+this\s+file)", q):
+        return "طلبت فحص أو تعديل كود/ملف محدد، لكن لم يتم إرفاق الكود أو الملف في الرسالة."
+    return None
+
+
+def is_ambiguous_request(question, proj):
+    q = (question or "").strip()
+    if proj.get("all_items"):
+        return len(q) < 60
+    return len(q) < 120 or not re.search(r"(?:1\.|2\.|- |\n)", q)
+
+
 def inspect_project_context(contents, question):
-    """المرحلة 1: قراءة بنية المشروع والملفات ذات الصلة، وتحديد نقطة الدخول والتبعيات والمستدعين والافتراضات."""
     raw_files = []
     project_header = ""
     for c in (contents or []):
         for p in getattr(c, "parts", None) or []:
             t = getattr(p, "text", None) or ""
-            if t.startswith("[مشروع مضغوط:"):
-                project_header = t.splitlines()[0]
+            if "[مشروع مضغوط:" in t:
+                for ln in t.splitlines():
+                    if ln.startswith("[مشروع مضغوط:"):
+                        project_header = ln
+                        break
             for m in re.finditer(r"\[محتوى الملف: ([^\]]+)\]\n([\s\S]*?)(?=\n\[محتوى الملف: |\Z)", t):
                 fname = m.group(1).strip()
                 fbody = m.group(2).strip()
@@ -1675,7 +2367,6 @@ def inspect_project_context(contents, question):
         defs, calls = _extract_symbols_and_calls(lang, fbody)
         defs_by_file[fname] = defs
         calls_by_file[fname] = calls
-        # حساب الصلة بطلب المستخدم (لتجنب قراءة المشروع كله بلا داعٍ)
         score = 0
         if fname.startswith("بلوك "):
             score += 100
@@ -1694,7 +2385,6 @@ def inspect_project_context(contents, question):
     scored_files.sort(key=lambda x: (-x[0], x[1]))
     relevant_items = [(fn, lg, bd) for _sc, fn, lg, bd in scored_files[:12]]
 
-    # تتبع المستدعين (Callers Map) للدوال المرتبطة
     caller_notes = []
     for _sc, fname, _lg, _bd in scored_files[:8]:
         for sym in sorted(defs_by_file.get(fname, set())):
@@ -1704,7 +2394,6 @@ def inspect_project_context(contents, question):
             if callers and (sym.lower() in q_tokens or len(defs_by_file[fname]) <= 15):
                 caller_notes.append("%s (في %s) ← تُستدعى في: %s" % (sym, fname, "، ".join(callers[:4])))
 
-    # كشف العمليات الحساسة التي قد تتطلب تأكيداً أو موافقة المستخدم
     needs_approval = []
     if re.search(r"(?i)(احذف|حذف|امسح|فرمت|انشر|نشر|ارفع\s+على|drop\s+table|delete\s+from|deploy|push\s+to|production|migration)", question or ""):
         needs_approval.append("الطلب يتضمن عملية حساسة (حذف بيانات / تعديل قاعدة بيانات / نشر خارجي) — تأكد من أخذ نسخة احتياطية وموافقة المستخدم قبل التنفيذ الفعلي.")
@@ -1739,7 +2428,6 @@ def inspect_project_context(contents, question):
 
 
 def select_focused_contents(T, contents, project_info, max_chars=24000):
-    """المرحلة 1: بناء سياق مركّز بالملفات المرتبطة فقط للموديلات ذات السياق المحدود، بدلاً من قراءة المشروع كله بلا داعٍ."""
     if contents_size(contents) <= max_chars or not project_info.get("relevant_items"):
         return contents
     focused_parts = [T.Part(text=UNTRUSTED_FILE_RULES + project_info["summary_text"])]
@@ -1760,23 +2448,22 @@ def select_focused_contents(T, contents, project_info, max_chars=24000):
     return [T.Content(role="user", parts=focused_parts)]
 
 
-# ---------- المرحلة 2 (الدفعة A): التخطيط قبل البرمجة (مستوحى من gstack/autoplan & plan-eng-review) ----------
+# ---------- المرحلة 2 + الإضافة 7: التخطيط قبل البرمجة + مواصفة الـ 5 نقاط والافتراضات ----------
 PLAN_SYSTEM_PROMPT = (
-    "أنت مهندس معماري ومخطط برمجي في Ryn mix (بأسلوب gstack autoplan). "
-    "مهمتك وضع خطة عمل قصيرة جداً ومنضبطة قبل كتابة الكود لمنع التعديلات العشوائية.\n"
-    "رجّع JSON فقط (بدون أي شرح خارجو) بالشكل التالي:\n"
+    "أنت مهندس معماري ومخطط برمجي في Ryn mix (بأسلوب gstack autoplan & spec). "
+    "مهمتك وضع خطة عمل قصيرة ومنضبطة قبل كتابة الكود، وإذا كان الطلب غامضاً أو مختصراً، اكتب مواصفة من 5 نقاط وافترض الخيارات العملية المعقولة وكمّل بدلاً من تعطيل المستخدم بالأسئلة.\n"
+    "رجّع JSON فقط (بدون أي شرح خارجه) بالشكل التالي:\n"
     '{"goal":"النتيجة المطلوبة ومعيار النجاح بجملة واضحة",'
+    '"spec_5_points":["1. الهدف والمدخلات/المخرجات: ...","2. البنية والأدوات: ...","3. الحالات الحدية والأخطاء: ...","4. الأمان والأداء: ...","5. طريقة التحقق: ..."],'
     '"steps":["خطوة 1 قصيرة قابلة للتحقق","خطوة 2"],'
-    '"files_to_modify":["اسم الملف أو البلوك المتوقع تعديله"],'
+    '"files_to_modify":["اسم الملف أو الدالة المسموح تعديلها فقط (قفل النطاق)"],'
     '"tests_needed":["الاختبار الذي يثبت نجاح التعديل"],'
-    '"assumptions":["أي افتراض معقول أو معلومة تحتاج لتأكيد"],'
+    '"assumptions":["افترضت أن ... لتسهيل التنفيذ الفوري دون تعطيلك بسؤال"],'
     '"risks_and_approvals":["مخاطر محتملة أو خطوات تتطلب موافقة المستخدم مثل حذف بيانات أو نشر"]}\n'
-    "قواعد: لا تجعل الخطة طويلة بلا فائدة؛ حجمها يتناسب مع حجم المهمة (2-4 خطوات كحد أقصى)."
 )
 
 
 def parse_plan_json(txt):
-    """تحليل مخرجات خطوة التخطيط (المرحلة 2)."""
     t = (txt or "").strip()
     m = re.search(r"```(?:json)?\s*(.*?)```", t, re.S)
     body = m.group(1).strip() if m else t
@@ -1787,10 +2474,11 @@ def parse_plan_json(txt):
         if isinstance(d, dict):
             return {
                 "goal": str(d.get("goal") or "").strip()[:300],
+                "spec_5_points": [str(x).strip()[:220] for x in (d.get("spec_5_points") or [])[:5] if str(x).strip()],
                 "steps": [str(x).strip()[:200] for x in (d.get("steps") or [])[:5] if str(x).strip()],
                 "files_to_modify": [str(x).strip()[:120] for x in (d.get("files_to_modify") or [])[:8] if str(x).strip()],
                 "tests_needed": [str(x).strip()[:200] for x in (d.get("tests_needed") or [])[:5] if str(x).strip()],
-                "assumptions": [str(x).strip()[:200] for x in (d.get("assumptions") or [])[:4] if str(x).strip()],
+                "assumptions": [str(x).strip()[:220] for x in (d.get("assumptions") or [])[:5] if str(x).strip()],
                 "risks_and_approvals": [str(x).strip()[:200] for x in (d.get("risks_and_approvals") or [])[:4] if str(x).strip()],
             }
     except Exception:
@@ -1798,21 +2486,42 @@ def parse_plan_json(txt):
     return None
 
 
+def build_default_spec_and_plan(question, proj):
+    q_short = (question or "").strip().splitlines()[0][:140] or "تنفيذ الطلب البرمجي"
+    files = [x[0] for x in (proj.get("relevant_items") or [])[:4]] or ["الكود الرئيسي"]
+    return {
+        "goal": q_short,
+        "spec_5_points": [
+            "1. الهدف والمخرجات: تنفيذ (%s) بكود كامل جاهز للتشغيل." % q_short[:80],
+            "2. البنية والاعتماديات: استخدام المكتبة القياسية والحفاظ على توافق الملفات (%s)." % "، ".join(files),
+            "3. الحالات الحدية: معالجة القيم الفارغة (None/Empty) والمدخلات غير الصالحة.",
+            "4. الأمان: منع الأسرار الثابتة وتأمين الاستعلامات والأوامر.",
+            "5. التحقق: إرفاق اختبارات assert ذاتية للتحقق من المسار الطبيعي والحالات الحدية.",
+        ],
+        "steps": ["فحص السياق وتحديد السبب الجذري", "تنفيذ التعديل ضمن النطاق المسموح فقط", "تشغيل الفحوصات الآلية واختبارات التحقق"],
+        "files_to_modify": files,
+        "tests_needed": ["اختبار المسار الطبيعي", "اختبار القيم الفارغة والحالات الحدية"],
+        "assumptions": ["افترضت استخدام المكتبات القياسية المتوافقة مع بيئة المشروع الحالية دون إضافة تبعيات خارجية معقدة."],
+        "risks_and_approvals": proj.get("needs_approval") or ["شغّل اختبارات التحقق المرفقة في بيئة معزولة قبل الاعتماد."],
+    }
+
+
 def format_plan_for_writer(plan):
-    """تحويل خطة المرحلة 2 إلى توجيهات مركزة لكاتب الكود في المرحلة 3."""
     if not plan:
         return ""
-    lines = ["[خطة التنفيذ المعتمدة — المرحلة 2 (التزم بها ولا تقفز لتعديلات خارجها)]"]
+    lines = ["[خطة التنفيذ ومواصفة الـ 5 نقاط المعتمدة — المرحلة 2 (التزم بقفل النطاق ولا تعدّل خارجها)]"]
     if plan.get("goal"):
         lines.append("• الهدف ومعيار النجاح: " + plan["goal"])
+    if plan.get("spec_5_points"):
+        lines.append("• مواصفة التنفيذ (5 نقاط):\n  - " + "\n  - ".join(plan["spec_5_points"]))
     if plan.get("steps"):
         lines.append("• خطوات التنفيذ: " + " ← ".join(plan["steps"]))
     if plan.get("files_to_modify"):
-        lines.append("• الملفات المسموح تعديلها: " + "، ".join(plan["files_to_modify"]))
+        lines.append("• قفل النطاق (الملفات/الأجزاء المسموح تعديلها فقط): " + "، ".join(plan["files_to_modify"]))
     if plan.get("tests_needed"):
         lines.append("• الاختبارات المطلوبة لإثبات النجاح: " + " | ".join(plan["tests_needed"]))
     if plan.get("assumptions"):
-        lines.append("• الافتراضات: " + " | ".join(plan["assumptions"]))
+        lines.append("• الافتراضات المعتمدة: " + " | ".join(plan["assumptions"]))
     if plan.get("risks_and_approvals"):
         lines.append("• المخاطر والضوابط: " + " | ".join(plan["risks_and_approvals"]))
     return "\n".join(lines) + "\n---\n"
@@ -1820,7 +2529,6 @@ def format_plan_for_writer(plan):
 
 # ---------- المرحلة 3 و 5 (الدفعة A & B): فحص أمان الفروقات والاختبارات الثابتة للحالات الحدية ----------
 def static_edge_case_checks(lang, code):
-    """المرحلة 4 و 5: فحص ثابت للأخطاء المنطقية الشائعة، القيم الفارغة، والحالات الاستثنائية، وبلع الأخطاء."""
     warns = []
     if lang == "python":
         try:
@@ -1852,12 +2560,10 @@ def static_edge_case_checks(lang, code):
 
 
 def check_diff_safety(orig_items, final_text, question=""):
-    """المرحلة 3: التأكد من أن التعديل منضبط ولم يحذف دوال موجودة بلا ضرورة أو يستبدل الكود بـ placeholders."""
     warnings = []
     nb = named_blocks(final_text)
     if not nb:
         return warnings
-    # فحص اختصارات الحذف الممنوعة (... أو rest of code)
     for name, lg, cd in nb:
         if re.search(r"(?i)(?:#|//|/\*)\s*(?:\.\.\.|rest of (?:the )?code|existing code|باقي الكود|نفس الكود السابق)", cd):
             warnings.append("الكود في %s يحتوي على اختصار (`...` أو `باقي الكود`) بدلاً من الكود الكامل القابل للتشغيل." % (name or lg or "البلوك"))
@@ -1884,7 +2590,6 @@ def check_diff_safety(orig_items, final_text, question=""):
 
 
 def compute_all_diffs(answer, orig_items):
-    """المرحلة 3: حساب والاحتفاظ بفروقات التغييرات (Unified Diff) للملفات أو البلوكات المعدلة."""
     import difflib
     if not orig_items or not answer or "**🔍 الفروقات عن كودك**" in answer:
         return answer
@@ -1926,7 +2631,6 @@ def compute_all_diffs(answer, orig_items):
 
 # ---------- المرحلة 7 و 8 (الدفعة D): اختبار المتصفح والواجهة ومراجعة التصميم وتجربة المستخدم ----------
 def audit_ui_and_browser_readiness(items, question=""):
-    """المرحلة 7 و 8: فحص موضوعي للواجهة (الأزرار، النماذج، الاستجابة للهاتف، التباين، وأخطاء الشبكة في المتصفح)."""
     objective_issues = []
     ux_suggestions = []
     browser_steps = []
@@ -1977,8 +2681,7 @@ def audit_ui_and_browser_readiness(items, question=""):
     }
 
 
-def run_verification_suite(items, orig_items=None, question=""):
-    """المرحلة 5 (الدفعة B): تشغيل جميع الفحوصات الآلية المتاحة وتسجيل ما شُغّل فعلياً وما لم يُشغّل بوضوح."""
+def run_verification_suite(items, orig_items=None, question="", plan=None, all_project_items=None):
     executed_checks = []
     found_errors = []
     found_warnings = []
@@ -2002,10 +2705,31 @@ def run_verification_suite(items, orig_items=None, question=""):
         for w in all_w:
             found_warnings.append("%s: %s" % (label, w))
 
-    diff_warns = check_diff_safety(orig_items or [], "\n\n".join("```%s\n%s\n```" % (lg, cd) for _, lg, cd in (items or [])), question)
+    reconstructed_text = "\n\n".join(
+        (("**%s**\n" % lbl if not lbl.startswith("بلوك ") else "") + "```%s\n%s\n```" % (lg, cd))
+        for lbl, lg, cd in (items or [])
+    )
+    diff_warns = check_diff_safety(orig_items or [], reconstructed_text, question)
     if orig_items:
         executed_checks.append("فحص سلامة الفروقات وعدم فقدان الدوال (Diff Safety Guard): " + ("سليم ✅" if not diff_warns else ("تنبيه: " + "؛ ".join(diff_warns))))
         found_warnings.extend(diff_warns)
+
+    consumers_info = find_all_consumers_of_modified_symbols(orig_items or [], items or [], all_project_items=all_project_items)
+    if consumers_info["modified_symbols"]:
+        if consumers_info["broken_callers"]:
+            executed_checks.append("فحص كل المستهلكين (All Consumers Trace): رُصدت %d استدعاءات مكسورة ❌" % len(consumers_info["broken_callers"]))
+            found_errors.extend(consumers_info["broken_callers"])
+        else:
+            executed_checks.append("فحص كل المستهلكين (All Consumers Trace): سليم (%d موضع استدعاء متوافق) ✅" % len(consumers_info["consumer_lines"]))
+
+    scope_violations = check_scope_lock(orig_items or [], reconstructed_text, question, plan=plan)
+    if orig_items:
+        executed_checks.append("فحص قفل النطاق (Scope Lock / Freeze): " + ("سليم (التعديل ضمن النطاق المطلوب فقط) ✅" if not scope_violations else ("رُصد تعديل خارج النطاق (%d) ⚠️" % len(scope_violations))))
+        found_warnings.extend(scope_violations)
+
+    gate_violations = check_gate_integrity(orig_items or [], reconstructed_text)
+    executed_checks.append("فحص منع تخفيف الفحوصات (Gate Integrity): " + ("سليم (لم يتم حذف فحوصات أو بلع أخطاء) ✅" if not gate_violations else ("رُصد تخفيف فحوصات (%d) ⚠️" % len(gate_violations))))
+    found_warnings.extend(gate_violations)
 
     sec_findings = scan_security_and_dependencies(items, question)
     executed_checks.append("الفحص الأمني وفحص الأسرار والتبعيات (Security & Secret Scan): " + ("سليم (0 مخاطر حرجة) ✅" if not sec_findings else ("رُصدت %d ملاحظة أمنية ⚠️" % len(sec_findings))))
@@ -2025,22 +2749,36 @@ def run_verification_suite(items, orig_items=None, question=""):
         "executed_checks": executed_checks,
         "errors": found_errors,
         "warnings": found_warnings,
+        "consumers_info": consumers_info,
+        "scope_violations": scope_violations,
+        "gate_violations": gate_violations,
         "security_findings": sec_findings,
         "ui_audit": ui_audit,
         "unverified": unverified,
-        "all_passed": len(found_errors) == 0,
+        "all_passed": len(found_errors) == 0 and len(gate_violations) == 0 and len(scope_violations) == 0,
     }
 
 
-def format_verification_summary_for_prompt(ver_report, plan=None, merged_reviews=None, inspected_files=None):
-    """تجهيز بيانات التقرير الموثقة لتمريرها إلى كاتب التقرير النهائي (المرحلة 9)."""
+def format_verification_summary_for_prompt(ver_report, plan=None, merged_reviews=None, inspected_files=None, investigation=None, attempts_log=None):
     lines = ["[بيانات التوثيق والتحقق الفعلية لبناء تقرير RYN النهائي — التزم بها حرفياً ولا تخترع نتائج]"]
     if plan and plan.get("goal"):
         lines.append("• هدف المهمة ومعيار النجاح: " + plan["goal"])
+    if plan and plan.get("spec_5_points"):
+        lines.append("• مواصفة الـ 5 نقاط والافتراضات المعتمدة:\n  - " + "\n  - ".join(plan["spec_5_points"]))
+    if plan and plan.get("assumptions"):
+        lines.append("• الافتراضات: " + "؛ ".join(plan["assumptions"]))
+    if investigation and investigation.get("hypotheses"):
+        lines.append("• تحقيق السبب الجذري (Investigate Root Cause):")
+        for h in investigation["hypotheses"][:3]:
+            lines.append("  - فرضية %s (%s): %s | الدليل: %s" % (h.get("id"), h.get("verdict"), h.get("hypothesis"), h.get("evidence")))
+        if investigation.get("confirmed_root_cause"):
+            lines.append("  - السبب الجذري المؤكد: " + investigation["confirmed_root_cause"])
     if inspected_files:
         lines.append("• الملفات التي فُحصت فعلياً: " + "، ".join(inspected_files[:12]))
     if ver_report.get("executed_checks"):
         lines.append("• الاختبارات والفحوصات التي شُغّلت فعلياً ونتائجها:\n  - " + "\n  - ".join(ver_report["executed_checks"]))
+    if attempts_log:
+        lines.append("• سجل محاولات الإصلاح (%d محاولات):\n  - " + "\n  - ".join(attempts_log))
     issues_txt = []
     for it in (merged_reviews or [])[:8]:
         st = "مؤكدة" if it.get("status") != "needs_test" else "تحتاج اختبار"
@@ -2076,8 +2814,34 @@ _REPORT_SECTIONS = (
 )
 
 
+def compute_task_status_line(ver_report=None, repair_failed_after_3=False, missing_context_reason=None, plan=None):
+    if missing_context_reason:
+        return "📌 **الحالة: ناقصني سياق** — %s" % missing_context_reason
+    if repair_failed_after_3:
+        errs = "; ".join(((ver_report or {}).get("errors") or (ver_report or {}).get("gate_violations") or (ver_report or {}).get("scope_violations") or ["بقي خطأ لم ينحل بعد 3 محاولات إصلاح"])[:2])
+        return "📌 **الحالة: ما قدرت** — توقفت بعد 3 محاولات إصلاح بدل التخمين (%s)." % errs
+    if not ver_report:
+        return "📌 **الحالة: تم** — اكتملت المهمة بنجاح."
+    if ver_report.get("errors"):
+        return "📌 **الحالة: ما قدرت** — الكود لا يزال يحتوي على خطأ صياغة/استدعاء (%s)." % ver_report["errors"][0]
+    notes_reasons = []
+    if ver_report.get("scope_violations"):
+        notes_reasons.append("تنبيه قفل النطاق")
+    if ver_report.get("gate_violations"):
+        notes_reasons.append("تنبيه تخفيف فحوصات")
+    if ver_report.get("security_findings"):
+        notes_reasons.append("%d ملاحظة أمنية" % len(ver_report["security_findings"]))
+    if ver_report.get("warnings"):
+        notes_reasons.append("%d تنبيه فحص ثابت" % len(ver_report["warnings"]))
+    if (ver_report.get("ui_audit") or {}).get("objective_issues"):
+        notes_reasons.append("%d ملاحظة واجهة" % len(ver_report["ui_audit"]["objective_issues"]))
+    if notes_reasons:
+        return "📌 **الحالة: تم مع ملاحظات** — الكود جاهز ومفحوص، مع وجود (%s) موضحة بالتقرير." % "، ".join(notes_reasons)
+    goal_short = ((plan or {}).get("goal") or "اجتاز الكود جميع فحوصات الصياغة والأمان والنطاق").splitlines()[0][:110]
+    return "📌 **الحالة: تم** — %s." % goal_short
+
+
 def _clean_truncated_report_tail(msg):
-    """تنظيف أي سطر مقطوع في نهاية التقرير في حال وصل الموديل لحد التوكنات قبل إتمام السطر الأخير."""
     if not msg:
         return ""
     lines = msg.rstrip().splitlines()
@@ -2089,7 +2853,6 @@ def _clean_truncated_report_tail(msg):
         odd_tick = last.count("`") % 2 == 1
         cut_word = bool(re.search(r"(?:\*\*\s*[\u0600-\u06FF]{1,3}|\b(?:ال|و|ف|ب|ل|من|على|إلى|في|عن|مع|أو))$", last))
         if odd_bold or odd_tick or cut_word:
-            # إذا كان السطر مقطوعاً في منتصف جملة، نحذف الجزء المقطوع بعد آخر نقطة أو فاصلة
             m = re.search(r"^(.+[.،؛:!؟)])\s+[^.،؛:!؟)]*$", last)
             if m:
                 lines[-1] = m.group(1)
@@ -2098,14 +2861,25 @@ def _clean_truncated_report_tail(msg):
     return "\n".join(lines).strip()
 
 
-def ensure_ryn_report_template(msg, question, inspected_files, changed_files, ver_report, merged_reviews, plan=None):
-    """المرحلة 9 (صفحة 6): ضمان احتواء رد Ryn mix على قالب التقرير القياسي ذا النقاط السبع كاملاً بدون أي بتر."""
+def ensure_ryn_report_template(msg, question, inspected_files, changed_files, ver_report, merged_reviews,
+                               plan=None, investigation=None, attempts_log=None, repair_failed_after_3=False,
+                               missing_context_reason=None):
     msg = _clean_truncated_report_tail(redact_secrets((msg or "").strip()))
+    status_line = compute_task_status_line(
+        ver_report=ver_report,
+        repair_failed_after_3=repair_failed_after_3,
+        missing_context_reason=missing_context_reason,
+        plan=plan,
+    )
     goal = (plan or {}).get("goal") or (question or "").strip().splitlines()[0][:180] or "تنفيذ ومراجعة المهمة البرمجية المطلوبة."
+    if plan and plan.get("assumptions"):
+        goal += " (الافتراضات: " + "؛ ".join(plan["assumptions"][:2]) + ")"
     insp = "، ".join(inspected_files[:10]) if inspected_files else "الطلب المباشر والكود المولّد (لم تُرفق ملفات خارجية)."
     chg = "، ".join(changed_files[:10]) if changed_files else "توليد/تحديث الكود المطلوب بأقل تغيير ممكن مع الحفاظ على بنية المشروع."
     tests_run = "؛ ".join((ver_report or {}).get("executed_checks") or ["فحص الصياغة والبنية الثابتة: نجح ✅"])
     probs = []
+    if investigation and investigation.get("confirmed_root_cause"):
+        probs.append("السبب الجذري المؤكد: " + investigation["confirmed_root_cause"])
     for it in (merged_reviews or [])[:5]:
         ln_str = ("سطر %s: " % it["line"]) if it.get("line") else ""
         probs.append("%s%s (الحل: %s)" % (ln_str, it.get("problem", ""), it.get("fix", "تمت المعالجة")))
@@ -2113,6 +2887,8 @@ def ensure_ryn_report_template(msg, question, inspected_files, changed_files, ve
         probs.append("أمان: %s" % sf.get("problem", ""))
     for ui_i in ((ver_report or {}).get("ui_audit", {}).get("objective_issues") or [])[:3]:
         probs.append("واجهة: %s" % ui_i)
+    if attempts_log and repair_failed_after_3:
+        probs.append("سجل محاولات الإصلاح الـ 3: " + " | ".join(attempts_log))
     probs_str = "؛ ".join(probs) if probs else "لم يُعثر على أخطاء منطقية أو أمنية حرجة متبقية في النسخة النهائية."
     unver_str = "؛ ".join((ver_report or {}).get("unverified") or ["لم يتم تشغيل الكود فعلياً في بيئة حية؛ شغّل أوامر الاختبار المرفقة للتحقق."])
     risks_list = list((plan or {}).get("risks_and_approvals") or [])
@@ -2133,36 +2909,27 @@ def ensure_ryn_report_template(msg, question, inspected_files, changed_files, ve
     ]
     hits = sum(1 for s, _v in section_defaults if s in msg)
     if hits >= 4:
-        # استكمال أي بند ناقص من البنود السبعة في حال انقطع رد الموديل قبل آخر بندين
         missing_lines = []
         for s_title, s_val in section_defaults:
             if s_title not in msg:
                 missing_lines.append("- **%s** %s" % (s_title, s_val))
         if missing_lines:
             msg = msg.rstrip() + "\n\n" + "\n".join(missing_lines)
+        if not msg.lstrip().startswith("📌 **الحالة:"):
+            msg = status_line + "\n\n" + msg
         return msg
-    goal = (plan or {}).get("goal") or (question or "").strip().splitlines()[0][:180] or "تنفيذ ومراجعة المهمة البرمجية المطلوبة."
-    insp = "، ".join(inspected_files[:10]) if inspected_files else "الطلب المباشر والكود المولّد (لم تُرفق ملفات خارجية)."
-    chg = "، ".join(changed_files[:10]) if changed_files else "توليد/تحديث الكود المطلوب بأقل تغيير ممكن مع الحفاظ على بنية المشروع."
-    tests_run = "؛ ".join((ver_report or {}).get("executed_checks") or ["فحص الصياغة والبنية الثابتة: نجح ✅"])
-    probs = []
-    for it in (merged_reviews or [])[:5]:
-        ln_str = ("سطر %s: " % it["line"]) if it.get("line") else ""
-        probs.append("%s%s (تم إصلاحها)" % (ln_str, it.get("problem", "")))
-    for sf in ((ver_report or {}).get("security_findings") or [])[:3]:
-        probs.append("أمان: %s" % sf.get("problem", ""))
-    for ui_i in ((ver_report or {}).get("ui_audit", {}).get("objective_issues") or [])[:3]:
-        probs.append("واجهة: %s" % ui_i)
-    probs_str = "؛ ".join(probs) if probs else "لم يُعثر على أخطاء منطقية أو أمنية حرجة في النسخة النهائية."
-    unver_str = "؛ ".join((ver_report or {}).get("unverified") or ["لم يتم تشغيل الكود فعلياً في بيئة حية؛ شغّل أوامر الاختبار المرفقة للتحقق."])
-    risks_list = list((plan or {}).get("risks_and_approvals") or [])
-    if (ver_report or {}).get("ui_audit", {}).get("browser_steps"):
-        risks_list.append("اختبر الواجهة في المتصفح وعلى شاشة الهاتف وفق خطوات الاختبار.")
-    if not risks_list:
-        risks_list.append("شغّل اختبارات التحقق المرفقة في بيئة معزولة قبل اعتماد التغيير أو النشر.")
-    risks_str = "؛ ".join(risks_list)
+
+    extra_blocks = []
+    if plan and plan.get("spec_5_points"):
+        extra_blocks.append("📐 **مواصفة التنفيذ والافتراضات (5 نقاط):**\n" + "\n".join("  " + pt for pt in plan["spec_5_points"]))
+    if investigation and investigation.get("hypotheses"):
+        inv_lines = ["🔬 **تحقيق السبب الجذري (Investigate):**"]
+        for h in investigation["hypotheses"][:3]:
+            inv_lines.append("  - فرضية %s (%s): %s — الدليل: %s" % (h.get("id"), h.get("verdict"), h.get("hypothesis"), h.get("evidence")))
+        extra_blocks.append("\n".join(inv_lines))
 
     template_block = (
+        "%s\n\n"
         "📋 **تقرير مهمة Ryn mix**\n"
         "• **المطلوب:** %s\n"
         "• **الملفات التي فُحصت:** %s\n"
@@ -2171,13 +2938,15 @@ def ensure_ryn_report_template(msg, question, inspected_files, changed_files, ve
         "• **المشكلات التي عُثر عليها:** %s\n"
         "• **ما لم أتمكن من التحقق منه:** %s\n"
         "• **المخاطر أو الخطوات التالية:** %s"
-    ) % (goal, insp, chg, tests_run, probs_str, unver_str, risks_str)
+    ) % (status_line, goal, insp, chg, tests_run, probs_str, unver_str, risks_str)
+    if extra_blocks:
+        template_block += "\n\n" + "\n\n".join(extra_blocks)
     if msg:
         return template_block + "\n\n" + msg
     return template_block
 
 
-# ---------- المرحلة 10 (الدفعة D): بناء اختبارات جودة لـ RYN نفسه (Benchmark & Regression Suite) ----------
+# ---------- المرحلة 10 (الدفعة D): بناء اختبارات جودة لـ RYN نفسه + تقييم الموديلات ----------
 RYN_MIX_BENCHMARKS = (
     {
         "id": "bug_fix",
@@ -2189,9 +2958,9 @@ RYN_MIX_BENCHMARKS = (
     },
     {
         "id": "feature_add",
-        "title": "إضافة ميزة مع الحفاظ على الوظائف القديمة",
-        "question": "أضف دالة `apply_discount(items, percent)` تحسب المجموع بعد الخصم وتتحقق إنو النسبة بين 0 و 100 بدون ما تحذف دالة `calc_total`:\n```python\ndef calc_total(items):\n    return sum(max(0.0, float(x.get('price', 0))) for x in (items or []))\n```",
-        "code": "def calc_total(items):\n    return sum(max(0.0, float(x.get('price', 0))) for x in (items or []))\n",
+        "title": "إضافة ميزة مع الحفاظ على الوظائف القديمة وقفل النطاق",
+        "question": "أضف دالة `apply_discount(items, percent)` تحسب المجموع بعد الخصم وتتحقق إنو النسبة بين 0 و 100 بدون ما تحذف أو تغيّر دالة `calc_total`:\n```python\ndef calc_total(items):\n    return sum(max(0.0, float(x.get('price', 0))) for x in (items or []))\n\ndef helper_untouched(x):\n    return x * 2\n```",
+        "code": "def calc_total(items):\n    return sum(max(0.0, float(x.get('price', 0))) for x in (items or []))\n\ndef helper_untouched(x):\n    return x * 2\n",
         "lang": "python",
         "expected_Symbols": ("calc_total", "apply_discount"),
     },
@@ -2205,9 +2974,9 @@ RYN_MIX_BENCHMARKS = (
     },
     {
         "id": "security_audit",
-        "title": "مراجعة أمنية وكشف الأسرار وحقن SQL والأوامر",
-        "question": "افحص هالكود أمنياً وصلّح الثغرات:\n```python\nimport os, sqlite3, subprocess\nAPI_KEY = \"sk-proj-1234567890abcdefghijklmnop\"\ndef find_user(db, username):\n    cur = db.cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{username}'\")\n    return cur.fetchall()\ndef ping_host(host):\n    return subprocess.run(f\"ping -c 1 {host}\", shell=True)\n```",
-        "code": "import os, sqlite3, subprocess\nAPI_KEY = \"sk-proj-1234567890abcdefghijklmnop\"\ndef find_user(db, username):\n    cur = db.cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{username}'\")\n    return cur.fetchall()\ndef ping_host(host):\n    return subprocess.run(f\"ping -c 1 {host}\", shell=True)\n",
+        "title": "مراجعة أمنية وكشف الأسرار وحقن SQL والأوامر ومنع تخفيف الفحوصات",
+        "question": "افحص هالكود أمنياً وصلّح الثغرات:\n```python\nimport os, sqlite3, subprocess\nAPI_KEY = \"sk-proj-1234567890abcdefghijklmnop\"\ndef find_user(db, username):\n    assert username\n    cur = db.cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{username}'\")\n    return cur.fetchall()\ndef ping_host(host):\n    return subprocess.run(f\"ping -c 1 {host}\", shell=True)\n```",
+        "code": "import os, sqlite3, subprocess\nAPI_KEY = \"sk-proj-1234567890abcdefghijklmnop\"\ndef find_user(db, username):\n    assert username\n    cur = db.cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{username}'\")\n    return cur.fetchall()\ndef ping_host(host):\n    return subprocess.run(f\"ping -c 1 {host}\", shell=True)\n",
         "lang": "python",
         "expected_Symbols": ("find_user", "ping_host"),
     },
@@ -2215,7 +2984,6 @@ RYN_MIX_BENCHMARKS = (
 
 
 def run_ryn_mix_quality_suite():
-    """المرحلة 10: تشغيل اختبارات الجودة الذاتية لـ Ryn mix على المهام القياسية الأربع وقياس دقة الأدوات."""
     results = []
     passed_all = True
     for task in RYN_MIX_BENCHMARKS:
@@ -2226,15 +2994,18 @@ def run_ryn_mix_quality_suite():
         details = []
         if tid == "bug_fix":
             has_mutable_warn = any("قابل للتعديل" in w for w in ver["warnings"])
-            checks_ok = has_mutable_warn and ver["all_passed"]
-            details.append("كشف المعامل الافتراضي القابل للتعديل: " + ("نجح ✅" if has_mutable_warn else "فشل ❌"))
+            inv = build_fallback_investigation(items, ver, task["question"])
+            has_inv = len(inv.get("hypotheses") or []) >= 1 and bool(inv.get("confirmed_root_cause"))
+            checks_ok = has_mutable_warn and has_inv and ver["all_passed"]
+            details.append("كشف المعامل الافتراضي القابل للتعديل + توليد فرضيات السبب الجذري (Investigate): " + ("نجح ✅" if checks_ok else "فشل ❌"))
         elif tid == "feature_add":
-            # اختبار كاشف الحذف العشوائي لو حُذفت calc_total
-            broken_code = "```python\ndef apply_discount(items, percent):\n    return 0\n```"
+            broken_code = "```python\ndef apply_discount(items, percent):\n    return 0\n\ndef helper_untouched(x):\n    return x * 999\n```"
             diff_w = check_diff_safety(items, broken_code, task["question"])
+            scope_w = check_scope_lock(items, broken_code, "عدّل دالة calc_total فقط")
             caught_del = any("calc_total" in w for w in diff_w)
-            checks_ok = caught_del
-            details.append("منع حذف الوظائف القديمة (calc_total): " + ("نجح ✅" if caught_del else "فشل ❌"))
+            caught_scope = any("helper_untouched" in w for w in scope_w)
+            checks_ok = caught_del and caught_scope
+            details.append("منع حذف الدوال القديمة + قفل النطاق (Scope Lock / Freeze): " + ("نجح ✅" if checks_ok else "فشل ❌"))
         elif tid == "ui_review":
             ui = ver["ui_audit"]
             caught_vp = any("viewport" in x for x in ui["objective_issues"])
@@ -2246,16 +3017,19 @@ def run_ryn_mix_quality_suite():
             sec = ver["security_findings"]
             probs = " ".join(s["problem"] for s in sec)
             redacted = redact_secrets(task["code"])
-            caught_sec = ("SQL" in probs) and ("Command Injection" in probs or "shell=True" in probs) and ("[REDACTED_" in redacted)
+            cheated_code = "```python\ndef find_user(db, username):\n    try:\n        return []\n    except Exception:\n        pass\n```"
+            gate_w = check_gate_integrity(items, cheated_code)
+            caught_gate = any("RH-1" in w for w in gate_w) and any("RH-16" in w for w in gate_w)
+            caught_sec = ("SQL" in probs) and ("Command Injection" in probs or "shell=True" in probs) and ("[REDACTED_" in redacted) and caught_gate
             checks_ok = caught_sec
-            details.append("كشف حقن SQL وحقن الأوامر وحجب مفتاح API: " + ("نجح ✅" if caught_sec else "فشل ❌"))
+            details.append("كشف حقن SQL والأوامر وحجب المفتاح + منع تخفيف الفحوصات (Gate Integrity): " + ("نجح ✅" if caught_sec else "فشل ❌"))
 
         rep = ensure_ryn_report_template(
             "", task["question"], ["task_" + tid], ["task_" + tid], ver, []
         )
-        template_ok = all(s in rep for s in _REPORT_SECTIONS)
+        template_ok = all(s in rep for s in _REPORT_SECTIONS) and rep.startswith("📌 **الحالة:")
         checks_ok = checks_ok and template_ok
-        details.append("التزام قالب التقرير ذي النقاط السبع: " + ("نجح ✅" if template_ok else "فشل ❌"))
+        details.append("سطر الحالة بأول التقرير + التزام القالب السباعي: " + ("نجح ✅" if template_ok else "فشل ❌"))
         passed_all = passed_all and checks_ok
         results.append({
             "id": tid,
@@ -2268,38 +3042,40 @@ def run_ryn_mix_quality_suite():
         "total": len(results),
         "passed_count": sum(1 for r in results if r["passed"]),
         "tasks": results,
+        "model_rankings": {
+            "writers": get_ranked_writers({k: True for k in _DEFAULT_WRITER_ORDER}),
+            "reviewers": get_ranked_reviewers({k: True for k in _DEFAULT_REV1_ORDER}),
+            "stats": MODEL_PERF_STATS,
+        },
     }
 
 
 CLAUDE_CODE_STYLE = (
     "[أسلوب عمل Ryn mix الهندسي المتقدم (مستوحى من gstack)]\n"
-    "1) المرحلة 1 (فهم الطلب وفحص المشروع): افهم المطلوب بالكامل وافحص بنية الملفات المرفقة ونقاط الدخول والتبعيات والمستدعين قبل أي تعديل. "
-    "ميّز بين الحقائق المؤكدة من الكود والافتراضات؛ وإذا كانت هناك معلومة حاسمة ناقصة تغيّر الحل اسأل عنها بوضوح.\n"
-    "2) المرحلة 2 (التخطيط المنضبط): التزم بخطة التنفيذ المرفقة، وقسّم العمل لخطوات قابلة للتحقق دون تعديلات عشوائية.\n"
-    "3) المرحلة 3 (التنفيذ الآمن بأقل تغيير): اكتب كوداً كاملاً وجاهزاً للتشغيل بدون أي اختصار أو '...' أو placeholders، "
-    "وحافظ على أسلوب المشروع وأسماء الدوال والوظائف القديمة ومستدعيها (Callers). لا تعِد كتابة مشروع كامل إذا كان تعديل محدد كافياً.\n"
-    "4) المرحلة 4 و 5 (الموثوقية والحالات الحدية): عالج القيم الفارغة (None/null/empty)، القسمة على صفر، ترميز UTF-8 والعربية، وأخطاء الشبكة والملفات، "
-    "ولا تبتلع الأخطاء بصمت (لا تستخدم except: pass). بعد الكود المهم أضف 2-4 اختبارات تحقق شاملة (المسار الطبيعي، مدخلات خاطئة، وحالات حدية).\n"
-    "5) المرحلة 6 (الأمان والخصوصية): ممنوع وضع مفاتيح API أو كلمات سر في الكود؛ استخدم متغيرات البيئة. "
-    "ممنوع استخدام eval/exec أو shell=True على مدخلات غير موثوقة، واستخدم استعلامات SQL معلمة، وعقّم مخرجات HTML لمنع XSS، وتحقق من الروابط لمنع SSRF.\n"
-    "6) المرحلة 7 و 8 (الواجهة وتجربة المستخدم): في كود الواجهات (HTML/CSS/JS)، التزم بتجاوب الهاتف (viewport + وحدات مرنة)، "
+    "1) المرحلة 1 (فهم الطلب وفحص المشروع): افهم المطلوب بالكامل وافحص بنية الملفات المرفقة ونقاط الدخول والتبعيات وكل المستهلكين (All Consumers) قبل أي تعديل.\n"
+    "2) القانون الأول للتصليح (Investigate Root Cause): قبل أي إصلاح لخطأ، حدّد السبب الجذري بدليل من الكود، وعالج السبب الجذري لا الأعراض السطحية.\n"
+    "3) المرحلة 2 والإضافة 7 (التخطيط ومواصفة الـ 5 نقاط): إذا كان الطلب غامضاً أو مختصراً، اعتمد مواصفة الـ 5 نقاط والافتراضات المعقولة وكمّل التنفيذ فوراً دون تعطيل المستخدم بأسئلة.\n"
+    "4) المرحلة 3 والإضافة 3 (التنفيذ الآمن وقفل النطاق Scope Lock): عدّل فقط ما طلبه المستخدم، وحافظ على أسلوب المشروع وجميع الدوال غير المطلوب تعديلها كما هي بالحرف. اكتب الكود كاملاً بدون أي اختصار أو '...'.\n"
+    "5) المرحلة 4 و 5 والإضافة 4 (الموثوقية ومنع تخفيف الفحوصات Gate Integrity): عالج القيم الفارغة (None/null/empty)، القسمة على صفر، والحالات الحدية. "
+    "ممنوع تماماً حذف عبارات `assert` أو دوال الاختبار الموجودة في الكود الأصلي، أو إضافة `except: pass` لبلع الأخطاء بصمت، أو إضافة `# noqa` لتمرير الفحص.\n"
+    "6) المرحلة 6 (الأمان والخصوصية): ممنوع وضع مفاتيح API أو كلمات سر في الكود؛ استخدم متغيرات البيئة. "
+    "ممنوع استخدام eval/exec أو shell=True على مدخلات غير موثوقة، واستخدم استعلامات SQL معلمة، وعقّم مخرجات HTML لمنع XSS.\n"
+    "7) المرحلة 7 و 8 (الواجهة وتجربة المستخدم): في كود الواجهات (HTML/CSS/JS)، التزم بتجاوب الهاتف (viewport + وحدات مرنة)، "
     "وضوح الأزرار والنماذج ورسائل الخطأ، ومعالجة أخطاء fetch، مع تجنب إعادة تصميم شكلية لم يطلبها المستخدم.\n"
-    "7) المرحلة 9 (الصدق في التسليم): كن صادقاً تماماً — لا تدّعِ أنك شغّلت الكود أو الاختبارات فعلياً إذا لم تُشغّل، ووضّح ما تم فحصه آلياً وما يحتاج لتشغيل المستخدم.\n"
+    "8) المرحلة 9 (الصدق في التسليم): كن صادقاً تماماً — لا تدّعِ أنك شغّلت الكود أو الاختبارات فعلياً إذا لم تُشغّل، ووضّح ما تم فحصه آلياً وما يحتاج لتشغيل المستخدم.\n"
 )
 
 FIX_RULES = (
     "[قواعد التصحيح والتعديل الصارمة — Ryn mix]\n"
-    "- قائمة الأخطاء: أخطاء حقيقية ومؤكدة فقط بالدليل (وليست ملاحظات تجميلية أو تفضيلات شخصية)، كل بند برقم السطر الصحيح من الكود الأصلي المرقّم.\n"
-    "- افحص الأثر على المستدعين (Callers) والوظائف القديمة قبل تعديل أي دالة أو كلاس.\n"
-    "- أقل تغيير ممكن (Minimal Surgical Diff): لا تضف ميزات لم تُطلب، لا تحذف دوال أو بيانات بصمت، لا تستخدم except عام يبلع الأخطاء، "
-    "ولا تغيّر أنواع المخرجات أو توقيع الدوال إلا إذا كان هذا هو الخطأ المطلوب إصلاحه.\n"
-    "- شرح التغييرات يجب أن يطابق الكود النهائي حرفياً.\n"
-    "- لا تكتب 'جرّبتو' أو 'نجح التشغيل' تخميناً؛ اكتب 'كيف تختبره' ووضّح الفحوصات الآلية التي شُغّلت فعلياً فقط.\n"
+    "- السبب الجذري أولاً: اعتمد على فرضيات السبب الجذري المؤكدة بالدليل، واذكر رقم السطر الصحيح من الكود الأصلي المرقّم.\n"
+    "- فحص كل المستهلكين (All Consumers): راجع قائمة المستدعين المرفقة وتأكد أن تعديلك لأي دالة أو قيمة لا يكسر الأماكن الأخرى التي تستدعيها.\n"
+    "- قفل النطاق (Scope Lock): لا تلمس ولا تغيّر أي دالة سليمة خارج نطاق طلب المستخدم.\n"
+    "- منع تخفيف الفحوصات (Gate Integrity): لا تحذف أي `assert` أو شرط تحقق أو `raise` كان موجوداً في الكود الأصلي، ولا تبلع الأخطاء بـ `except: pass`.\n"
+    "- تطابق الشرح مع الكود النهائي حرفياً: لا تكتب 'جرّبتو' أو 'نجح التشغيل' تخميناً؛ اكتب 'كيف تختبره' ووضّح الفحوصات الآلية التي شُغّلت فعلياً فقط.\n"
 )
 
 
 def numbered_listing(items, cap=30000):
-    """الكود الأصلي بأرقام الأسطر واسم الملف، لتمكين المراجعين من ربط كل مشكلة بملف ورقم سطر ودليل دقيق."""
     out, total = [], 0
     for label, lang, code in items[:8]:
         clean_cd = sanitize_untrusted_file_text(code)
@@ -2317,12 +3093,10 @@ def numbered_listing(items, cap=30000):
 
 
 def add_diff(answer, orig_lang, orig_code):
-    """بيضيف تحت الجواب الفروقات بين كودك والكود المصحّح (سطر أخضر/أحمر)."""
     return compute_all_diffs(answer, [("بلوك 1", orig_lang, orig_code)])
 
 
 def member_syntax_notes(answers):
-    """فحص آلي لحلول الأعضاء (المرحلة 5 و 6): بيرجّع سطور تحذير لأي حل فيه خطأ صياغة أو ثغرة أمنية أو اختصار مخل."""
     notes = []
     for i, txt in enumerate(answers.values(), 1):
         blocks = extract_blocks(txt)
@@ -2346,10 +3120,10 @@ def member_syntax_notes(answers):
 ROLE_HINT = {
     "Gemini": "ركّز على فهم بنية المشروع ونقاط الدخول وتقديم حل كامل ونظيف يحقق معايير النجاح.",
     "GPT-OSS": "ركّز على الحالات الحدية، القيم الفارغة، التزامن، والأخطاء المنطقية والأمنية المحتملة.",
-    "Kimi": "ركّز على فهم السياق الكامل وتتبع المستدعين (Callers) وتماسك الحل بين الملفات.",
-    "Codestral": "ركّز على كود صحيح وعملي ومختصر بأقل تغيير ممكن (Minimal Diff).",
-    "DeepSeek": "ركّز على صحة الخوارزمية، التحليل العميق، والتحقق من المدخلات والصلاحيات.",
-    "Qwen": "ركّز على وضوح الكود، سهولة صيانته، وتضمين اختبارات التحقق القابلة للتكرار.",
+    "Kimi": "ركّز على فهم السياق الكامل وتتبع كل المستهلكين (All Consumers) وتماسك الحل بين الملفات.",
+    "Codestral": "ركّز على كود صحيح وعملي ومختصر بأقل تغيير ممكن (Scope Lock & Minimal Diff).",
+    "DeepSeek": "ركّز على التحقيق في السبب الجذري، صحة الخوارزمية، والتحقق من المدخلات والصلاحيات.",
+    "Qwen": "ركّز على وضوح الكود، سهولة صيانته، وتضمين اختبارات التحقق دون تخفيف الفحوصات.",
 }
 
 
@@ -2363,7 +3137,6 @@ def _with_prefix(T, contents, prefix):
 
 
 def review_code(b, question, answer, orig_items=None):
-    """المرحلة 4 و 5: مراجع كود صارم (Two-Pass Review): يدقّق الجواب النهائي منطقياً وأمنياً ويفحص الفروقات قبل التسليم."""
     blocks = extract_blocks(answer)
     if not blocks or max(c.count("\n") for _, c in blocks) < 6 or os.environ.get("MIX_REVIEW", "1") == "0":
         return answer
@@ -2374,9 +3147,9 @@ def review_code(b, question, answer, orig_items=None):
         "أنت مراجع كود صارم في Ryn mix (بأسلوب gstack review checklist). هذا طلب المستخدم والجواب المقترح ونتيجة الفحص الآلي.\n\n"
         "الطلب:\n%s\n\n%s\nالجواب المقترح:\n%s\n\n"
         "راجع الكود على تمريرتين:\n"
-        "- التمريرة 1 (حرج / CRITICAL): سلامة البيانات وSQL، حالات السباق والتزامن، حدود الثقة بمخرجات النموذج وSSRF، حقن الأوامر، عدم تسريب الأسرار، عدم كسر الدوال القديمة أو مستدعيها، وعدم بلع الأخطاء بصمت.\n"
+        "- التمريرة 1 (حرج / CRITICAL): سلامة البيانات وSQL، حالات السباق والتزامن، حدود الثقة بمخرجات النموذج وSSRF، حقن الأوامر، عدم تسريب الأسرار، عدم كسر المستهلكين (All Consumers)، الالتزام بقفل النطاق (Scope Lock)، ومنع تخفيف الفحوصات (Gate Integrity: منع حذف assert أو بلع الأخطاء بـ except: pass).\n"
         "- التمريرة 2 (مهم / INFORMATIONAL): القيم الفارغة، الحالات الحدية، القسمة على صفر، تعديل المدخلات، وتطابق شرح التغييرات وأرقام الأسطر مع الكود النهائي حرفياً.\n"
-        "- تأكد من عدم وجود أي ادعاء غير مثبت بأن الكود أو الاختبار تم تشغيله فعلياً، وتأكد من وجود فقرة تقرير Ryn mix في بداية الشرح.\n"
+        "- تأكد من عدم وجود أي ادعاء غير مثبت بأن الكود أو الاختبار تم تشغيله فعلياً، وتأكد من وجود سطر الحالة وتقرير Ryn mix في بداية الشرح.\n"
         "إذا وجدت مشاكل حقيقية صحّحها وأعطِ الجواب النهائي كاملاً (التقرير المختصر + الكود الكامل بدون اختصار). "
         "إذا كان الجواب سليماً أعده كما هو بدون أي تعليق خارجي عن المراجعة."
         % (redact_secrets(question[:120000]), auto_notes, redact_secrets(answer[:120000]))
@@ -2393,15 +3166,14 @@ def review_code(b, question, answer, orig_items=None):
     return answer
 
 
-# ---------- Ryn mix للكود: خط إنتاج متسلسل من 10 مراحل (فحص وتخطيط ← كتابة منضبطة ← مراجعة 1 ← مراجعة 2 ← تطبيق وفحص ← تقرير وتسليم) ----------
 _SEV = {"high": "high", "critical": "high", "blocker": "high", "عالي": "high", "حرج": "high",
         "medium": "medium", "should": "medium", "متوسط": "medium",
         "low": "low", "minor": "low", "nit": "low", "منخفض": "low"}
 _STATUS_MAP = {"confirmed": "confirmed", "مؤكد": "confirmed", "مؤكدة": "confirmed",
                "needs_test": "needs_test", "hypothesis": "needs_test", "يحتاج اختبار": "needs_test", "احتمال": "needs_test"}
-_WRITER_ORDER = ("Qwen", "DeepSeek", "Kimi", "Codestral", "GPT-OSS", "Gemini")
-_REV1_ORDER = ("DeepSeek", "Kimi", "GPT-OSS", "Codestral", "Qwen", "Gemini")
-_REV2_ORDER = ("GPT-OSS", "Kimi", "Codestral", "DeepSeek", "Qwen", "Gemini")
+_WRITER_ORDER = _DEFAULT_WRITER_ORDER
+_REV1_ORDER = _DEFAULT_REV1_ORDER
+_REV2_ORDER = _DEFAULT_REV2_ORDER
 
 REVIEW_SCHEMA = (
     "أنت مراجع كود ناقد في Ryn mix (وفق سياسة gstack review/checklist.md و review-policy.md).\n"
@@ -2413,18 +3185,19 @@ REVIEW_SCHEMA = (
     '"line":رقم_السطر_أو_null,'
     '"problem":"المشكلة الدقيقة بجملة واضحة",'
     '"evidence":"الدليل من الكود أو مسار الاستدعاء",'
-    '"impact":"الأثر الفعلي على النظام أو الوظائف المرتبطة",'
+    '"impact":"الأثر الفعلي على النظام أو المستهلكين (All Consumers)",'
     '"fix":"الإصلاح المحدد المقترح بأقل تغيير"}]}\n'
-    "قواعد المراجعة الصارمة (المرحلة 4 و 6 و 8):\n"
+    "قواعد المراجعة الصارمة:\n"
     "1) افحص الأخطاء المنطقية، القيم الفارغة، الحالات الاستثنائية، معالجة الأخطاء، التحقق من المدخلات والصلاحيات، وعدم تسريب الأسرار.\n"
-    "2) تتبّع تأثير التعديل على الوظائف القديمة والمستدعين (Callers) والملفات المرتبطة.\n"
-    "3) فرّق بوضوح بين مشكلة مؤكدة (status=confirmed) واحتمال يحتاج إلى اختبار (status=needs_test).\n"
-    "4) ممنوع إطلاق ادعاءات بلا دليل: كل ملاحظة يجب أن ترتبط بملف/سطر ودليل واضح. تجاهل الآراء التجميلية أو التفضيلات الشخصية.\n"
-    "5) إذا كان الكود سليماً تماماً: رجّع verdict=\"ok\" و issues=[].\n"
+    "2) فحص كل المستهلكين (All Consumers): راجع قائمة أماكن استدعاء الدوال والقيم المعدلة وتأكد أن التعديل لم يكسر أي مستدعٍ في الملفات الأخرى.\n"
+    "3) قفل النطاق (Scope Lock): ارفض أي تعديل قام به الكاتب على دوال سليمة خارج نطاق طلب المستخدم.\n"
+    "4) منع تخفيف الفحوصات (Gate Integrity): ارفض بشدة (severity=high) أي محاولة لحذف `assert` أو حذف `try/raise` أو وضع `except: pass` لتمرير الفحص.\n"
+    "5) فرّق بوضوح بين مشكلة مؤكدة (status=confirmed) واحتمال يحتاج إلى اختبار (status=needs_test). ممنوع إطلاق ادعاءات بلا دليل.\n"
+    "6) إذا كان الكود سليماً تماماً: رجّع verdict=\"ok\" و issues=[].\n"
 )
 
 REVIEW2_EXTRA = (
-    'لديك أيضاً ملاحظات المراجع الأول (مرقّمة) ونتائج الفحص الآلي والأمني وفحص الواجهة. '
+    'لديك أيضاً ملاحظات المراجع الأول (مرقّمة) ونتائج فحص كل المستهلكين وقفل النطاق ومنع تخفيف الفحوصات والأمان. '
     'أضف فقط المشكلات الجديدة التي فاتته (بدون تكرار)، '
     'وأكّد البنود الصحيحة بالحقل "agree_with":[ids]، واعترض على أي بند غير دقيق أو تجميلي بالحقل '
     '"disagree_with":[{"id":رقم,"reason":"سبب الاعتراض بالدليل"}].\n'
@@ -2432,11 +3205,11 @@ REVIEW2_EXTRA = (
 
 FIX_APPLY_PROMPT = (
     "[دورك: منفّذ التعديلات المنضبط (المرحلة 3 و 4 و 5). طبّق ملاحظات المراجعين والفحص الآلي بأمان]\n"
-    "معك: الطلب الأصلي، خطة التنفيذ، الكود الحالي، وملاحظات المراجعين والفحص الأمني/الواجهة كـ JSON مرقّم.\n"
+    "معك: الطلب الأصلي، تحقيق السبب الجذري، خطة التنفيذ، الكود الحالي، وملاحظات المراجعين وفحص المستهلكين وقفل النطاق كـ JSON مرقّم.\n"
     "قواعد التنفيذ الآمن:\n"
-    "- طبّق كل بند صحيح ومؤكد بدقة وبأقل تغيير ممكن (Surgical Edit)، وحافظ على أسلوب المشروع وبنيته وجميع الدوال غير المرتبطة.\n"
-    "- إذا كان هناك بند غير صحيح أو مختلف عليه (disputed) أو مجرد رأي تجميلي يغير التصميم دون طلب المستخدم، ارفضه واذكر السبب.\n"
-    "- تأكد من خلو الكود من أي مفاتيح سرية مكشوفة أو أوامر مدمرة أو اختصارات مثل `...`.\n"
+    "- طبّق كل بند صحيح ومؤكد بدقة وبأقل تغيير ممكن (Surgical Edit)، وحافظ على أسلوب المشروع وبنيته وجميع الدوال غير المرتبطة (قفل النطاق).\n"
+    "- ممنوع تخفيف الفحوصات (Gate Integrity): لا تحذف أي `assert` أو شرط تحقق ولا تضع `except: pass`.\n"
+    "- إذا كان هناك بند غير صحيح أو مختلف عليه (disputed) أو مجرد رأي تجميلي، ارفضه واذكر السبب.\n"
     "الرد بالشكل التالي فقط:\n"
     "1) الكود النهائي كاملاً داخل بلوكات ``` بدون أي اختصار وبدون شرح خارجي (واكتب اسم الملف بسطر مستقل قبل كل بلوك بشكل **app.py** إذا كان هناك اسم ملف أو أكثر من ملف)، "
     "مع إبقاء __name__ و __main__ كاملة بالشرطات التحتية.\n"
@@ -2446,24 +3219,23 @@ FIX_APPLY_PROMPT = (
 COMM_SYSTEM = (
     "أنت Ryn (وضع Ryn mix الهندسي المطور). اكتب التقرير النهائي والرسالة للمستخدم بالعربي (لهجة شامية واضحة ومرتبة ومباشرة)، "
     "وابدأ مباشرة بدون مقدمات إنشائية أو مجاملات.\n"
-    "يجب أن يبدأ ردك دائماً بـ **قالب تقرير Ryn mix** المكون من البنود السبعة التالية بالضبط (اعتمد على بيانات الفحص والتحقق المرفقة معك حرفياً ولا تخترع نتائج):\n"
-    "• **المطلوب:** (ملخص واضح للطلب ومعيار النجاح)\n"
-    "• **الملفات التي فُحصت:** (أسماء الملفات أو البلوكات التي فُحصت، ونقاط الدخول/التبعيات إن وجدت)\n"
-    "• **الملفات التي تغيّرت وسبب التغيير:** (ما الذي تعدّل أو أُنشئ ولماذا، مع توضيح الحفاظ على باقي الكود)\n"
-    "• **الاختبارات التي شُغّلت والنتائج:** (اذكر الفحوصات الآلية التي شُغّلت فعلياً ونتائجها، وأوامر/أمثلة الاختبار التي أضفتها للمستخدم)\n"
-    "• **المشكلات التي عُثر عليها:** (الأخطاء المنطقية أو الأمنية أو مشاكل الواجهة التي رُصدت بالدليل ورقم السطر وكيف عولجت، أو اذكر أنه لم تُرصد مشاكل حرجة)\n"
+    "يجب أن يبدأ ردك دائماً في **السطر الأول** بسطر الحالة للموبايل:\n"
+    "📌 **الحالة: [تم | تم مع ملاحظات | ما قدرت | ناقصني سياق]** — (السبب باختصار بسطر واحد)\n\n"
+    "ثم يليه مباشرةً **قالب تقرير Ryn mix** المكون من البنود السبعة التالية بالضبط (اعتمد على بيانات الفحص والتحقق المرفقة معك حرفياً ولا تخترع نتائج):\n"
+    "• **المطلوب:** (ملخص واضح للطلب ومعيار النجاح + الافتراضات أو مواصفة الـ 5 نقاط إن كان الطلب غامضاً)\n"
+    "• **الملفات التي فُحصت:** (أسماء الملفات أو البلوكات التي فُحصت، ونقاط الدخول/المستهلكين إن وجدت)\n"
+    "• **الملفات التي تغيّرت وسبب التغيير:** (ما الذي تعدّل أو أُنشئ ولماذا، مع توضيح التزام قفل النطاق والحفاظ على باقي الكود)\n"
+    "• **الاختبارات التي شُغّلت والنتائج:** (اذكر الفحوصات الآلية التي شُغّلت فعلياً: AST/Pyflakes، فحص المستهلكين، قفل النطاق، منع تخفيف الفحوصات، وفحص الأمان)\n"
+    "• **المشكلات التي عُثر عليها:** (السبب الجذري المؤكد من تحقيق investigate + الأخطاء المنطقية أو الأمنية أو مشاكل الواجهة بالدليل ورقم السطر وكيف عولجت)\n"
     "• **ما لم أتمكن من التحقق منه:** (اذكر بصدق تام ما لم يُشغّل فعلياً مثل التشغيل الحي للسيرفر أو قاعدة البيانات أو المتصفح الفعلي — ممنوع كتابة «نجح التشغيل» تخميناً)\n"
-    "• **المخاطر أو الخطوات التالية:** (أوامر التشغيل، خطوات اختبار المتصفح إن وجدت، أو أي خطوة تتطلب موافقة المستخدم مثل النشر أو تعديل البيانات)\n\n"
+    "• **المخاطر أو الخطوات التالية:** (أوامر التشغيل، خطوات اختبار المتصفح إن وجدت، أو أي خطوة تتطلب موافقة المستخدم)\n\n"
     "قواعد إضافية:\n"
-    "- بعد القالب أعلاه، يمكنك إضافة بلوك أوامر تشغيل أو اختبار قصير (```bash) إذا لزم الأمر.\n"
-    "- ممنوع ذكر أسماء الموديلات الداخلية أو المراجعين (لا تقل القاضي الأول أو المراجع الثاني).\n"
-    "- تطابق الشرح مع الكود النهائي حرفياً: افحص الكود النهائي الجاهز المرفق معك قبل كتابة أي سطر في التقرير؛ ممنوع تماماً أن تذكر أنك حذفت استيراداً أو أزلت عبارة (مثل FOR UPDATE) إذا كانت لا تزال موجودة في الكود النهائي، ولا تكرر ملخص الأخطاء مرتين تحت التقرير.\n"
+    "- تطابق الشرح مع الكود النهائي حرفياً: افحص الكود النهائي الجاهز المرفق معك قبل كتابة أي سطر في التقرير؛ ممنوع تماماً أن تذكر أنك حذفت استيراداً أو أزلت عبارة إذا كانت لا تزال موجودة في الكود النهائي، ولا تكرر ملخص الأخطاء مرتين تحت التقرير.\n"
     "- لا تعِد كتابة بلوكات الكود الطويلة داخل رسالتك لأن الكود النهائي الكامل والفروقات (diff) يُضافان تحت رسالتك تلقائياً."
 )
 
 
 def parse_notes(txt):
-    """المرحلة 4: تحويل رد المراجع لبنود موحدة غنية (مع الخطورة، الحالة confirmed/needs_test، الملف، السطر، الدليل، الأثر، والإصلاح)."""
     t = (txt or "").strip()
     m = re.search(r"```(?:json)?\s*(.*?)```", t, re.S)
     body = m.group(1).strip() if m else t
@@ -2527,7 +3299,6 @@ def parse_notes(txt):
 
 
 def merge_notes(first, second, n1, n2, extra_issues=None):
-    """المرحلة 4: دمج ملاحظات المراجعين مع نتائج الفحص الآلي والأمني والواجهة وترتيبها حسب الأولوية (High أولاً)."""
     items = [dict(id=i, **{"from": n1}, **it) for i, it in enumerate(first.get("issues") or [], 1)]
     base = len(items)
     dis = {d["id"]: d["reason"] for d in (second.get("disagree") or [])}
@@ -2547,7 +3318,6 @@ def merge_notes(first, second, n1, n2, extra_issues=None):
 
 
 def split_report(text):
-    """بيفصل بلوك JSON تقرير التطبيق (applied/rejected/changed_files) عن الكود."""
     for m in list(re.finditer(r"```json\s*(.*?)```", text or "", re.S))[::-1]:
         try:
             d = json.loads(m.group(1))
@@ -2559,7 +3329,6 @@ def split_report(text):
 
 
 def clean_code_text(text):
-    """بيشيل كلام الكاتب (ترحيب/شرح/عناوين فاضية/أوامر تشغيل) وبيخلّي بلوكات الكود بس، مع اسم الملف إذا موجود."""
     nb = drop_shell_blocks(named_blocks(text))
     if not nb:
         return (text or "").strip()
@@ -2571,7 +3340,6 @@ _CODE_START = re.compile(r"^\s*(def |class |import |from [\w.]+ import |@\w|for 
 
 
 def loose_code(text):
-    """كود ملصوق بدون ``` (شائع بالموبايل): بيلاقي أول سطر كود خلال أول 4 أسطر وبياخد الباقي."""
     lines = (text or "").split("\n")
     if len(lines) < 4:
         return None
@@ -2607,7 +3375,6 @@ _CODE_STRONG = re.compile(
 
 
 def is_mix_engineering_request(text, ctx=None):
-    """تحديد ما إذا كان الطلب في Ryn mix مهمة برمجية/تطويرية/مراجعة مشروع تستدعي خط الإنتاج الهندسي ذا المراحل العشر."""
     t = (text or "").strip()
     if _FIX_RE.search(t) or _CODE_STRONG.search(t):
         return True
@@ -2628,14 +3395,7 @@ def is_mix_engineering_request(text, ctx=None):
     return False
 
 
-def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
-    """خط إنتاج Ryn mix الهندسي (المراحل 1 إلى 9 من خارطة طريق RYN × gstack):
-    المرحلة 1: فحص المشروع والطلب وتحديد نقاط الدخول والمستدعين والملفات المرتبطة.
-    المرحلة 2: التخطيط قبل البرمجة وتحديد معايير النجاح والمخاطر.
-    المرحلة 3: كتابة/تعديل الكود بأمان وبأقل تغيير (Surgical Edit).
-    المرحلة 4: مراجعة الكود النقدية المزدوجة (Two-Pass Review مع الدليل والأثر والخطورة).
-    المرحلة 5 و 6 و 7 و 8: تشغيل الفحوصات الآلية، الفحص الأمني، فحص الواجهة، وإعادة الإصلاح والتحقق.
-    المرحلة 9: إصدار التقرير النهائي الموثق وفق القالب السباعي + الكود النهائي + فروق التعديلات (diff)."""
+def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_id="main"):
     T = b.types
     t0 = time.time()
     P = progress or (lambda t: None)
@@ -2647,26 +3407,59 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
         return [T.Content(role="user", parts=[T.Part(text=redact_secrets(text))])]
 
     question = redact_secrets(_last_user_text(contents))
-    writers = [n for n in _WRITER_ORDER if n in roster]
-    if not writers:
-        return None
+    user_learnings_txt = get_user_learnings_prompt(user_id)
 
-    # ---- المرحلة 1: فهم الطلب وفحص المشروع ----
     P("🔍 المرحلة 1: عم يفحص المشروع والطلب...")
     proj = inspect_project_context(contents, question)
     orig_items = proj["relevant_items"] or proj["all_items"]
     inspected_names = [x[0] for x in (proj["all_items"] or orig_items)]
+
+    missing_ctx_reason = check_missing_essential_context(question, proj)
+    if missing_ctx_reason:
+        rep_missing = ensure_ryn_report_template(
+            "", question, inspected_files=[], changed_files=[],
+            ver_report={"executed_checks": ["فحص السياق المرفق: لم يتم العثور على كود أو ملف مرفق ❌"], "unverified": ["لا يوجد كود لفحصه"]},
+            merged_reviews=[], missing_context_reason=missing_ctx_reason
+        )
+        return rep_missing
+
+    writers = get_ranked_writers(roster)
+    if not writers:
+        return None
     focused_contents = select_focused_contents(T, contents, proj, max_chars=24000)
 
-    # ---- المرحلة 2: التخطيط قبل البرمجة ----
+    investigation = None
+    ver_pre = run_verification_suite(orig_items, orig_items=None, question=question) if orig_items else None
+    if (fix or orig_items) and left() > 100:
+        P("🔬 تحقيق السبب الجذري (Investigate): عم يحلل فرضيات الخطأ بالدليل...")
+        inv_model = "DeepSeek" if "DeepSeek" in roster else ("Gemini" if "Gemini" in roster else writers[0])
+        inv_prompt = (
+            INVESTIGATE_SYSTEM_PROMPT + "\n"
+            + proj["summary_text"]
+            + (diagnose(orig_items) if orig_items else "")
+            + (numbered_listing(orig_items[:3], cap=16000) if orig_items else "")
+            + "\nطلب المستخدم:\n" + question[:10000]
+        )
+        try:
+            inv_raw = _timed(roster[inv_model], U(inv_prompt), min(55, left()))
+            investigation = parse_investigation_json(inv_raw)
+        except Exception as e:
+            log.warning("pipeline investigate %s فشل: %s", inv_model, redact_secrets(str(e)[:120]))
+        if not investigation and ver_pre:
+            investigation = build_fallback_investigation(orig_items, ver_pre, question)
+
+    inv_directive = format_investigation_for_writer(investigation)
+
     plan = None
-    is_complex = bool(orig_items) or len(question) > 140 or fix
-    if is_complex and left() > 90:
-        P("🧭 المرحلة 2: عم يحط خطة التنفيذ...")
+    ambig = is_ambiguous_request(question, proj)
+    if (bool(orig_items) or len(question) > 100 or fix or ambig) and left() > 90:
+        P("🧭 المرحلة 2: عم يحط خطة التنفيذ ومواصفة الـ 5 نقاط...")
         planner_name = "Gemini" if "Gemini" in roster else writers[0]
         plan_input = (
             PLAN_SYSTEM_PROMPT + "\n\n"
+            + user_learnings_txt
             + proj["summary_text"]
+            + inv_directive
             + (numbered_listing(orig_items[:4], cap=16000) if orig_items else "")
             + "\nطلب المستخدم:\n" + question[:12000]
         )
@@ -2675,73 +3468,94 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
             plan = parse_plan_json(plan_raw)
         except Exception as e:
             log.warning("pipeline تخطيط %s فشل: %s", planner_name, redact_secrets(str(e)[:120]))
+    if not plan:
+        plan = build_default_spec_and_plan(question, proj)
 
     plan_directive = format_plan_for_writer(plan)
 
-    # ---- المرحلة 3: كتابة / تعديل الكود بأمان ----
-    P("✍️ المرحلة 3: عم ينفّذ الكود بأمان...")
+    P("✍️ المرحلة 3: عم ينفّذ الكود بأمان وضمن النطاق...")
     file_naming_hint = ""
     if orig_items and not orig_items[0][0].startswith("بلوك "):
         file_naming_hint = "استخدم أسماء الملفات الأصلية قبل كل بلوك كود (مثال: **%s**). " % orig_items[0][0]
     style = (
         UNTRUSTED_FILE_RULES
+        + user_learnings_txt
         + CLAUDE_CODE_STYLE
         + (FIX_RULES if (fix or orig_items) else "")
         + proj["summary_text"]
+        + inv_directive
         + plan_directive
         + "[دورك: كاتب الكود المنضبط (المرحلة 3). اعطِ الكود الكامل فقط داخل بلوكات ``` بدون أي اختصار أو '...'؛ "
         + "وإذا كان هناك ملف مرفق أو أكثر من ملف اكتب اسم الملف بسطر مستقل قبل كل بلوك بهالشكل: **app.py**. "
         + file_naming_hint
-        + "حافظ على جميع الدوال والوظائف السليمة في الملف الأصلي ولا تحذف شيئاً لم يُطلب حذفه. "
-        + "لا تضع أوامر تشغيل أو pip أو curl في بلوكات مستقلة (هذه مكانها التقرير). انتبه لكتابة __name__ و __main__ بالشرطات التحتية كاملة. "
-        + "أضف في نهاية الكود (أو في دالة اختبار مدمجة غير معطلة للاستيراد) 2-3 اختبارات assert واضحة تغطي المسار الطبيعي والحالات الحدية.]\n---\n"
+        + "قفل النطاق (Scope Lock): عدّل فقط ما يخص طلب المستخدم وحافظ على جميع الدوال السليمة في الملف الأصلي كما هي دون تغيير أو حذف. "
+        + "منع تخفيف الفحوصات (Gate Integrity): لا تحذف أي `assert` أو شرط تحقق كان في الكود الأصلي ولا تضع `except: pass`. "
+        + "لا تضع أوامر تشغيل أو pip أو curl في بلوكات مستقلة. انتبه لكتابة __name__ و __main__ بالشرطات التحتية كاملة. "
+        + "أضف في نهاية الكود (داخل `if __name__ == '__main__':`) 2-3 اختبارات assert واضحة تغطي المسار الطبيعي والحالات الحدية.]\n---\n"
     )
     draft = writer = None
+    writer_latency = 1.0
     dead = set()
     for name in writers:
-        # للموديلات ذات السياق الصغير نرسل السياق المركّز بالملفات المرتبطة، ولـ Gemini/الكبيرة نرسل السياق مع الفحص
         target_cs = focused_contents if name in ("GPT-OSS", "Qwen") and contents_size(contents) > 24000 else contents
+        tw0 = time.time()
         try:
             out = _timed(roster[name], _with_prefix(T, target_cs, style), min(150, left()))
+            writer_latency = time.time() - tw0
         except Exception as e:
             log.warning("pipeline كاتب %s فشل: %s", name, redact_secrets(str(e)[:120]))
+            record_writer_performance(name, False, time.time() - tw0, 5)
             dead.add(name)
             continue
         if out and out.strip():
-            draft, writer = out.strip(), name
-            break
-    if not draft:
+            cand = out.strip()
+            bks = extract_blocks(cand)
+            if not bks:
+                lc = loose_code(cand)
+                if lc:
+                    cand = "```%s\n%s\n```" % (lc[0], lc[1])
+                    bks = [lc]
+            if bks:
+                draft, writer, blocks = cand, name, bks
+                break
+    if not draft or not blocks:
         return None
-    blocks = extract_blocks(draft)
-    if not blocks:
-        lc = loose_code(draft)
-        if lc:
-            draft = "```%s\n%s\n```" % (lc[0], lc[1])
-            blocks = [lc]
-    if not blocks:  # سؤال نظري بدون كود: نُرجع الجواب مع تنقية الأسرار
-        return redact_secrets(draft)
 
     nb_draft = drop_shell_blocks(named_blocks(draft))
     items = [(n or ("بلوك %d" % i), guess_lang(lg, cd), cd) for i, (n, lg, cd) in enumerate(nb_draft, 1)] or \
             [("بلوك %d" % i, guess_lang(lg, cd), cd) for i, (lg, cd) in enumerate(blocks, 1)]
 
-    # تشغيل الفحص الأولي (المرحلة 5 و 6 و 7 و 8) على المسودة لتزويد المراجعين بالأدلة
-    ver_initial = run_verification_suite(items, orig_items=orig_items, question=question)
+    ver_initial = run_verification_suite(items, orig_items=orig_items, question=question, plan=plan, all_project_items=proj["all_items"])
     extra_auto_issues = []
     for e_str in ver_initial["errors"][:4]:
         extra_auto_issues.append({
             "severity": "high", "status": "confirmed", "file": None, "line": None,
-            "problem": "خطأ صياغة آلي: " + e_str, "evidence": e_str,
-            "impact": "الكود لن يعمل وسيتوقف بخطأ SyntaxError/ReferenceError.",
-            "fix": "صحّح خطأ الصياغة أو الاسم غير المعرّف."
+            "problem": "خطأ صياغة أو استدعاء مكسور: " + e_str, "evidence": e_str,
+            "impact": "الكود سيتوقف بخطأ وقت التشغيل.",
+            "fix": "صحّح خطأ الصياغة أو طابق معاملات الدالة مع جميع المستهلكين."
         })
-    for w_str in ver_initial["warnings"][:4]:
+    for g_str in ver_initial["gate_violations"][:3]:
+        extra_auto_issues.append({
+            "severity": "high", "status": "confirmed", "file": None, "line": None,
+            "problem": g_str, "evidence": "فحص Gate Integrity على الـ diff",
+            "impact": "تخفيف الفحوصات أو بلع الأخطاء يخفي العيوب الحقيقية.",
+            "fix": "أعد الفحوصات/الاستثناءات الأصلية وعالج الخطأ الحقيقي بدلاً من إسكاته."
+        })
+    for sc_str in ver_initial["scope_violations"][:3]:
         extra_auto_issues.append({
             "severity": "medium", "status": "confirmed", "file": None, "line": None,
-            "problem": w_str, "evidence": w_str,
-            "impact": "قد يسبب سلوكاً غير متوقع في الحالات الحدية أو فقدان وظائف سابقة.",
-            "fix": "عالج التنبيه مع الحفاظ على سلوك الكود الأصلي."
+            "problem": sc_str, "evidence": "فحص Scope Lock على الـ diff",
+            "impact": "تعديل دوال خارج نطاق الطلب قد يكسر أجزاء أخرى غير مرتبطة.",
+            "fix": "أعد الدوال غير المطلوبة في الطلب إلى نصها الأصلي."
         })
+    for w_str in ver_initial["warnings"][:4]:
+        if w_str not in ver_initial["gate_violations"] and w_str not in ver_initial["scope_violations"]:
+            extra_auto_issues.append({
+                "severity": "medium", "status": "confirmed", "file": None, "line": None,
+                "problem": w_str, "evidence": w_str,
+                "impact": "قد يسبب سلوكاً غير متوقع في الحالات الحدية أو فقدان وظائف سابقة.",
+                "fix": "عالج التنبيه مع الحفاظ على سلوك الكود الأصلي."
+            })
     extra_auto_issues.extend(ver_initial["security_findings"][:4])
     for ui_prob in ver_initial["ui_audit"].get("objective_issues", [])[:3]:
         extra_auto_issues.append({
@@ -2751,52 +3565,66 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
             "fix": "طبّق التحسين الموضوعي للواجهة دون تغيير التصميم العام."
         })
 
+    consumers_txt = ver_initial["consumers_info"].get("report_text") or ""
     view = (
         proj["summary_text"]
+        + inv_directive
+        + consumers_txt
         + diagnose(items)
         + (numbered_listing(orig_items[:3], cap=25000) + "\n" if orig_items else "")
         + "[الكود المقترح للمراجعة بأرقام الأسطر]\n"
         + (numbered_listing(items, cap=55000) or ("الكود:\n" + draft[:55000]))
     )
     req = question[:80000]
-    r1 = next((n for n in _REV1_ORDER if n in roster and n != writer and n not in dead), None)
-    r2 = next((n for n in _REV2_ORDER if n in roster and n not in (writer, r1) and n not in dead), None)
 
-    # ---- المرحلة 4a: المراجعة الأولى النقدية (JSON) ----
+    rev1_cands = get_ranked_reviewers(roster, exclude=dead | {writer}, second=False)
+    r1 = rev1_cands[0] if rev1_cands else None
+    rev2_cands = get_ranked_reviewers(roster, exclude=dead | {writer, r1}, second=True)
+    r2 = rev2_cands[0] if rev2_cands else None
+
     notes1 = notes2 = None
+    r1_lat = 1.0
     if r1 and left() > 65:
-        P("🔎 المرحلة 4: مراجعة الكود والأمان (1/2)...")
+        P("🔎 المرحلة 4: مراجعة الكود والمستهلكين والنطاق (1/2)...")
+        tr1 = time.time()
         try:
             out = _timed(roster[r1], U("[دورك: مراجع كود أول — المرحلة 4]\n" + REVIEW_SCHEMA + "\nالطلب الأصلي:\n" + req + "\n\n" + view),
                          min(130, left()))
+            r1_lat = time.time() - tr1
             notes1 = parse_notes(out)
         except Exception as e:
             log.warning("pipeline مراجع1 %s فشل: %s", r1, redact_secrets(str(e)[:120]))
 
-    # ---- المرحلة 4b: المراجعة الثانية المستقلة بدون تعديل (JSON) ----
     if r2 and left() > 65:
         P("🧪 المرحلة 4: تدقيق مستقل للمخاطر والحالات الحدية (2/2)...")
         prev = json.dumps([dict(id=i, **it) for i, it in enumerate((notes1 or {}).get("issues") or [], 1)], ensure_ascii=False, indent=1)
+        tr2 = time.time()
         try:
             out = _timed(roster[r2], U("[دورك: مراجع كود ثانٍ مستقل — بدون أي تعديل للكود]\n" + REVIEW_SCHEMA + REVIEW2_EXTRA
                                        + "\nالطلب الأصلي:\n" + req + "\n\n" + view + "\nملاحظات المراجع الأول:\n" + prev),
                          min(130, left()))
             notes2 = parse_notes(out)
+            record_reviewer_performance(r2, len((notes2 or {}).get("issues") or []), time.time() - tr2)
         except Exception as e:
             log.warning("pipeline مراجع2 %s فشل: %s", r2, redact_secrets(str(e)[:120]))
+
+    if r1 and notes1 is not None:
+        agreed_cnt = len((notes2 or {}).get("agree") or []) or len(notes1.get("issues") or [])
+        record_reviewer_performance(r1, agreed_cnt, r1_lat)
 
     final_text, report = draft, None
     merged = merge_notes(notes1 or {"issues": []}, notes2 or {"issues": [], "agree": [], "disagree": []},
                          r1 or "reviewer1", r2 or "reviewer2", extra_issues=extra_auto_issues)
 
-    # ---- المرحلة 3 & 4c: تطبيق الملاحظات المؤكدة بأمان ----
     actionable = [m for m in merged if not m.get("disputed")]
     if actionable and left() > 50:
         P("🔧 المرحلة 5: عم يطبّق الإصلاحات ويتحقق من النتيجة...")
         try:
             apply_input = (
                 CLAUDE_CODE_STYLE + FIX_APPLY_PROMPT
+                + inv_directive
                 + plan_directive
+                + consumers_txt
                 + "\nالطلب الأصلي:\n" + req
                 + ("\n\n" + numbered_listing(orig_items[:3], cap=25000) if orig_items else "")
                 + "\n\nالكود الحالي:\n" + draft[:90000]
@@ -2810,8 +3638,11 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
         except Exception as e:
             log.warning("pipeline تطبيق %s فشل: %s", writer, redact_secrets(str(e)[:120]))
 
-    # ---- المرحلة 5: إعادة الاختبارات والفحص الآلي بعد الإصلاح (لحد مرتين) ----
-    for attempt_fix in range(2):
+    MAX_REPAIR_ATTEMPTS = 3
+    attempts_log = []
+    repair_failed_after_3 = False
+
+    for attempt_idx in range(1, MAX_REPAIR_ATTEMPTS + 1):
         nb_cur = drop_shell_blocks(named_blocks(final_text))
         cur_items = [(n or ("بلوك %d" % i), guess_lang(lg, cd), cd) for i, (n, lg, cd) in enumerate(nb_cur, 1)]
         errs = []
@@ -2823,29 +3654,54 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
                 errs += [ew for ew in edge_w if "FOR UPDATE" in ew or "قابل للتعديل" in ew or "بلع صامت" in ew][:2]
                 errs += [uw for uw in w_py if "imported but unused" in uw][:2]
         diff_errs = check_diff_safety(orig_items, final_text, question)
-        all_repair_reasons = errs + diff_errs[:2]
-        if not all_repair_reasons or left() < 35:
+        gate_errs = check_gate_integrity(orig_items, final_text)
+        scope_errs = check_scope_lock(orig_items, final_text, question, plan=plan)
+        cons_check = find_all_consumers_of_modified_symbols(orig_items, cur_items, all_project_items=proj["all_items"])
+        caller_errs = cons_check.get("broken_callers") or []
+
+        all_repair_reasons = errs + gate_errs[:2] + caller_errs[:2] + diff_errs[:2] + scope_errs[:1]
+        if not all_repair_reasons:
+            if attempts_log:
+                attempts_log.append("المحاولة %d: نجحت جميع فحوصات الصياغة والنطاق وسلامة البوابات ✅" % attempt_idx)
             break
-        P("🔁 إعادة فحص وإصلاح الأخطاء المتبقية (%d)..." % (attempt_fix + 1))
+        if left() < 30:
+            attempts_log.append("المحاولة %d: توقف بسبب ضيق الوقت المتبقي مع بقاء (%s)" % (attempt_idx, all_repair_reasons[0]))
+            repair_failed_after_3 = bool(errs or gate_errs or caller_errs)
+            break
+
+        P("🔁 محاولة الإصلاح الجذري (%d/%d)..." % (attempt_idx, MAX_REPAIR_ATTEMPTS))
+        attempts_log.append("المحاولة %d: عالجت السبب (%s)" % (attempt_idx, "؛ ".join(all_repair_reasons[:2])))
         try:
             repair_prompt = (
                 CLAUDE_CODE_STYLE
-                + "[دورك: كاتب الكود] الفحص الآلي بعد التعديل رصد المشكلات التالية:\n"
+                + "[دورك: محقق ومصلّح السبب الجذري — المحاولة %d من %d]\n" % (attempt_idx, MAX_REPAIR_ATTEMPTS)
+                + "الفحص الآلي رصد المشكلات التالية التي يجب حل سببها الجذري فوراً (دون حذف اختبارات أو بلع أخطاء بـ except: pass):\n"
                 + "\n".join("- " + x for x in all_repair_reasons)
-                + "\nصحّحها وأعطِ الكود النهائي كاملاً داخل بلوكات ``` بدون أي اختصار وبدون شرح خارجي.\n\nالكود:\n"
+                + ("\n\n" + numbered_listing(orig_items[:2], cap=15000) if orig_items else "")
+                + "\n\nصحّح السبب الجذري وأعطِ الكود النهائي كاملاً داخل بلوكات ``` بدون أي اختصار وبدون شرح خارجي.\n\nالكود الحالي:\n"
                 + final_text[:95000]
             )
-            out = _timed(roster[writer], U(repair_prompt), min(110, left()))
+            out = _timed(roster[writer], U(repair_prompt), min(100, left()))
             if extract_blocks(out):
                 final_text = split_report(out)[0]
-        except Exception:
+        except Exception as e:
+            attempts_log.append("المحاولة %d: فشل الاتصال بالمصلح (%s)" % (attempt_idx, redact_secrets(str(e)[:80])))
             break
+    else:
+        nb_after = drop_shell_blocks(named_blocks(final_text))
+        after_items = [(n or ("بلوك %d" % i), guess_lang(lg, cd), cd) for i, (n, lg, cd) in enumerate(nb_after, 1)]
+        ver_after = run_verification_suite(after_items, orig_items=orig_items, question=question, plan=plan, all_project_items=proj["all_items"])
+        if not ver_after["all_passed"]:
+            repair_failed_after_3 = True
+            attempts_log.append("توقف بعد 3 محاولات إصلاح (وفق قاعدة investigate) بدلاً من التخمين العشوائي.")
 
-    # ---- التقييم النهائي الفعلي بعد كل التعديلات (المرحلة 5 و 6 و 7 و 8) ----
     final_text = redact_secrets(clean_code_text(final_text))
     nb_final = drop_shell_blocks(named_blocks(final_text))
     final_items = [(n or ("بلوك %d" % i), guess_lang(lg, cd), cd) for i, (n, lg, cd) in enumerate(nb_final, 1)]
-    ver_final = run_verification_suite(final_items, orig_items=orig_items, question=question)
+    ver_final = run_verification_suite(final_items, orig_items=orig_items, question=question, plan=plan, all_project_items=proj["all_items"])
+
+    record_writer_performance(writer, ver_final["all_passed"] and not repair_failed_after_3, writer_latency, len(actionable))
+    learned_memories = extract_and_save_learnings(user_id, question, proj, merged, final_text)
 
     changed_files_list = []
     if isinstance(report, dict) and isinstance(report.get("changed_files"), list):
@@ -2856,19 +3712,24 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
         for lbl, lg, _cd in final_items[:8]:
             changed_files_list.append("%s (%s)" % (lbl, lg or "code"))
 
-    # ---- المرحلة 9: التسليم والتقرير النهائي الموثق ----
     P("📝 المرحلة 9: عم يجهّز التقرير النهائي والتسليم...")
     msg = ""
     rep_str = json.dumps(report, ensure_ascii=False) if report else "(تطبيق مباشر)"
     ver_summary = format_verification_summary_for_prompt(
-        ver_final, plan=plan, merged_reviews=merged, inspected_files=inspected_names or [x[0] for x in final_items]
+        ver_final, plan=plan, merged_reviews=merged,
+        inspected_files=inspected_names or [x[0] for x in final_items],
+        investigation=investigation, attempts_log=attempts_log,
+    )
+    status_header = compute_task_status_line(
+        ver_report=ver_final, repair_failed_after_3=repair_failed_after_3, plan=plan
     )
     comm_user = (
-        "طلب المستخدم:\n" + req[:30000]
+        "سطر الحالة الإلزامي لأول التقرير:\n" + status_header
+        + "\n\nطلب المستخدم:\n" + req[:30000]
         + "\n\n" + ver_summary
         + "\nتفاصيل التعديلات المطبّقة: " + rep_str
         + "\n\nالكود النهائي الجاهز:\n" + final_text[:80000]
-        + "\n\nاكتب التقرير النهائي للمستخدم متبعاً قالب تقرير Ryn mix ذا النقاط السبع بالضبط."
+        + "\n\nاكتب التقرير النهائي للمستخدم مبتدئاً بسطر الحالة أعلاه ثم قالب تقرير Ryn mix ذا النقاط السبع بالضبط."
     )
     attempts = [("Gemini", lambda: big_gemini(b, U(comm_user), system=COMM_SYSTEM))]
     for nm in ("GPT-OSS", "DeepSeek", "Kimi", "Qwen"):
@@ -2894,22 +3755,28 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None):
         ver_report=ver_final,
         merged_reviews=merged,
         plan=plan,
+        investigation=investigation,
+        attempts_log=attempts_log,
+        repair_failed_after_3=repair_failed_after_3,
     )
 
-    log.info("Ryn mix pipeline: كاتب=%s مراجع1=%s مراجع2=%s ملاحظات=%d فحص_نهائي=%s",
-             writer, r1, r2, len(merged), ver_final["all_passed"])
+    log.info("Ryn mix pipeline: كاتب=%s مراجع1=%s مراجع2=%s ملاحظات=%d محاولات_إصلاح=%d فحص_نهائي=%s",
+             writer, r1, r2, len(merged), len(attempts_log), ver_final["all_passed"])
     if meta is not None:
         meta["final_code"] = final_text
         meta["verification"] = ver_final
         meta["plan"] = plan
+        meta["investigation"] = investigation
+        meta["learned_memories"] = learned_memories
     full_response = msg + "\n\n" + final_text
     if orig_items:
         full_response = compute_all_diffs(full_response, orig_items)
+    if learned_memories:
+        full_response += "\n" + "\n".join("[[MEM: %s]]" % m for m in learned_memories)
     return redact_secrets(full_response)
 
 
-def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=None):
-    """Ryn mix: يدمج قوة عدة موديلات مع مسار هندسي متكامل من 10 مراحل (مستوحى من gstack) للكود والمشاريع."""
+def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=None, user_id="main"):
     import concurrent.futures as cf
     T = b.types
     question = redact_secrets(_last_user_text(contents))
@@ -2919,27 +3786,27 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
 
     if is_eng:
         try:
-            piped = mix_code_pipeline(b, contents, dict(members), fix, progress, meta)
+            piped = mix_code_pipeline(b, contents, dict(members), fix, progress, meta, user_id=user_id)
         except Exception as e:
             log.warning("pipeline فشل: %s", redact_secrets(str(e)[:160]))
             piped = None
         if piped:
             return piped, "Ryn mix"
 
-    # المسار الموازي (للمحادثات العامة أو كاحتياط إذا تعذر خط الإنتاج المتسلسل)
     wait, cap = (150, 60000) if is_eng else (45, 6000)
     answers = {}
     focused_cs = select_focused_contents(T, contents, proj, max_chars=24000) if is_eng else contents
     ex = cf.ThreadPoolExecutor(max_workers=max(1, len(members)))
     futs = {}
+    user_lrn = get_user_learnings_prompt(user_id)
     for name, fn in members:
         base_cs = focused_cs if (name in ("GPT-OSS", "Qwen") and contents_size(contents) > 24000) else contents
         if is_eng:
-            prefix = (UNTRUSTED_FILE_RULES + CLAUDE_CODE_STYLE + (FIX_RULES if fix else "")
+            prefix = (UNTRUSTED_FILE_RULES + user_lrn + CLAUDE_CODE_STYLE + (FIX_RULES if fix else "")
                       + proj["summary_text"] + "[دورك: %s]\n---\n" % ROLE_HINT.get(name, ""))
             cs = _with_prefix(T, base_cs, prefix)
         else:
-            cs = _with_prefix(T, base_cs, UNTRUSTED_FILE_RULES) if proj["all_items"] else base_cs
+            cs = _with_prefix(T, base_cs, UNTRUSTED_FILE_RULES + user_lrn) if (proj["all_items"] or user_lrn) else base_cs
         futs[ex.submit(fn, cs)] = name
     try:
         for f in cf.as_completed(futs, timeout=wait):
@@ -2973,7 +3840,7 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
             prompt = (
                 "طلب المستخدم:\n%s\n\n%s\nحلول من عدة مبرمجين:\n%s\n\n%s\n"
                 "مهمتك: قارن الحلول واكتشف أخطاء كل حل (صياغة، منطق، حالات حدية، أمان، واجهة)، %s"
-                "وابدأ ردك بقالب تقرير Ryn mix السباعي (المطلوب، الملفات التي فُحصت، الملفات التي تغيّرت وسبب التغيير، الاختبارات التي شُغّلت والنتائج، المشكلات التي عُثر عليها، ما لم أتمكن من التحقق منه، المخاطر أو الخطوات التالية) "
+                "وابدأ ردك بسطر الحالة ثم قالب تقرير Ryn mix السباعي "
                 "ثم أعطِ النسخة النهائية الكاملة والصحيحة للكود بدون أي اختصار. لا تذكر المبرمجين ولا المقارنة."
                 % (question[:120000], proj["summary_text"], block, warn, pick_rule)
             )
@@ -2990,7 +3857,7 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
         final = review_code(b, question, final, orig_items=orig_items)
         nb_f = drop_shell_blocks(named_blocks(final))
         f_items = [(n or ("بلوك %d" % i), guess_lang(lg, cd), cd) for i, (n, lg, cd) in enumerate(nb_f, 1)]
-        ver_f = run_verification_suite(f_items, orig_items=orig_items, question=question)
+        ver_f = run_verification_suite(f_items, orig_items=orig_items, question=question, all_project_items=proj["all_items"])
         final = ensure_ryn_report_template(
             final, question,
             inspected_files=[x[0] for x in (orig_items or f_items)],
@@ -3046,15 +3913,36 @@ MIX_SYSTEM = (
 )
 
 
-def english_prompt(b, text):
-    if all(ord(c) < 128 for c in text):
-        return text
+def english_prompt(b, text, is_edit=False, has_ref_image=False):
+    """يبني وصف الصورة الإنجليزي الاحترافي مع دمج قواعد الواقعية الفوتوغرافية المناسبة لطلب المستخدم."""
+    raw = (text or "").strip()
+    directives = select_realism_directives(raw, is_edit=is_edit, has_ref_image=has_ref_image)
+    sys_inst = IMG_EDIT_SYS if (is_edit or has_ref_image) else IMG_SYS
+    user_msg = raw
+    if directives:
+        user_msg = (
+            "USER REQUEST:\n" + raw
+            + "\n\nSCENE REALISM DIRECTIVES TO INTEGRATE NATURALLY:\n" + directives
+        )
     try:
         T = b.types
-        out = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=text)])], deep=False, system=IMG_SYS)
-        return (out or "").strip().strip('"')[:600] or text
-    except Exception:
-        return text
+        out = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=user_msg)])], deep=False, system=sys_inst)
+        cleaned = strip_ai_buzzwords((out or "").strip().strip('"'))
+        if cleaned and len(cleaned) >= 20:
+            return cleaned[:1800]
+    except Exception as e:
+        log.warning("english_prompt fallback: %s", str(e)[:120])
+    # احتياط في حال تعذر استدعاء الموديل النصي: ندمج النص مع خلاصة الواقعية مباشرة
+    fallback_base = strip_ai_buzzwords(raw)
+    if directives and not _NON_PHOTO_STYLE_RE.search(raw):
+        short_realism = (
+            "RAW candid photograph shot on 35mm lens, single unified key light with accurate contact shadows and soft shadow penumbra, "
+            "natural skin texture with visible pores, fine peach fuzz, catchlights in eyes, subtle facial asymmetry, accurate 5-finger hands, "
+            "natural fabric weave and folds, authentic lived-in environment with accurate optical refraction and perspective, "
+            "natural depth of field with soft bokeh, subtle film grain, muted natural colors, zero plastic or waxy shine."
+        )
+        return (fallback_base + ", " + short_realism)[:1800]
+    return fallback_base[:1800]
 
 
 def sniff_image(data):
@@ -3082,37 +3970,61 @@ def img_models():
     return seen
 
 
-def _try_gemini_image(b, model, full):
-    """محاولة واحدة: Interactions API الحديثة أولاً، وبعدها generate_content الكلاسيكية."""
+def _extract_ref_image_parts(T, ctx, last_img_b64=None):
+    """استخراج أجزاء الصورة المرجعية (من المرفقات أو من آخر صورة مولّدة) لتعديلها."""
+    ref_parts = []
+    if ctx and ctx.get("image"):
+        for p in (ctx.get("parts") or []):
+            if getattr(p, "inline_data", None) is not None:
+                ref_parts.append(p)
+    if not ref_parts and last_img_b64 and isinstance(last_img_b64, str) and last_img_b64.startswith("data:image/"):
+        try:
+            header, b64data = last_img_b64.split(",", 1)
+            mime = header.split(";")[0].replace("data:", "") or "image/jpeg"
+            raw_bytes = base64.b64decode(b64data)
+            ref_parts.append(T.Part.from_bytes(data=raw_bytes, mime_type=mime))
+        except Exception:
+            pass
+    return ref_parts
+
+
+def _try_gemini_image(b, model, full, ref_parts=None):
+    """يدعم توليد صورة جديدة أو تعديل صورة مرفقة (Image-to-Image Editing) عبر Gemini."""
     T = b.types
     client = b.client
     last = None
-    try:
-        if os.environ.get("IMAGE_USE_INTERACTIONS", "0") != "1":
-            raise RuntimeError("interactions متوقفة")
-        it = client.interactions.create(model=model, input=full)
-        oi = getattr(it, "output_image", None)
-        if oi is not None:
-            data = getattr(oi, "data", None)
-            if isinstance(data, str):
-                try:
-                    data = base64.b64decode(data, validate=True)
-                except Exception:
-                    data = data.encode("utf-8")
-            if data:
-                return data, (getattr(oi, "mime_type", None) or "image/png")
-    except Exception as e:
-        last = e
-    cfg = None
-    try:
-        cfg = T.GenerateContentConfig(response_modalities=["IMAGE"],
-                                      http_options=T.HttpOptions(timeout=45000))
-    except Exception:
+    if not ref_parts:
         try:
-            cfg = T.GenerateContentConfig(response_modalities=["IMAGE"])
+            if os.environ.get("IMAGE_USE_INTERACTIONS", "0") != "1":
+                raise RuntimeError("interactions متوقفة")
+            it = client.interactions.create(model=model, input=full)
+            oi = getattr(it, "output_image", None)
+            if oi is not None:
+                data = getattr(oi, "data", None)
+                if isinstance(data, str):
+                    try:
+                        data = base64.b64decode(data, validate=True)
+                    except Exception:
+                        data = data.encode("utf-8")
+                if data:
+                    return data, (getattr(oi, "mime_type", None) or "image/png")
+        except Exception as e:
+            last = e
+    cfg = None
+    for modalities in (["IMAGE", "TEXT"], ["IMAGE"]):
+        try:
+            cfg = T.GenerateContentConfig(response_modalities=modalities,
+                                          http_options=T.HttpOptions(timeout=55000))
+            break
         except Exception:
-            cfg = None
-    resp = client.models.generate_content(model=model, contents=full, config=cfg)
+            try:
+                cfg = T.GenerateContentConfig(response_modalities=modalities)
+                break
+            except Exception:
+                cfg = None
+    req_contents = ([T.Content(role="user", parts=list(ref_parts) + [T.Part(text=full)])]
+                    if ref_parts else full)
+    resp = client.models.generate_content(model=model, contents=req_contents, config=cfg)
     gen = getattr(resp, "generated_images", None) or []
     if gen:
         g = gen[0]
@@ -3136,18 +4048,18 @@ def _try_gemini_image(b, model, full):
     raise RuntimeError("الرد ما فيه صورة")
 
 
-def gemini_image(b, full):
-    """بيجرّب كل موديلات الرسم بالترتيب وبيرجّع (data, mime, model)."""
+def gemini_image(b, full, ref_parts=None):
+    """بيجرّب كل موديلات الرسم/التعديل بالترتيب وبيرجّع (data, mime, model)."""
     last = None
     t0 = time.time()
     for model in img_models():
-        if time.time() - t0 > 100:
+        if time.time() - t0 > 110:
             log.warning("الرسم: خلصت المهلة الكلية، وقفت التجربة")
             break
         try:
-            log.info("الرسم: بجرّب %s", model)
-            data, mime = _try_gemini_image(b, model, full)
-            log.info("الرسم: %s خلص بـ %.0f ثانية", model, time.time() - t0)
+            log.info("الرسم/التعديل: بجرّب %s (مرفق صورة=%s)", model, bool(ref_parts))
+            data, mime = _try_gemini_image(b, model, full, ref_parts=ref_parts)
+            log.info("الرسم/التعديل: %s خلص بـ %.0f ثانية", model, time.time() - t0)
             if data:
                 return data, mime, model
         except Exception as e:
@@ -3729,13 +4641,11 @@ def text_file_parts(T, name, data):
 
 
 def _is_zip_symlink(info):
-    """المرحلة 6 (مستوحى من gstack/test/dependency-security.test.ts): رفض الروابط الرمزية (symlinks) داخل أرشيفات zip."""
     mode = (info.external_attr >> 16) & 0o170000
     return mode == 0o120000
 
 
 def _zip_file_priority(info):
-    """المرحلة 1: ترتيب ملفات المشروع بحيث تُقرأ نقاط الدخول وملفات الإعدادات والكود الأساسي أولاً."""
     path = info.filename.replace("\\", "/").lower()
     base = os.path.basename(path)
     if base in _ENTRY_NAMES:
@@ -3748,7 +4658,6 @@ def _zip_file_priority(info):
 
 
 def zip_parts(T, name, data):
-    """مشروع zip محصّن أمنياً: يفحص الروابط الرمزية والملفات السرية، ويرتب نقاط الدخول والملفات المهمة أولاً."""
     import zipfile
     try:
         zf = zipfile.ZipFile(io.BytesIO(data))
@@ -3957,6 +4866,7 @@ def register(app, b):
         return moods.setdefault(u or uid(), {"state": "normal", "reason": "", "since": 0.0})
 
     img_counts = {}
+    last_generated_images = {}  # u -> آخر صورة مولّدة/معدّلة (لتعديلها برسالة تالية)
     IMG_DAILY = int(os.environ.get("IMAGE_DAILY_LIMIT", "40"))
     IMG_PROVIDER = os.environ.get("IMAGE_PROVIDER", "auto").strip().lower()  # auto | gemini | cloudflare
 
@@ -4314,6 +5224,22 @@ def register(app, b):
                     mem_prompt = CODEFIX_RULES + FIX_RULES + diagnose(items) + numbered_listing(items) + mem_prompt
             full_user_text = (mem_prompt + text) if mem_prompt else text
             ctx = b.get_doc(W)
+            # إذا رفع المستخدم صورة وطلب تعديلها مباشرة من الشات (حتى خارج وضع الرسم)، نحوّلها لمحرك تعديل الصور الواقعي
+            if ctx and ctx.get("image") and _IMG_EDIT_INTENT_RE.search(text) and b.client and len(text) < 1200:
+                try:
+                    set_progress(job_id, "🎨 عم يعدّل الصورة بواقعية...")
+                    ref_parts = _extract_ref_image_parts(T, ctx, last_generated_images.get(u))
+                    en = english_prompt(b, text, is_edit=True, has_ref_image=bool(ref_parts))
+                    ah = aspect_hint(text)
+                    full_img_p = (en + ((" " + ah) if ah else "")).strip()
+                    data_img, _mime_img, model_img = gemini_image(b, full_img_p, ref_parts=ref_parts)
+                    img_res = _img_result(data_img, model_img, en)
+                    img_res["text"] = "تم تعديل الصورة حسب طلبك 🎨"
+                    last_generated_images[u] = img_res["image"]
+                    finish(job_id, img_res)
+                    return
+                except Exception as e_img:
+                    log.warning("تعديل الصورة المباشر بالشات فشل، بكمل دردشة: %s", redact_secrets(str(e_img)[:140]))
             if ctx:
                 base = ctx["alt"] if ctx.get("alt") else ctx["parts"]
                 parts = list(base) + [T.Part(text=full_user_text)]
@@ -4341,7 +5267,7 @@ def register(app, b):
                     net_fail = " (الإنترنت ما اشتغل هلق، جاوبت من معلوماتي)"
             if not answer and is_mix_mode and b._text_only(contents):
                 answer, note = mix_answer(b, contents, mix_members(code_req), code=code_req, fix=fix_intent,
-                                         progress=lambda t: set_progress(job_id, t), meta=mix_meta)
+                                         progress=lambda t: set_progress(job_id, t), meta=mix_meta, user_id=u)
                 kind = "clean"
             if not answer and big and b.client:   # مدخل كبير خارج وضع Ryn mix (أو كاحتياط): Gemini بسياقو الكبير
                 try:
@@ -4445,6 +5371,7 @@ def register(app, b):
         text = str(data.get("message", "")).strip()
         if not text:
             return jsonify(error="الرسالة فاضية"), 400
+        sync_learnings_from_client_memory(uid(), data.get("memory"))
         mem_prompt = build_memory_prompt(data.get("memory"))
         emo_on = data.get("emo") is True
         if emo_on:
@@ -4658,11 +5585,21 @@ def register(app, b):
             b.chat_provider[wid()] = mid
         return jsonify(ok=True)
 
-    # ---------- رسم الصور (Gemini Nano Banana أساسي + FLUX احتياط) ----------
-    def run_image(job_id, prompt, day):
+    # ---------- رسم وتعديل الصور بواقعية فوتوغرافية (Gemini Nano Banana أساسي + FLUX احتياط) ----------
+    def run_image(job_id, prompt, day, u="main"):
         res = None
         try:
-            en = english_prompt(b, prompt)
+            T = b.types
+            W = wid(u)
+            ctx = b.get_doc(W)
+            is_edit_req = bool(_IMG_EDIT_INTENT_RE.search(prompt))
+            has_attached_img = bool(ctx and ctx.get("image"))
+            ref_parts = _extract_ref_image_parts(
+                T, ctx, last_generated_images.get(u) if is_edit_req else None
+            )
+            is_edit_mode = bool(ref_parts)
+            set_progress(job_id, "🎨 عم يجهّز تفاصيل الواقعية والإضاءة..." if not is_edit_mode else "🎨 عم يعدّل الصورة ويضبط الواقعية...")
+            en = english_prompt(b, prompt, is_edit=is_edit_mode or is_edit_req, has_ref_image=is_edit_mode)
             ah = aspect_hint(prompt)
             full = (en + ((" " + ah) if ah else "")).strip()
             if is_cancelled(job_id):
@@ -4671,8 +5608,11 @@ def register(app, b):
             chain = []
             if prov in ("auto", "gemini") and b.client:
                 def _gem():
-                    data, mime, model = gemini_image(b, full)
-                    return _img_result(data, model, en)
+                    data, mime, model = gemini_image(b, full, ref_parts=ref_parts)
+                    out_r = _img_result(data, model, en)
+                    if is_edit_mode:
+                        out_r["text"] = "تم تعديل الصورة حسب طلبك 🎨"
+                    return out_r
                 chain.append(("Gemini", _gem))
             if prov in ("auto", "cloudflare") and cf_ready():
                 chain.append(("Cloudflare", lambda: flux_image(b, full, en)))
@@ -4685,7 +5625,7 @@ def register(app, b):
                 if is_cancelled(job_id):
                     return
                 try:
-                    log.info("الرسم: بجرّب %s", name)
+                    log.info("الرسم/التعديل: بجرّب %s", name)
                     res = fn()
                     break
                 except _ImgError as e:
@@ -4702,6 +5642,10 @@ def register(app, b):
                 msg = next((m for n, m in fails if n == "Cloudflare" and m.startswith(("⏳", "🔑"))), None) \
                     or (fails[-1][1] if fails else "")
                 raise _ImgError("ما قدرت أرسم هلق (كل المزودين فشلوا). " + (msg if msg.startswith(("⏳", "🔑")) else "جرّب بعد شوي."))
+            if res and res.get("status") == "done" and res.get("image"):
+                last_generated_images[u] = res["image"]
+                if has_attached_img:
+                    b.doc_ctx.pop(W, None)
         except _ImgError as e:
             res = {"status": "error", "text": str(e)}
         except Exception as e:
@@ -4714,9 +5658,9 @@ def register(app, b):
 
     IMG_HARD_TIMEOUT = int(os.environ.get("IMAGE_TIMEOUT", "240"))
 
-    def guarded_image(job_id, prompt, day):
+    def guarded_image(job_id, prompt, day, u="main"):
         """بيشغّل الرسم بخيط، وإذا علّق أكتر من المهلة بيسكّر الطلب بخطأ واضح."""
-        t = threading.Thread(target=run_image, args=(job_id, prompt, day), daemon=True)
+        t = threading.Thread(target=run_image, args=(job_id, prompt, day, u), daemon=True)
         t.start()
         t.join(IMG_HARD_TIMEOUT)
         if not t.is_alive():
@@ -4737,22 +5681,23 @@ def register(app, b):
             return bad
         if not image_ready():
             return jsonify(error="الرسم بده GEMINI_API_KEY أو إعداد Cloudflare (CLOUDFLARE_ACCOUNT_ID و CLOUDFLARE_API_TOKEN على Render)"), 503
-        prompt = str((request.get_json(silent=True) or {}).get("prompt", "")).strip()[:800]
+        prompt = str((request.get_json(silent=True) or {}).get("prompt", "")).strip()[:1200]
         if not prompt:
-            return jsonify(error="اكتب وصف الصورة"), 400
-        day = uid() + "|" + time.strftime("%Y-%m-%d")   # الحصة لكل مستخدم لحاله
+            return jsonify(error="اكتب وصف الصورة أو التعديل المطلوب"), 400
+        cur_u = uid()
+        day = cur_u + "|" + time.strftime("%Y-%m-%d")   # الحصة لكل مستخدم لحاله
         now = time.time()
         with jlock:
             for k in [k for k, v in jobs.items() if now - v["ts"] > 900]:
                 jobs.pop(k, None)
-            if sum(1 for v in jobs.values() if v["status"] == "running" and v.get("uid") == uid()) >= 2:
+            if sum(1 for v in jobs.values() if v["status"] == "running" and v.get("uid") == cur_u) >= 2:
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
             if img_counts.get(day, 0) >= IMG_DAILY:
                 return jsonify(error="وصلت الحد اليومي للصور (%d)، كمّل بكرا." % IMG_DAILY), 429
             img_counts[day] = img_counts.get(day, 0) + 1
             job_id = uuid.uuid4().hex
-            jobs[job_id] = {"status": "running", "ts": now, "uid": uid()}
-        threading.Thread(target=guarded_image, args=(job_id, prompt, day), daemon=True).start()
+            jobs[job_id] = {"status": "running", "ts": now, "uid": cur_u}
+        threading.Thread(target=guarded_image, args=(job_id, prompt, day, cur_u), daemon=True).start()
         return jsonify(job=job_id)
 
     @app.post("/api/cancel/<job_id>")
