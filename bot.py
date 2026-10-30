@@ -1353,13 +1353,12 @@ def run_polling():
             log.error("Polling crashed: %s", e)
             time.sleep(5)
 
-if webapp is not None:
-    try:
-        webapp.register(app, sys.modules[__name__])
-    except Exception:
-        log.exception("تعذر تفعيل الموقع")
-
 if __name__ == "__main__":
+    if webapp is not None:
+        try:
+            webapp.register(app, sys.modules[__name__])
+        except Exception:
+            log.exception("تعذر تفعيل الموقع")
     if ENABLE_TELEGRAM:
         threading.Thread(target=run_polling, daemon=True).start()
     else:
