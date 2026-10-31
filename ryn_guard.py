@@ -656,7 +656,8 @@ def build_fix_prompt(code: str, findings: list, gate_notes=None) -> str:
 
 
 def extract_code(text: str) -> str:
-    blocks = re.findall(r"```(?:python|py)?[ \t]*\n(.*?)```", text or "", re.S)
+    blocks = [m.group(2) for m in re.finditer(r"```([a-zA-Z0-9_+-]*)[ \t]*\n(.*?)```", text or "", re.S)
+              if m.group(1).lower() in ("", "python", "py")]
     blocks = [b for b in blocks if re.search(r"^\s*(def |import |from |class |@)", b, re.M)]
     return max(blocks, key=len).rstrip() + "\n" if blocks else ""
 
