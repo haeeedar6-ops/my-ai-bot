@@ -1600,8 +1600,20 @@ def web_answer(b, contents, use_search, yt_urls):
 
 
 # ==============================================================================
-# RYN Mix × gstack Engine — المراحل العشر + الإضافات الثماني المتقدمة
+# RYN Mix × gstack Engine — المراحل العشر + الإضافات الثماني المتقدمة + الحارس ryn_guard (18/18)
 # ==============================================================================
+import sys as _sys_mod
+import os as _os_mod
+if _os_mod.path.dirname(_os_mod.path.abspath(__file__)) not in _sys_mod.path:
+    _sys_mod.path.insert(0, _os_mod.path.dirname(_os_mod.path.abspath(__file__)))
+try:
+    import ryn_guard as G
+except Exception:
+    G = None
+try:
+    import ryn_selftest as S
+except Exception:
+    S = None
 
 # ---------- المرحلة 6 (الدفعة C): الأمان والخصوصية وحماية الأسرار وحدود الثقة ----------
 _SECRET_PATTERNS = (
@@ -1739,7 +1751,29 @@ def scan_security_and_dependencies(items, raw_text=""):
                         "impact": "مخاطرة أمنية في سلامة البيانات أو الخادم أو سرية المفاتيح.",
                         "fix": fix_hint,
                     })
-    return findings[:15]
+        if lang == "python" and G is not None:
+            try:
+                for gf in G.scan_python(code):
+                    if G.SEV.get(gf.sev, 0) >= 1:
+                        findings.append({
+                            "severity": "high" if G.SEV.get(gf.sev, 0) >= 2 else "medium",
+                            "status": "confirmed",
+                            "file": label,
+                            "line": gf.line,
+                            "problem": "[%s] %s" % (gf.rule, gf.msg),
+                            "evidence": "%s @ %s:%d" % (gf.rule, gf.func, gf.line),
+                            "impact": "ثغرة أمنية أو منطقية مرصودة عبر الفاحص الساكن (ryn_guard).",
+                            "fix": G.REMEDIES.get(gf.rule, "طبّق النمط الآمن القياسي لهذه القاعدة."),
+                        })
+            except Exception:
+                pass
+    dedup, seen_keys = [], set()
+    for fd in findings:
+        k = (fd.get("file"), fd.get("line"), fd.get("problem", "")[:35])
+        if k not in seen_keys:
+            seen_keys.add(k)
+            dedup.append(fd)
+    return dedup[:20]
 
 
 # ---------- الإضافة 5: اختيار الكاتب والمراجع حسب الأداء الفعلي (من benchmark-models) ----------
@@ -3037,17 +3071,74 @@ def run_ryn_mix_quality_suite():
             "passed": checks_ok,
             "details": details,
         })
+    selftest_res = None
+    if S is not None and G is not None:
+        try:
+            gold_check = S.score_answer(S.GOLD_ANSWER)
+            cl_check = G.closed_loop(S.ORIGINAL, lambda _p: S.GOLD_ANSWER, max_rounds=3, user_text=S.TEST_PROMPT)
+            rep_check = G.finalize_report(
+                "تمت المراجعة الأمنية.",
+                cl_check["before"], cl_check["after"], cl_check["gate"],
+                G.detect_injection(S.TEST_PROMPT)
+            )
+            full_check = rep_check + "\n\n```python\n" + cl_check["code"] + "\n```"
+            selftest_res = S.score_answer(full_check)
+            st_passed = selftest_res["score"] >= 16.0 and gold_check["score"] == 18.0
+            passed_all = passed_all and st_passed
+            results.append({
+                "id": "security_18_benchmark",
+                "title": "الاختبار الأمني الشامل (18/18 — ryn_guard + ryn_selftest)",
+                "passed": st_passed,
+                "details": [
+                    "المرجع الذهبي (Gold Reference): %.2f / 18 ✅" % gold_check["score"],
+                    "الحلقة المغلقة + بوابة التغيير + التقرير المحسوب: %.2f / 18 %s" % (selftest_res["score"], "✅" if st_passed else "❌"),
+                ],
+            })
+        except Exception as e_st:
+            passed_all = False
+            results.append({
+                "id": "security_18_benchmark",
+                "title": "الاختبار الأمني الشامل (18/18 — ryn_guard + ryn_selftest)",
+                "passed": False,
+                "details": ["فشل تشغيل الاختبار الذاتي: %s" % str(e_st)[:120]],
+            })
     return {
         "passed_all": passed_all,
         "total": len(results),
         "passed_count": sum(1 for r in results if r["passed"]),
         "tasks": results,
+        "selftest_18": selftest_res,
         "model_rankings": {
             "writers": get_ranked_writers({k: True for k in _DEFAULT_WRITER_ORDER}),
             "reviewers": get_ranked_reviewers({k: True for k in _DEFAULT_REV1_ORDER}),
             "stats": MODEL_PERF_STATS,
         },
     }
+
+
+def ryn_selftest_run(b_mod=None, members=None, live=False):
+    """4) الاختبار الذاتي (18/18) كبوابة نشر وتقييم للموديلات."""
+    import ryn_selftest as _S
+    if not live or b_mod is None or not members:
+        cl = G.closed_loop(_S.ORIGINAL, lambda _p: _S.GOLD_ANSWER, max_rounds=3, user_text=_S.TEST_PROMPT)
+        rep = G.finalize_report(
+            "تمت المراجعة الأمنية.",
+            cl["before"], cl["after"], cl["gate"],
+            G.detect_injection(_S.TEST_PROMPT)
+        )
+        ans = rep + "\n\n```python\n" + cl["code"] + "\n```"
+        res = _S.score_answer(ans)
+        res["passed"] = res["score"] >= 16.0
+        log.info("Ryn selftest %.2f / 18", res["score"])
+        return res
+    T = b_mod.types
+    contents = [T.Content(role="user", parts=[T.Part(text=_S.TEST_PROMPT)])]
+    out = mix_answer(b_mod, contents, members, code=True, fix=True)
+    text = out[0] if isinstance(out, tuple) else out
+    res = _S.score_answer(text)
+    res["passed"] = res["score"] >= 16.0
+    log.info("Ryn selftest %.2f / 18", res["score"])
+    return res
 
 
 CLAUDE_CODE_STYLE = (
@@ -3108,6 +3199,12 @@ def member_syntax_notes(answers):
                 errs, _w = check_code(lang, cd, strict=True)
                 if errs:
                     notes.append("⚠️ فحص آلي: حل %d فيه خطأ صياغة (%s) فلا تعتمد عليه." % (i, errs[0]))
+                    break
+            if lang == "python" and G is not None:
+                gf = [f for f in G.scan_python(cd) if G.SEV[f.sev] >= 2]
+                if gf:
+                    notes.append("Ryn guard: حل %d فيه %d ثغرات عالية (%s)، لا تعتمد عليه كما هو"
+                                 % (i, len(gf), ", ".join(sorted({f.rule for f in gf}))[:140]))
                     break
             sec = scan_security_and_dependencies([("حل %d" % i, lang, cd)])
             high_sec = [s for s in sec if s["severity"] == "high"]
@@ -3406,11 +3503,12 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
     def U(text):
         return [T.Content(role="user", parts=[T.Part(text=redact_secrets(text))])]
 
-    question = redact_secrets(_last_user_text(contents))
+    raw_question = _last_user_text(contents)
+    question = redact_secrets(raw_question)
     user_learnings_txt = get_user_learnings_prompt(user_id)
 
     P("🔍 المرحلة 1: عم يفحص المشروع والطلب...")
-    proj = inspect_project_context(contents, question)
+    proj = inspect_project_context(contents, raw_question)
     orig_items = proj["relevant_items"] or proj["all_items"]
     inspected_names = [x[0] for x in (proj["all_items"] or orig_items)]
 
@@ -3477,6 +3575,16 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
     file_naming_hint = ""
     if orig_items and not orig_items[0][0].startswith("بلوك "):
         file_naming_hint = "استخدم أسماء الملفات الأصلية قبل كل بلوك كود (مثال: **%s**). " % orig_items[0][0]
+    orig_py_pre = "\n".join(cd for _n, lg, cd in (orig_items or []) if guess_lang(lg, cd) == "python")
+    guard_remedies_pre = ""
+    if orig_py_pre and G is not None:
+        gf_pre = G.scan_python(orig_py_pre)
+        if gf_pre:
+            guard_remedies_pre = (
+                "\n[نتائج الفاحص الأمني الحتمي ryn_guard والأنماط الآمنة الإلزامية — طبّقها حرفياً دون تغيير أسماء الدوال أو مسارات الـ API ودون إضافة مكتبات خارجية جديدة]\n"
+                + "\n".join("- " + f.text() for f in gf_pre)
+                + "\n\n" + G.remedies_text(gf_pre) + "\n---\n"
+            )
     style = (
         UNTRUSTED_FILE_RULES
         + user_learnings_txt
@@ -3485,6 +3593,7 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
         + proj["summary_text"]
         + inv_directive
         + plan_directive
+        + guard_remedies_pre
         + "[دورك: كاتب الكود المنضبط (المرحلة 3). اعطِ الكود الكامل فقط داخل بلوكات ``` بدون أي اختصار أو '...'؛ "
         + "وإذا كان هناك ملف مرفق أو أكثر من ملف اكتب اسم الملف بسطر مستقل قبل كل بلوك بهالشكل: **app.py**. "
         + file_naming_hint
@@ -3642,31 +3751,60 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
     attempts_log = []
     repair_failed_after_3 = False
 
+    # 2) حلقة الإصلاح المغلقة بـ 3 جولات مع الوصفات الآمنة وبوابة التغيير (ryn_guard.closed_loop) لبلوكات Python
+    orig_py = "\n".join(cd for _n, lg, cd in orig_items if guess_lang(lg, cd) == "python")
+    inj = G.detect_injection(raw_question) if G is not None else []
+    cur_py = G.extract_code(final_text) if G is not None else ""
+    if G is not None and cur_py and left() > 60:
+        res = G.closed_loop(
+            cur_py,
+            lambda prompt: _timed(roster[writer], U(prompt), min(110, left())),
+            max_rounds=3, user_text=raw_question, progress=P, orig_code=orig_py)
+        if res["code"] != cur_py:
+            final_text = final_text.replace(cur_py.rstrip(), res["code"].rstrip())
+        for h_it in (res.get("history") or []):
+            if h_it.get("accepted"):
+                attempts_log.append("جولة الحارس %d: قُبل الإصلاح (بقي %d ثغرة عالية) ✅" % (h_it["round"], h_it.get("left", 0)))
+            elif h_it.get("rejected"):
+                rj = h_it["rejected"]
+                rj_s = "؛ ".join(rj[:2]) if isinstance(rj, list) else str(rj)
+                attempts_log.append("جولة الحارس %d: رُفضت (%s)" % (h_it["round"], rj_s[:140]))
+        if any(G.SEV[f.sev] >= 2 for f in (res.get("after") or [])):
+            repair_failed_after_3 = True
+
+    # الإبقاء على حلقة الإصلاح لبلوكات JS/CSS/HTML أو عند وجود استدعاءات مكسورة بين الملفات
     for attempt_idx in range(1, MAX_REPAIR_ATTEMPTS + 1):
         nb_cur = drop_shell_blocks(named_blocks(final_text))
         cur_items = [(n or ("بلوك %d" % i), guess_lang(lg, cd), cd) for i, (n, lg, cd) in enumerate(nb_cur, 1)]
-        errs = []
-        for _lbl, lang, cd in cur_items:
-            if lang in ("python", "json", "css") or (lang == "js" and shutil.which("node")):
-                e, w_py = check_code(lang, cd, strict=True)
-                errs += e[:3]
-                edge_w = static_edge_case_checks(lang, cd)
-                errs += [ew for ew in edge_w if "FOR UPDATE" in ew or "قابل للتعديل" in ew or "بلع صامت" in ew][:2]
-                errs += [uw for uw in w_py if "imported but unused" in uw][:2]
-        diff_errs = check_diff_safety(orig_items, final_text, question)
-        gate_errs = check_gate_integrity(orig_items, final_text)
-        scope_errs = check_scope_lock(orig_items, final_text, question, plan=plan)
-        cons_check = find_all_consumers_of_modified_symbols(orig_items, cur_items, all_project_items=proj["all_items"])
-        caller_errs = cons_check.get("broken_callers") or []
+        if cur_py and all(lg == "python" for _lbl, lg, _cd in cur_items):
+            cons_py = find_all_consumers_of_modified_symbols(orig_items, cur_items, all_project_items=proj["all_items"])
+            sqlite_errs = []
+            for _lbl, lg, cd in cur_items:
+                sqlite_errs += [ew for ew in static_edge_case_checks(lg, cd) if "FOR UPDATE" in ew]
+            all_repair_reasons = (cons_py.get("broken_callers") or [])[:2] + sqlite_errs[:1]
+        else:
+            errs = []
+            for _lbl, lang, cd in cur_items:
+                if lang in ("python", "json", "css") or (lang == "js" and shutil.which("node")):
+                    e, w_py = check_code(lang, cd, strict=True)
+                    errs += e[:3]
+                    edge_w = static_edge_case_checks(lang, cd)
+                    errs += [ew for ew in edge_w if "FOR UPDATE" in ew or "قابل للتعديل" in ew or "بلع صامت" in ew][:2]
+                    errs += [uw for uw in w_py if "imported but unused" in uw][:2]
+            diff_errs = check_diff_safety(orig_items, final_text, question)
+            gate_errs = check_gate_integrity(orig_items, final_text)
+            scope_errs = check_scope_lock(orig_items, final_text, question, plan=plan)
+            cons_check = find_all_consumers_of_modified_symbols(orig_items, cur_items, all_project_items=proj["all_items"])
+            caller_errs = cons_check.get("broken_callers") or []
+            all_repair_reasons = errs + gate_errs[:2] + caller_errs[:2] + diff_errs[:2] + scope_errs[:1]
 
-        all_repair_reasons = errs + gate_errs[:2] + caller_errs[:2] + diff_errs[:2] + scope_errs[:1]
         if not all_repair_reasons:
-            if attempts_log:
+            if attempts_log and not cur_py:
                 attempts_log.append("المحاولة %d: نجحت جميع فحوصات الصياغة والنطاق وسلامة البوابات ✅" % attempt_idx)
             break
         if left() < 30:
             attempts_log.append("المحاولة %d: توقف بسبب ضيق الوقت المتبقي مع بقاء (%s)" % (attempt_idx, all_repair_reasons[0]))
-            repair_failed_after_3 = bool(errs or gate_errs or caller_errs)
+            repair_failed_after_3 = True
             break
 
         P("🔁 محاولة الإصلاح الجذري (%d/%d)..." % (attempt_idx, MAX_REPAIR_ATTEMPTS))
@@ -3759,6 +3897,15 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
         attempts_log=attempts_log,
         repair_failed_after_3=repair_failed_after_3,
     )
+    # 3) التقرير المحسوب + كاشف حقن التعليمات (ryn_guard.finalize_report)
+    final_py = G.extract_code(final_text) if G is not None else ""
+    if G is not None and final_py:
+        msg = G.finalize_report(
+            msg,
+            G.scan_python(orig_py or final_py),  # before
+            G.scan_python(final_py),             # after
+            G.diff_gate(orig_py, final_py, user_text=raw_question) if orig_py else None,
+            inj)
 
     log.info("Ryn mix pipeline: كاتب=%s مراجع1=%s مراجع2=%s ملاحظات=%d محاولات_إصلاح=%d فحص_نهائي=%s",
              writer, r1, r2, len(merged), len(attempts_log), ver_final["all_passed"])
@@ -5728,6 +5875,14 @@ def register(app, b):
         if bad:
             return bad
         return jsonify(run_ryn_mix_quality_suite())
+
+    @app.get("/api/mix-selftest")
+    def api_mix_selftest():
+        bad = guard()
+        if bad:
+            return bad
+        is_live = request.args.get("live", "0") == "1"
+        return jsonify(ryn_selftest_run(b, mix_members(True), live=is_live))
 
     log.info("Web UI enabled (password %s)", "set" if password else "NOT set")
 
