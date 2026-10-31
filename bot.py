@@ -1324,14 +1324,38 @@ def handle_photo(message):
     if caption and webapp is not None and hasattr(webapp, "_IMG_EDIT_INTENT_RE") and webapp._IMG_EDIT_INTENT_RE.search(caption):
         try:
             with typing(message.chat.id):
+                if hasattr(webapp, "G") and webapp.G is not None and hasattr(webapp.G, "validate_image_upload"):
+                    up_chk = webapp.G.validate_image_upload(data, "telegram_photo.jpg")
+                    if not up_chk.get("ok"):
+                        bot.reply_to(message, "⚠️ ملف الصورة المرفوع غير صالح أمنياً.")
+                        return
                 ref_p = [types.Part.from_bytes(data=data, mime_type="image/jpeg")]
-                en = webapp.english_prompt(sys.modules[__name__], caption, is_edit=True, has_ref_image=True)
-                ah = webapp.aspect_hint(caption)
-                full_p = (en + ((" " + ah) if ah else "")).strip()
-                out_bytes, _mime, _mdl = webapp.gemini_image(sys.modules[__name__], full_p, ref_parts=ref_p)
+                vb = webapp.get_visual_brain() if hasattr(webapp, "get_visual_brain") and webapp.get_visual_brain is not None else None
+                tg_uid = f"tg_{message.chat.id}"
+                if vb is not None:
+                    plan = vb.build_plan(
+                        user_text=caption,
+                        user_id=tg_uid,
+                        attached_images_bytes=[data],
+                        available_providers={"nano_banana": bool(client), "flux": False},
+                        aspect_hint_str=webapp.aspect_hint(caption),
+                        ref_parts=ref_p,
+                    )
+                    exec_out = vb.execute_plan(
+                        plan,
+                        user_id=tg_uid,
+                        provider_runners={"nano_banana": lambda p_en, r_p=None: webapp.gemini_image(sys.modules[__name__], p_en, ref_parts=r_p or ref_p)},
+                        ref_parts=ref_p,
+                    )
+                    out_bytes = exec_out.get("image_bytes")
+                else:
+                    en = webapp.english_prompt(sys.modules[__name__], caption, is_edit=True, has_ref_image=True)
+                    ah = webapp.aspect_hint(caption)
+                    full_p = (en + ((" " + ah) if ah else "")).strip()
+                    out_bytes, _mime, _mdl = webapp.gemini_image(sys.modules[__name__], full_p, ref_parts=ref_p)
                 bio = io.BytesIO(out_bytes)
                 bio.name = "edited.png"
-                bot.send_photo(message.chat.id, bio, caption="🎨 تم تعديل الصورة بواقعية حسب طلبك", reply_to_message_id=message.message_id)
+                bot.send_photo(message.chat.id, bio, caption="🎨 تم تعديل الصورة عبر العقل البصري مع الحفاظ على الهوية والتفاصيل", reply_to_message_id=message.message_id)
                 return
         except Exception as e:
             log.warning("Telegram photo edit fallback to chat: %s", e)
