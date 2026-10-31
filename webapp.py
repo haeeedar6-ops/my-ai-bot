@@ -1614,6 +1614,17 @@ try:
     import ryn_selftest as S
 except Exception:
     S = None
+try:
+    from visual_brain import get_visual_brain
+    from image_providers import (
+        NanoBananaProvider,
+        FluxCloudflareProvider,
+        PollinationsProvider,
+        TogetherFluxProvider,
+    )
+except Exception:
+    get_visual_brain = None
+    NanoBananaProvider = FluxCloudflareProvider = PollinationsProvider = TogetherFluxProvider = None
 
 # ---------- المرحلة 6 (الدفعة C): الأمان والخصوصية وحماية الأسرار وحدود الثقة ----------
 _SECRET_PATTERNS = (
@@ -5732,7 +5743,19 @@ def register(app, b):
             b.chat_provider[wid()] = mid
         return jsonify(ok=True)
 
-    # ---------- رسم وتعديل الصور بواقعية فوتوغرافية (Gemini Nano Banana أساسي + FLUX احتياط) ----------
+    # ---------- العقل البصري المستقل ورسم/تعديل الصور مع الذاكرة البصرية الدائمة ----------
+    vbrain = get_visual_brain() if get_visual_brain is not None else None
+
+    def _build_provider_instances():
+        if NanoBananaProvider is None:
+            return {}
+        return {
+            "nano_banana": NanoBananaProvider(b, gemini_image),
+            "flux": FluxCloudflareProvider(b, cf_ready, flux_image),
+            "pollinations": PollinationsProvider(b, fallback_on, pollinations_image),
+            "together": TogetherFluxProvider(b, together_image),
+        }
+
     def run_image(job_id, prompt, day, u="main"):
         res = None
         try:
@@ -5741,65 +5764,66 @@ def register(app, b):
             ctx = b.get_doc(W)
             is_edit_req = bool(_IMG_EDIT_INTENT_RE.search(prompt))
             has_attached_img = bool(ctx and ctx.get("image"))
+            mem_latest_uri = vbrain.memory.get_latest_image_uri(u) if vbrain is not None else last_generated_images.get(u)
             ref_parts = _extract_ref_image_parts(
-                T, ctx, last_generated_images.get(u) if is_edit_req else None
+                T, ctx, mem_latest_uri if is_edit_req else None
             )
-            is_edit_mode = bool(ref_parts)
-            set_progress(job_id, "🎨 عم يجهّز تفاصيل الواقعية والإضاءة..." if not is_edit_mode else "🎨 عم يعدّل الصورة ويضبط الواقعية...")
-            en = english_prompt(b, prompt, is_edit=is_edit_mode or is_edit_req, has_ref_image=is_edit_mode)
-            ah = aspect_hint(prompt)
-            full = (en + ((" " + ah) if ah else "")).strip()
             if is_cancelled(job_id):
                 return
-            prov = IMG_PROVIDER
-            chain = []
-            if prov in ("auto", "gemini") and b.client:
-                def _gem():
-                    data, mime, model = gemini_image(b, full, ref_parts=ref_parts)
-                    out_r = _img_result(data, model, en)
-                    if is_edit_mode:
-                        out_r["text"] = "تم تعديل الصورة حسب طلبك 🎨"
-                    return out_r
-                chain.append(("Gemini", _gem))
-            if prov in ("auto", "cloudflare") and cf_ready():
-                chain.append(("Cloudflare", lambda: flux_image(b, full, en)))
-            if fallback_on():
-                chain.append(("Pollinations", lambda: pollinations_image(b, full, en)))
-                if os.environ.get("TOGETHER_API_KEY", "").strip():
-                    chain.append(("Together", lambda: together_image(b, full, en)))
-            fails = []
-            for name, fn in chain:
-                if is_cancelled(job_id):
-                    return
-                try:
-                    log.info("الرسم/التعديل: بجرّب %s", name)
-                    res = fn()
-                    break
-                except _ImgError as e:
-                    log.warning("الرسم: %s فشل: %s", name, e)
-                    if str(e).startswith("⛔"):   # فلتر المحتوى: ما منجرّب غيرو
-                        raise
-                    fails.append((name, str(e)))
-                except Exception as e:
-                    log.warning("الرسم: %s فشل: %s", name, str(e)[:200])
-                    fails.append((name, str(e)))
-            if res is None:
-                if not chain:
+            if vbrain is not None:
+                set_progress(job_id, "🧠 العقل البصري عم يحلل المشهد ويبني خطة التنفيذ...")
+                provs = _build_provider_instances()
+                avail_map = {k: p.is_ready() for k, p in provs.items()}
+                def _ask_llm_for_prompt(user_msg, sys_inst):
+                    return b.ask_gemini([T.Content(role="user", parts=[T.Part(text=user_msg)])], deep=False, system=sys_inst)
+                def _ask_vision_id(r_parts, v_prompt):
+                    return b.ask_gemini([T.Content(role="user", parts=list(r_parts) + [T.Part(text=v_prompt)])], deep=False)
+                plan = vbrain.build_plan(
+                    user_text=prompt,
+                    user_id=u,
+                    available_providers=avail_map,
+                    preferred_provider=IMG_PROVIDER,
+                    aspect_hint_str=aspect_hint(prompt),
+                    ask_llm_fn=_ask_llm_for_prompt if b.client else None,
+                    ask_vision_fn=_ask_vision_id if (b.client and ref_parts) else None,
+                    ref_parts=ref_parts,
+                )
+                runners = {k: p.generate for k, p in provs.items() if p.is_ready()}
+                if not runners and plan.intent != "revert":
                     raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY أو Cloudflare أو الاحتياط المجاني.")
-                msg = next((m for n, m in fails if n == "Cloudflare" and m.startswith(("⏳", "🔑"))), None) \
-                    or (fails[-1][1] if fails else "")
-                raise _ImgError("ما قدرت أرسم هلق (كل المزودين فشلوا). " + (msg if msg.startswith(("⏳", "🔑")) else "جرّب بعد شوي."))
-            if res and res.get("status") == "done" and res.get("image"):
-                last_generated_images[u] = res["image"]
-                if has_attached_img:
-                    b.doc_ctx.pop(W, None)
+                exec_out = vbrain.execute_plan(
+                    plan,
+                    user_id=u,
+                    provider_runners=runners,
+                    ref_parts=ref_parts,
+                    max_quality_retries=2,
+                    progress_cb=lambda msg: set_progress(job_id, msg),
+                )
+                exec_out.pop("image_bytes", None)
+                res = exec_out
+                if res.get("image"):
+                    last_generated_images[u] = res["image"]
+                    if has_attached_img:
+                        b.doc_ctx.pop(W, None)
+            else:
+                # مسار احتياطي مباشر إذا لم تتوفر حزمة visual_brain
+                is_edit_mode = bool(ref_parts)
+                en = english_prompt(b, prompt, is_edit=is_edit_mode or is_edit_req, has_ref_image=is_edit_mode)
+                ah = aspect_hint(prompt)
+                full = (en + ((" " + ah) if ah else "")).strip()
+                data, mime, model = gemini_image(b, full, ref_parts=ref_parts)
+                res = _img_result(data, model, en)
+                if res and res.get("image"):
+                    last_generated_images[u] = res["image"]
         except _ImgError as e:
             res = {"status": "error", "text": str(e)}
         except Exception as e:
             log.exception("web image error")
             res = {"status": "error", "text": image_error(e)}
         if res and res.get("status") != "done":
-            img_counts[day] = max(0, img_counts.get(day, 1) - 1)  # ما بنحسب المحاولة الفاشلة
+            img_counts[day] = max(0, img_counts.get(day, 1) - 1)
+            if vbrain is not None:
+                vbrain.memory.decrement_daily_count(day)
         if res:
             finish(job_id, res)
 
@@ -5839,13 +5863,70 @@ def register(app, b):
                 jobs.pop(k, None)
             if sum(1 for v in jobs.values() if v["status"] == "running" and v.get("uid") == cur_u) >= 2:
                 return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
-            if img_counts.get(day, 0) >= IMG_DAILY:
+            cur_cnt = max(img_counts.get(day, 0), vbrain.memory.get_daily_count(day) if vbrain is not None else 0)
+            if cur_cnt >= IMG_DAILY:
                 return jsonify(error="وصلت الحد اليومي للصور (%d)، كمّل بكرا." % IMG_DAILY), 429
-            img_counts[day] = img_counts.get(day, 0) + 1
+            img_counts[day] = cur_cnt + 1
+            if vbrain is not None:
+                vbrain.memory.increment_daily_count(day)
             job_id = uuid.uuid4().hex
             jobs[job_id] = {"status": "running", "ts": now, "uid": cur_u}
         threading.Thread(target=guarded_image, args=(job_id, prompt, day, cur_u), daemon=True).start()
         return jsonify(job=job_id)
+
+    @app.post("/api/image/plan")
+    def api_image_plan():
+        bad = guard()
+        if bad:
+            return bad
+        if vbrain is None:
+            return jsonify(error="Visual Brain غير متاح"), 503
+        prompt = str((request.get_json(silent=True) or {}).get("prompt", "")).strip()[:1200]
+        if not prompt:
+            return jsonify(error="اكتب وصف الصورة"), 400
+        cur_u = uid()
+        ctx = b.get_doc(wid(cur_u))
+        ref_p = _extract_ref_image_parts(b.types, ctx, vbrain.memory.get_latest_image_uri(cur_u))
+        provs = _build_provider_instances()
+        plan = vbrain.build_plan(
+            user_text=prompt,
+            user_id=cur_u,
+            available_providers={k: p.is_ready() for k, p in provs.items()},
+            preferred_provider=IMG_PROVIDER,
+            aspect_hint_str=aspect_hint(prompt),
+            ref_parts=ref_p,
+        )
+        return jsonify(plan.to_dict())
+
+    @app.get("/api/image/history")
+    def api_image_history():
+        bad = guard()
+        if bad:
+            return bad
+        if vbrain is None:
+            return jsonify(history=[])
+        return jsonify(history=vbrain.memory.list_history(uid()))
+
+    @app.post("/api/image/revert")
+    def api_image_revert():
+        bad = guard()
+        if bad:
+            return bad
+        if vbrain is None:
+            return jsonify(error="Visual Brain غير متاح"), 503
+        target = str((request.get_json(silent=True) or {}).get("target", "previous")).strip()
+        ver = vbrain.memory.revert_version(uid(), target=target)
+        if not ver:
+            return jsonify(error="لا توجد نسخ سابقة للرجوع إليها"), 404
+        last_generated_images[uid()] = ver.image_data_uri
+        return jsonify(
+            status="done",
+            image=ver.image_data_uri,
+            version_id=ver.version_id,
+            parent_version_id=ver.parent_version_id,
+            prompt=ver.final_prompt_en,
+            text="تم الرجوع إلى النسخة المطلوبة ⏪🎨",
+        )
 
     @app.post("/api/cancel/<job_id>")
     def api_cancel(job_id):
