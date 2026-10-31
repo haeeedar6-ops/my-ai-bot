@@ -784,6 +784,71 @@ def guard_summary(code: str) -> str:
     return "\n".join(f.text() for f in fs) or "clean"
 
 
+
+
+# --------------------------------------------------------------------------
+# Image upload & storage guard (حماية عمليات رفع الصور والتخزين)
+# --------------------------------------------------------------------------
+import os as _os_guard
+
+_ALLOWED_IMG_MAGIC = (
+    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
+    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
+    (b"GIF87a", "image/gif", ".gif"),
+    (b"GIF89a", "image/gif", ".gif"),
+)
+_DANGEROUS_IMG_PAYLOAD = re.compile(rb"(?i)(<script\b|<!entity\b|<\?php\b|javascript:|onload\s*=|onerror\s*=)")
+
+
+def validate_image_upload(data: bytes, filename: str = "", max_bytes: int = 12 * 1024 * 1024) -> dict:
+    """فحص أمني صارم لملفات الصور المرفوعة قبل المعالجة أو التخزين."""
+    if not data or not isinstance(data, (bytes, bytearray)):
+        return {"ok": False, "reason": "empty_or_invalid_bytes", "mime": None, "ext": None}
+    if len(data) > max_bytes:
+        return {"ok": False, "reason": "image_too_large", "mime": None, "ext": None}
+    if len(data) < 12:
+        return {"ok": False, "reason": "image_too_small", "mime": None, "ext": None}
+
+    raw = bytes(data)
+    detected_mime = None
+    detected_ext = None
+    for magic, mime, ext in _ALLOWED_IMG_MAGIC:
+        if raw.startswith(magic):
+            detected_mime, detected_ext = mime, ext
+            break
+    if detected_mime is None and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        detected_mime, detected_ext = "image/webp", ".webp"
+
+    if detected_mime is None:
+        return {"ok": False, "reason": "unsupported_or_spoofed_magic_bytes", "mime": None, "ext": None}
+
+    if filename:
+        low_fn = filename.lower().strip()
+        if ".." in low_fn or "/" in low_fn or "\\" in low_fn or "\x00" in low_fn:
+            return {"ok": False, "reason": "path_traversal_in_filename", "mime": None, "ext": None}
+        if low_fn.endswith((".svg", ".html", ".htm", ".php", ".py", ".sh", ".exe", ".js")):
+            return {"ok": False, "reason": "forbidden_executable_or_svg_extension", "mime": None, "ext": None}
+
+    head_tail = raw[:2048] + raw[-2048:]
+    if _DANGEROUS_IMG_PAYLOAD.search(head_tail):
+        return {"ok": False, "reason": "embedded_script_or_xxe_payload", "mime": None, "ext": None}
+
+    return {"ok": True, "reason": "clean", "mime": detected_mime, "ext": detected_ext, "size": len(raw)}
+
+
+def safe_image_storage_path(base_dir: str, user_id: str, filename: str) -> str:
+    """بناء مسار تخزين معزول وآمن لكل مستخدم مع منع Path Traversal."""
+    base_abs = _os_guard.path.abspath(base_dir)
+    safe_u = "".join(c if (c.isalnum() or c in ("_", "-")) else "_" for c in str(user_id or "main"))[:64] or "main"
+    safe_fn = "".join(c if (c.isalnum() or c in ("_", "-", ".")) else "_" for c in _os_guard.path.basename(filename or "img.png"))[:80]
+    if not safe_fn or safe_fn.startswith("."):
+        safe_fn = "img.png"
+    target = _os_guard.path.abspath(_os_guard.path.join(base_abs, safe_u, safe_fn))
+    if _os_guard.path.commonpath([base_abs, target]) != base_abs:
+        raise ValueError("Path traversal blocked by ryn_guard")
+    return target
+
+
 if __name__ == "__main__":
     src = open(sys.argv[1], encoding="utf-8").read() if len(sys.argv) > 1 else sys.stdin.read()
     print(guard_summary(src))
