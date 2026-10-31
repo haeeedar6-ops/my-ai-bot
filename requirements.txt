@@ -3,3 +3,4 @@ pyTelegramBotAPI
 google-genai
 pypdf
 pyflakes
+Pillow>=10.0.0
