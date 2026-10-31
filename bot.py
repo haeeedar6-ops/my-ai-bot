@@ -599,7 +599,7 @@ CODE_SYSTEM_PROMPT = (
 GROQ_BACKEND = {
     "name": "Groq", "base": GROQ_BASE, "key_env": "GROQ_API_KEY",
     "timeout_fast": 60, "timeout_deep": 120,
-    "system": CODE_SYSTEM_PROMPT, "max_chars": 14000, "max_tokens": 3500,  # حدود Groq المجانية صغيرة
+    "system": CODE_SYSTEM_PROMPT, "max_chars": 16000, "max_tokens": 6000,  # حدود Groq المجانية صغيرة
 }
 # موديلات Llama 3 القديمة (llama3-70b-8192 و llama-3.1-70b-versatile وحتى llama-3.3-70b-versatile) انسكّرت عند Groq
 GROQ_CODE_PREF = ("openai/gpt-oss-120b", "qwen/qwen3.8-27b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b")
@@ -773,7 +773,6 @@ def _redact_bot_secrets(text):
 
 
 def _mix_members(deep, code=False):
-    """بيرجّع قائمة (الاسم، دالة بتاخد contents وبترجّع نص) للموديلات الجاهزة فعلاً."""
     members = [("Gemini", lambda c: ask_gemini(c, deep=False))]
     if _groq_ready():
         ids = groq_catalog()
@@ -789,7 +788,6 @@ def _mix_members(deep, code=False):
 
 
 def ask_mix(contents, deep=False):
-    """يشغّل محرك Ryn mix المطور (خط الإنتاج الهندسي ذو المراحل العشر عند وجود كود/ملفات، أو الدمج الذكي للمحادثات)."""
     import concurrent.futures as cf
     question = ""
     for c in reversed(contents):
@@ -805,6 +803,7 @@ def ask_mix(contents, deep=False):
                 sys.modules[__name__], contents, _mix_members(deep, code=is_eng),
                 code=is_eng, fix=fix_req
             )
+            ans = re.sub(r"\[\[MEM:\s*.+?\s*\]\]", "", ans or "").strip()
             return _redact_bot_secrets(ans), f"({note})"
         except Exception as e:
             log.warning("Ryn mix (webapp engine) fallback: %s", _redact_bot_secrets(str(e)[:160]))
@@ -1268,7 +1267,7 @@ def cmd_groqmodels(message):
 
 @bot.message_handler(commands=["mixtest"])
 def cmd_mixtest(message):
-    """تشغيل اختبارات الجودة الذاتية لـ Ryn mix (المرحلة 10)."""
+    """تشغيل اختبارات الجودة الذاتية لـ Ryn mix وعرض ترتيب الموديلات حسب الأداء (المرحلة 10)."""
     if webapp is None or not hasattr(webapp, "run_ryn_mix_quality_suite"):
         bot.reply_to(message, "وحدة اختبارات Ryn mix غير متاحة حالياً.")
         return
@@ -1279,6 +1278,11 @@ def cmd_mixtest(message):
         lines.append(f"\n{mark} {t['title']}:")
         for d in t["details"]:
             lines.append(f"  • {d}")
+    rk = res.get("model_rankings") or {}
+    if rk.get("writers"):
+        lines.append("\n🏆 ترتيب الكتّاب حسب الأداء: " + " ← ".join(rk["writers"][:5]))
+    if rk.get("reviewers"):
+        lines.append("🔎 ترتيب المراجعين حسب الأداء: " + " ← ".join(rk["reviewers"][:5]))
     bot.reply_to(message, "\n".join(lines))
 
 
@@ -1316,7 +1320,22 @@ def handle_photo(message):
         log.exception("Photo download error")
         bot.reply_to(message, "ما قدرت أنزّل الصورة، جرّب تاني.")
         return
-    caption = message.caption or "اشرح هالصورة."
+    caption = (message.caption or "").strip()
+    if caption and webapp is not None and hasattr(webapp, "_IMG_EDIT_INTENT_RE") and webapp._IMG_EDIT_INTENT_RE.search(caption):
+        try:
+            with typing(message.chat.id):
+                ref_p = [types.Part.from_bytes(data=data, mime_type="image/jpeg")]
+                en = webapp.english_prompt(sys.modules[__name__], caption, is_edit=True, has_ref_image=True)
+                ah = webapp.aspect_hint(caption)
+                full_p = (en + ((" " + ah) if ah else "")).strip()
+                out_bytes, _mime, _mdl = webapp.gemini_image(sys.modules[__name__], full_p, ref_parts=ref_p)
+                bio = io.BytesIO(out_bytes)
+                bio.name = "edited.png"
+                bot.send_photo(message.chat.id, bio, caption="🎨 تم تعديل الصورة بواقعية حسب طلبك", reply_to_message_id=message.message_id)
+                return
+        except Exception as e:
+            log.warning("Telegram photo edit fallback to chat: %s", e)
+    caption = caption or "اشرح هالصورة."
     parts = [
         types.Part.from_bytes(data=data, mime_type="image/jpeg"),
         types.Part(text=caption),
