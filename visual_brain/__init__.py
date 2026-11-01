@@ -1,7 +1,16 @@
 # -*- coding: utf-8 -*-
-"""وحدة العقل البصري المستقل (RYN Visual Brain)."""
+"""منظومة العقل البصري المستقل (RYN Visual Brain)."""
 from .brain import VisualBrain, get_visual_brain
-from .schemas import VisualPlan, SceneSpec, IdentityLock, EditPlan, QualityReport, ImageVersion
+from .schemas import (
+    VisualPlan,
+    SceneSpec,
+    IdentityLock,
+    EditPlan,
+    QualityReport,
+    ImageVersion,
+    ProviderCapability,
+)
+from .provider_capabilities import get_provider_capabilities, verify_provider_for_task
 
 __all__ = [
     "VisualBrain",
@@ -12,4 +21,7 @@ __all__ = [
     "EditPlan",
     "QualityReport",
     "ImageVersion",
+    "ProviderCapability",
+    "get_provider_capabilities",
+    "verify_provider_for_task",
 ]

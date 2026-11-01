@@ -1,14 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-محرك كتابة التعليمات المعياري (Modular Prompt Engine):
-يبني البرومبت من 7 وحدات مستقلة بدلاً من قالب واحد ثابت:
-1. Scene Understanding (فهم المشهد)
-2. Composition Engine (توزيع العناصر والزاوية)
-3. Lighting Engine (الإضاءة والظلال)
-4. Camera Engine (العدسة والمنظور)
-5. Material Engine (البشرة، الشعر، الأقمشة، المعادن، الماء)
-6. Style Engine (فوتوغرافي، سينمائي، أنمي، ثلاثي الأبعاد، شعار...)
-7. Negative Constraints (منع الأخطاء غير المرغوبة)
+محرك بناء التعليمات الموجهة للمزود (Task-Specific Prompt Builder — Section 4, 5 & 6):
+- يبني التعليمات من وحدات المشهد، التكوين، الإضاءة، العدسة، المواد السياقية، الأسلوب، وقفل الهوية.
+- يلتزم بعدم المبالغة أو اختراع تفاصيل لم يذكرها المستخدم (Do not over-interpret).
 """
 from __future__ import annotations
 from typing import Dict, Optional, Callable, List
@@ -16,24 +10,25 @@ from .schemas import SceneSpec, IdentityLock, EditPlan
 from .realism_engine import build_realism_modules_for_scene, strip_ai_buzzwords
 
 STYLE_DIRECTIVES = {
-    "photorealistic": "Authentic unedited RAW candid photograph, realistic physical optics and organic textures.",
-    "cinematic": "Cinematic 35mm film still, anamorphic depth, controlled atmospheric lighting, rich natural color grading.",
-    "anime": "High-quality anime illustration, clean expressive linework, cel-shaded lighting, vibrant cohesive color palette.",
+    "photorealistic": "Authentic unedited RAW candid photograph, realistic physical optics and context-appropriate organic textures.",
+    "cinematic": "Cinematic 35mm film still, controlled atmospheric lighting, rich natural color grading.",
+    "product_photography": "Clean studio product photography, controlled softbox reflections, crisp edge definition, accurate surface materials.",
+    "anime": "High-quality anime illustration, clean expressive linework, cel-shaded lighting, cohesive color palette.",
     "cartoon": "Expressive stylized cartoon illustration, clean shapes, dynamic posing, appealing color harmony.",
     "3d_render": "High-craft 3D stylized render, physically based materials, soft global illumination, clean geometry.",
     "logo_vector": "Clean scalable flat vector logo design, balanced negative space, crisp geometric precision, minimal palette.",
     "pixel_art": "Crisp retro pixel art, intentional pixel grid, cohesive limited color palette, clean dithering.",
-    "painting": "Authentic traditional painting texture, visible brushwork and canvas grain, harmonious artistic lighting.",
+    "illustration": "Authentic artistic illustration texture, harmonious lighting and composition.",
 }
 
 PROMPT_COMPOSER_SYS = (
-    "You are the Prompt Engine of RYN Visual Brain. "
-    "Convert the structured modular visual plan into ONE cohesive, vivid, physically accurate English prompt (110 to 200 words). "
+    "You are the Prompt Builder of RYN Visual Brain. "
+    "Convert the structured visual plan into ONE coherent, physically plausible English prompt (100 to 190 words). "
     "Rules:\n"
-    "1) Include EVERY detail from the user's request (subject, count, action, colors, setting, clothing, mood).\n"
-    "2) Weave the provided modular directives (Composition, Lighting, Camera, Materials, Style, and Identity Lock if editing) naturally into the scene description.\n"
-    "3) If CONFLICT RESOLUTIONS are provided, follow the resolved instruction.\n"
-    "4) NEVER use forbidden digital hype buzzwords (8K, 4K, hyper-realistic, masterpiece, ultra detailed, CGI, 3D render, flawless, smooth skin, plastic).\n"
+    "1) Keep EVERY detail the user requested (subjects, exact counts, actions, spatial relations, colors, setting, clothing, mood). Never invent a person's identity, exact age, brand, or text that the user did not provide.\n"
+    "2) Weave the provided modular directives (Composition, Lighting, Camera, Contextual Materials, Style, and Protected Elements Lock if editing) naturally.\n"
+    "3) Do NOT add dirt, mud, sweat, or damage unless explicitly specified in the scene modules. A clean portrait must remain clean.\n"
+    "4) NEVER use forbidden digital hype buzzwords (8K, 4K, hyper-realistic, masterpiece, ultra detailed, CGI, 3D render, flawless).\n"
     "5) Output ONLY the final English prompt."
 )
 
@@ -44,31 +39,29 @@ def build_prompt_modules(
     edit_plan: EditPlan,
     conflicts_resolutions: Optional[List[str]] = None,
 ) -> Dict[str, str]:
-    """تجميع الوحدات السبع المستقلة للبرومبت حسب محتوى الصورة."""
     modules: Dict[str, str] = {}
 
-    # 1. Scene Understanding
-    scene_parts = [f"Primary Subject: {scene.subject}"]
-    if scene.persons:
-        scene_parts.append(f"People/Characters: {', '.join(scene.persons)}")
+    scene_parts = [f"Primary Request: {scene.user_goal}"]
+    if scene.subjects:
+        scene_parts.append(f"Subjects: {', '.join(scene.subjects)}")
+    if scene.actions_and_relations:
+        scene_parts.append(f"Actions & Relations: {'; '.join(scene.actions_and_relations)}")
     if scene.background:
         scene_parts.append(f"Setting/Background: {scene.background}")
     if scene.colors:
         scene_parts.append(f"Key Colors: {', '.join(scene.colors)}")
     if scene.text_overlay:
-        scene_parts.append(f'Visible Short Text: "{scene.text_overlay}"')
+        scene_parts.append(f'Visible Text: "{scene.text_overlay}"')
     modules["scene_understanding"] = ". ".join(scene_parts) + "."
 
-    # 2. Style Engine
     modules["style_engine"] = STYLE_DIRECTIVES.get(scene.style, STYLE_DIRECTIVES["photorealistic"])
 
-    # 3. Composition Engine
     modules["composition_engine"] = (
-        f"Framing & Composition: {scene.camera_angle} framing, natural asymmetrical lived-in balance, "
+        f"Framing & Composition: {scene.camera_angle} framing ({scene.composition.get('aspect_ratio', '1:1')}), "
+        f"{scene.composition.get('spatial_relations', 'balanced placement')}, "
         "clean background behind the main subject's head, physically grounded placement."
     )
 
-    # 4-7. Lighting, Camera, Material, Negative Constraints (تُفعّل حسب نوع الأسلوب والعناصر)
     realism_mods = build_realism_modules_for_scene(scene)
     if realism_mods:
         modules["lighting_engine"] = f"Scene Lighting ({scene.lighting}): " + realism_mods["lighting"]
@@ -83,7 +76,6 @@ def build_prompt_modules(
         modules["camera_engine"] = f"Perspective: {scene.camera_angle} view."
         modules["negative_constraints"] = "No anatomical distortion, no blurry artifacts, no unintended text or watermarks."
 
-    # قفل الهوية وخطة التعديل عند وجود تعديل
     if edit_plan and edit_plan.is_edit:
         modules["edit_operation"] = edit_plan.edit_instructions_en
     if identity_lock and identity_lock.enabled:
@@ -100,7 +92,6 @@ def synthesize_final_prompt(
     modules: Dict[str, str],
     ask_llm_fn: Optional[Callable[[str, str], str]] = None,
 ) -> str:
-    """دمج الوحدات السبع في برومبت إنجليزي نهائي متماسك (عبر الموديل اللغوي أو الدمج الهيكلي الاحتياطي)."""
     structured_input = (
         f"USER ORIGINAL REQUEST:\n{user_text}\n\n"
         "MODULAR VISUAL BRAIN DIRECTIVES:\n"
@@ -111,11 +102,10 @@ def synthesize_final_prompt(
             out = ask_llm_fn(structured_input, PROMPT_COMPOSER_SYS)
             cleaned = strip_ai_buzzwords((out or "").strip().strip('"'))
             if cleaned and len(cleaned) >= 25:
-                return cleaned[:1900]
+                return cleaned[:3600]
         except Exception:
             pass
 
-    # دمج هيكلي مباشر احتياطي بدون الحاجة لموديل نصي خارجي
     ordered_keys = [
         "edit_operation",
         "identity_lock",
@@ -130,4 +120,4 @@ def synthesize_final_prompt(
         "negative_constraints",
     ]
     pieces = [modules[k] for k in ordered_keys if k in modules and modules[k]]
-    return strip_ai_buzzwords(" ".join(pieces))[:1900]
+    return strip_ai_buzzwords(" ".join(pieces))[:3600]

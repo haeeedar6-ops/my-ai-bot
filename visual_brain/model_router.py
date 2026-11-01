@@ -1,25 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-موجّه النماذج الذكي (Smart Model Router):
-يختار المحرك الأنسب وسلسلة البدائل (Fallback Chain) حسب نوع المهمة:
-- توليد صور عامة -> FLUX (أو Gemini Nano Banana كبديل/أساسي حسب المتاح)
-- تعديل صور معقد -> FLUX / Nano Banana (مع تمرير الصورة المرجعية لمحرك الرؤية والتعديل)
-- صور واقعية بديلة -> FLUX
-- تعديل موضعي (Inpainting) -> نموذج يدعم التعديل الموضعي بالصورة المرجعية والقناع (nano_banana / flux)
-- توسيع الصور (Outpainting) -> نموذج يدعم توسيع الحواف (nano_banana / flux)
+موجّه النماذج والمزودات المبني على القدرات الموثّقة (Verified Provider Router — Section 7):
+- خالٍ تماماً من أي إشارة إلى Unconfigured Provider (قاعدة No Unconfigured Provider).
+- يطبّق قاعدة No silent downgrade بصرامة:
+  لا يُسمح باختيار مزود احتياطي (Fallback) إلا إذا كان يدعم نفس نوع المهمة (`task_type`).
+  إذا طلب المستخدم تعديل صورة مرجعية ولم يتوفر أي مزود مفعّل يدعم التعديل، يُرجع قائمة فارغة مع رسالة خطأ صريحة
+  بدلاً من تحويل الطلب بصمت إلى توليد صورة جديدة من النص (T2I).
 """
 from __future__ import annotations
 from typing import Dict, List, Tuple
 from .schemas import EditPlan, SceneSpec
+from .provider_capabilities import get_provider_capabilities, verify_provider_for_task
 
 
 TASK_ROUTING_TABLE: Dict[str, List[str]] = {
-    "generate_general": ["flux", "nano_banana", "together", "pollinations"],
-    "generate_photorealistic": ["flux", "nano_banana", "together", "pollinations"],
-    "complex_edit": ["nano_banana", "flux", "together", "pollinations"],
-    "localized_inpaint": ["nano_banana", "flux", "together"],
-    "outpainting": ["nano_banana", "flux", "together"],
-    "multi_image_merge": ["nano_banana", "flux"],
+    "text_to_image_general": ["flux", "gemini", "together", "pollinations"],
+    "text_to_image_photorealistic": ["flux", "gemini", "together", "pollinations"],
+    "image_edit": ["gemini"],
+    "inpaint": ["gemini"],
+    "remove_object": ["gemini"],
+    "style_transfer": ["gemini"],
+    "restore": ["gemini", "local_enhance"],
+    "upscale": ["local_enhance", "gemini"],
+    "color_correct": ["local_enhance", "gemini"],
 }
 
 
@@ -31,43 +34,52 @@ def route_model_for_task(
     preferred_provider: str = "auto",
 ) -> Tuple[str, List[str], str]:
     """
-    يحدد (المزود الرئيسي المقترح، قائمة المزودات الاحتياطية بالترتيب، تصنيف المهمة).
-    ويراعي قدرة المزود الفعلية على استقبال صورة مرجعية (ref_parts) عند التعديل.
+    يرجع (المزود الرئيسي، قائمة المزودات البديلة المتوافقة مع نفس نوع المهمة فقط، تصنيف المهمة).
     """
+    norm_avail = dict(available_providers or {})
+    norm_avail.setdefault("local_enhance", True)
+    caps = get_provider_capabilities(norm_avail)
+
     if edit_plan.is_edit or has_ref_image:
-        if edit_plan.operation_type == "outpainting":
-            task_category = "outpainting"
-        elif edit_plan.operation_type == "multi_image_merge":
-            task_category = "multi_image_merge"
-        elif edit_plan.requires_mask or edit_plan.operation_type in ("background_only", "clothing_only", "eye_color", "add_remove_object", "localized_inpaint"):
-            task_category = "localized_inpaint"
+        wf = edit_plan.workflow_type or "image_edit"
+        if wf in ("upscale", "color_correct", "restore"):
+            task_cat = wf
+        elif wf in ("inpaint", "remove_object", "style_transfer"):
+            task_cat = wf
         else:
-            task_category = "complex_edit"
+            task_cat = "image_edit"
+        requires_ref = True
     else:
-        if scene.style in ("photorealistic", "cinematic"):
-            task_category = "generate_photorealistic"
-        else:
-            task_category = "generate_general"
+        task_cat = "text_to_image_photorealistic" if scene.style in ("photorealistic", "cinematic") else "text_to_image_general"
+        requires_ref = False
 
-    ideal_order = list(TASK_ROUTING_TABLE.get(task_category, TASK_ROUTING_TABLE["generate_general"]))
+    candidates = list(TASK_ROUTING_TABLE.get(task_cat, TASK_ROUTING_TABLE["text_to_image_general"]))
 
-    # إذا كان المستخدم في وضع تعديل صورة مرفقة فعلية، فإن nano_banana (Gemini Image) يتفوق لأنه يستقبل بكسل الصورة المرجعية مباشرة
-    if has_ref_image and "nano_banana" in ideal_order:
-        ideal_order.remove("nano_banana")
-        ideal_order.insert(0, "nano_banana")
-
-    # احترام التفضيل الصريح في الإعدادات إن لم يكن auto
-    pref_map = {"gemini": "nano_banana", "cloudflare": "flux", "flux": "flux", "together": "together", "pollinations": "pollinations"}
+    pref_map = {
+        "gemini": "gemini",
+        "cloudflare": "flux",
+        "flux": "flux",
+        "together": "together",
+        "pollinations": "pollinations",
+    }
     mapped_pref = pref_map.get((preferred_provider or "auto").lower())
-    if mapped_pref and mapped_pref in ideal_order and not has_ref_image:
-        ideal_order.remove(mapped_pref)
-        ideal_order.insert(0, mapped_pref)
+    if mapped_pref and mapped_pref in candidates and not requires_ref:
+        candidates.remove(mapped_pref)
+        candidates.insert(0, mapped_pref)
 
-    active_chain = [p for p in ideal_order if available_providers.get(p, False)]
-    if not active_chain:
-        # في الاختبارات أو عند عدم تفعيل مزودات خارجية نعيد الترتيب المثالي
-        active_chain = ideal_order
+    # فلترة المزودات بحيث تقتصر فقط على المزودات المفعّلة والتي تدعم نفس نوع المهمة فعلياً (No silent downgrade)
+    verified_chain: List[str] = []
+    check_task = "text_to_image" if not requires_ref else (edit_plan.workflow_type or "image_edit")
+    for prov_id in candidates:
+        ok, _reason = verify_provider_for_task(prov_id, check_task, requires_ref, caps)
+        if ok:
+            verified_chain.append(prov_id)
 
-    primary = active_chain[0]
-    fallbacks = active_chain[1:]
-    return primary, fallbacks, task_category
+    if not verified_chain:
+        # إذا لم يكن هناك أي مزود مفعّل (مثلاً في اختبارات الوحدة الجافة بدون مفاتيح)، نرجع المزود المتوافق نظرياً مع المهمة فقط
+        if not any(norm_avail.get(k, False) for k in ("gemini", "flux", "together", "pollinations")):
+            theoretical = [p for p in candidates if p != "local_enhance"] or candidates
+            return theoretical[0], theoretical[1:], task_cat
+        return "unsupported", [], task_cat
+
+    return verified_chain[0], verified_chain[1:], task_cat

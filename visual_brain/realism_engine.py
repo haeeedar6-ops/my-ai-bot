@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-محرك الواقعية الفيزيائية والبصرية (Realism Engine):
-يحتوي على القواعد التفصيلية للإضاءة، العدسة، تشريح البشر، الأقمشة، السوائل، والبيئة،
-ويختار منها ديناميكياً ما يناسب عناصر المشهد فقط.
+محرك الواقعية السياقية والتفاصيل الفيزيائية (Contextual Photorealism & Physical-Detail Engine — Section 5):
+- يطبّق القواعد التشريحية والفيزيائية والبصرية بحسب سياق المشهد فقط.
+- قاعدة صارمة (Section 5): لا يضيف الأوساخ أو الطين أو العرق أو البلل أو التلف إلى المشهد إلا عندما يبررها المشهد
+  أو يطلبها المستخدم صراحةً (البورتريه النظيف يبقى نظيفاً تماماً).
+- قاعدة اليدين (Section 5): عندما تكون اليدان ظاهرتين في الإطار، يجب أن تكونا بـ 5 أصابع طبيعية مع الإبهام ومفاصل
+  وقبضة متلامسة فيزيائياً؛ ولا يفرض إظهار اليدين إذا كانتا خارج إطار اللقطة (مثل Close-up portrait للوجه).
 """
 from __future__ import annotations
 import re
@@ -16,57 +19,60 @@ _AI_BUZZWORDS_STRIP_RE = re.compile(
 REALISM_MODULES = {
     "lighting": (
         "single unified primary light source direction across the entire scene; "
-        "shadow direction and length strictly matching the light angle; dark contact shadows (ambient occlusion) directly beneath every object touching the floor, table, or surface; "
+        "shadow direction and length strictly matching the light angle; dark contact shadows (ambient occlusion) directly beneath every foot, hand, or object touching the floor, table, or surface so nothing floats; "
         "progressive shadow penumbra softening with distance from the surface; balanced dynamic range preserving crisp detail in both bright highlights and dark shadows without blown-out whites or crushed blacks; "
-        "natural environmental color bounce and spill onto nearby surfaces; irregular realistic specular reflections on semi-gloss surfaces (wood, ceramic, leather)."
+        "natural environmental color bounce and spill onto nearby surfaces; irregular realistic specular reflections on semi-gloss surfaces."
     ),
     "camera": (
-        "shot on a natural {lens} lens at {angle} with a subtle candid handheld tilt and casual edge framing/cropping of secondary elements at the frame borders; "
-        "natural progressive foreground and background depth of field with sharp focus strictly on the main subject, soft non-uniform bokeh balls in background lights, and slight motion blur on moving extremities or poured liquids; "
-        "subtle 35mm film grain / high-ISO sensor noise, natural lens flare or slight contrast drop against strong backlight, slight perspective lens distortion near frame edges, subtle corner softness in the four corners compared to the center, micro chromatic aberration on high-contrast edges, and a gentle natural optical vignette; "
+        "shot on a natural {lens} lens at {angle} with consistent camera viewpoint, natural object scale, and coherent spatial relationships; "
+        "natural progressive foreground and background depth of field with sharp focus strictly on the main subject and soft non-uniform bokeh balls in out-of-focus background lights; "
+        "subtle 35mm film grain, slight perspective lens distortion near frame edges, subtle corner softness compared to center sharpness, micro chromatic aberration on high-contrast edges, and a gentle natural optical vignette; "
         "muted natural color saturation, accurate white balance for the time and place, and moderate unfiltered RAW-photo contrast."
     ),
-    "human": (
-        "natural skin texture with visible pores, fine expression lines around eyes and mouth, and ultra-fine vellus peach fuzz catching the light; "
-        "natural skin tone variation (subtle redness, small moles/freckles, faint capillaries, slight sun-tan difference between face, neck, and hands, and natural skin blanching/redness at grip pressure points); "
-        "subtle natural sebum sheen on forehead and nose tip (never waxy); natural subtle asymmetry between left and right facial halves; "
-        "gradual hairline transition with subtle scalp visibility at the part and random stray flyaway hairs; "
-        "individual eyebrow hairs and eyelashes of varying length and direction; natural micro-creases on lips (not glossy glass) and natural off-white ivory teeth with organic alignment; "
-        "crisp catchlights in the eyes, natural tear-film moisture and faint micro-capillaries in the sclera, unified gaze convergence on a single focal point, and pupil size matching the ambient light; "
-        "subsurface scattering of light through thin ear cartilage and fingertips, plus a subtle rim light along hair edges and shoulders; "
-        "anatomically correct hands with exactly 5 fingers per hand, knuckle wrinkles, natural fingernail curvature with subtle white free-edges, and realistic veins/tendons in hands and neck matching movement; "
-        "physically grounded body weight naturally compressing cushions/chair/ground; candid mid-action facial expression and hand gesture with slight motion blur on moving extremities."
+    "human_face_and_body": (
+        "plausible head-to-body proportions, natural neck and shoulder alignment, accurate joint direction, balanced posture, and physical weight compressing the ground or seat; "
+        "natural skin pores, fine expression lines around eyes and mouth, ultra-fine vellus peach fuzz catching the light, subtle natural skin tone variation, and context-appropriate skin moisture with zero waxy or plastic shine; "
+        "consistent eye gaze convergence on a single focal point, pupil size matching the ambient light, crisp catchlights, natural tear-film moisture, and natural facial symmetry within organic variation; "
+        "gradual hairline transition, natural hair growth direction and strand grouping interacting with light, individual eyebrow hairs and eyelashes of varied length, natural lip micro-creases, natural ivory teeth, and subsurface scattering through thin ear cartilage."
+    ),
+    "hands_when_visible": (
+        "when hands are visible in the frame: anatomically accurate five digits per hand including the thumb, natural finger lengths, joints, knuckles, curved fingernails, realistic palm structure and wrist connection, "
+        "and physically grounded grip and contact pressure with held objects (with no fused, extra, or duplicated fingers)."
+    ),
+    "hands_not_forced": (
+        "do not force hands into the frame if the composition is a close-up face portrait or hands are naturally outside the frame; if any fingers appear, render five natural digits per hand."
+    ),
+    "animals": (
+        "plausible animal anatomy, accurate limb count and joints, believable scale relative to human subjects, natural fur strand grouping and growth direction, and physically grounded paw/hand-to-animal contact."
     ),
     "clothing": (
-        "distinct micro-weave fabric texture (cotton, wool, denim, or linen threads) with subtle natural pilling, stray lint threads, and lived-in wear on clothes and shoes; "
-        "natural tension folds and creases at joints, elbows, and seated bends with gravity-accurate drape; "
-        "continuous intact stitching seams, buttons, collars, and zippers without melting or breaks; "
-        "accessories (watches, rings, chains, eyeglasses) resting physically on skin without clipping, and subtle distorted reflections on eyeglass lenses casting a soft frame shadow on the face."
+        "distinct micro-weave fabric texture (cotton, wool, denim, or linen threads) with accurate thickness, intact stitching seams, buttons, collars, and zippers; "
+        "natural tension folds and creases at elbows, joints, and seated bends following gravity and movement without fusing fabric into skin; "
+        "accessories (watches, rings, eyeglasses) resting physically on the body with subtle lens reflection and frame shadow."
     ),
-    "liquids": (
-        "physically accurate optical refraction of background objects through glass cups and water; "
-        "subtle upward liquid meniscus curve where liquid meets glass walls; random condensation droplets and dew on cold glasses; "
-        "turbulent wispy steam or smoke rising and dissipating naturally into the air; casual liquid rings, water drops, or tiny bread crumbs near plates; "
-        "accurate geometry-matching reflections in mirrors, glass, and water."
+    "liquids_and_water": (
+        "physically accurate optical refraction through glass and water, subtle upward liquid meniscus curve in glasses, random condensation droplets on cold cups, "
+        "consistent water surface reflections and shadows, and wet clothing/skin strictly where water contact or splashing physically occurs."
     ),
-    "environment": (
-        "level horizon line and plumb vertical walls/columns with accurate linear perspective size diminution and subtle atmospheric perspective haze fading distant background contrast; "
-        "soft surfaces (cushions, sofa, grass) naturally indenting and compressing under the physical weight of the person or object resting on them; "
-        "natural everyday lived-in clutter (crumpled napkins, mismatched dishes, casually placed items) and authentic surface wear (fine wood scratches, light dust, faint fingerprints on glass, subtle rust, slight paint peeling, and worn non-razor-sharp corners); "
-        "tiny dust motes visible only inside direct sunbeams, mixed color-temperature lighting (warm window sunlight blending with cool indoor ceiling light), and organic plant leaves with slight tip yellowing or tiny pinholes; "
-        "clean background behind the subject's head (no poles or trees growing out of the head) and background text/signage either accurately spelled or softly out of focus."
+    "dirt_sweat_and_wear_contextual": (
+        "contextually justified dirt, mud, sweat, wetness, stains, and surface wear placed strictly according to gravity, ground contact, splash trajectory, and friction "
+        "(such as mud along lower hems and boots after a muddy walk, without random dirt on unrelated clean surfaces)."
+    ),
+    "environment_clean": (
+        "level horizon line and plumb vertical walls/columns with accurate linear perspective size diminution and subtle atmospheric perspective in the distance; "
+        "differentiate wood, metal, glass, water, stone, leather, and fabric through physically appropriate texture and reflections; "
+        "clean background behind the subject's head (no poles or trees growing out of the head), keeping studio or clean settings free of random dirt."
     ),
     "negative": (
-        "strictly organic matte/natural textures with zero plastic, airbrushed, or waxy shine on faces or surfaces; "
-        "asymmetrical lived-in arrangement of objects (no artificial geometric symmetry and no cloned/repeated faces or props in the background); "
-        "every object physically grounded by gravity with complete supporting legs/bases touching the floor; "
-        "no extra fingers, no fused limbs, no floating objects, and no digital hype artifacts."
+        "strictly organic textures with zero plastic, airbrushed, or waxy skin; "
+        "no duplicated or melted facial features, no extra or fused fingers, no floating feet or objects, "
+        "no artificial geometric symmetry, no cloned background faces, and no digital hype artifacts."
     ),
 }
 
 
 def strip_ai_buzzwords(prompt_en: str) -> str:
-    """إزالة كلمات المبالغة الرقمية الممنوعة من البرومبت الإنجليزي."""
+    """إزالة كلمات المبالغة الرقمية الممنوعة من الوصف الإنجليزي."""
     cleaned = _AI_BUZZWORDS_STRIP_RE.sub("", prompt_en or "")
     cleaned = re.sub(r"\s*,\s*,+", ", ", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" ,.")
@@ -74,8 +80,12 @@ def strip_ai_buzzwords(prompt_en: str) -> str:
 
 
 def build_realism_modules_for_scene(scene: SceneSpec) -> dict:
-    """بناء وحدات الواقعية المخصصة لمحتوى المشهد فقط."""
-    if scene.style not in ("photorealistic", "cinematic"):
+    """
+    بناء وحدات الواقعية المخصصة لسياق المشهد فقط (Section 5):
+    - لا يضيف الأوساخ/الطين/العرق إلا إذا كان `scene.has_dirt_sweat_or_wear` مفعّلاً.
+    - لا يفرض ظهور اليدين في البورتريه القريب للوجه.
+    """
+    if scene.style not in ("photorealistic", "cinematic", "product_photography"):
         return {}
     mods = {
         "lighting": REALISM_MODULES["lighting"],
@@ -84,13 +94,20 @@ def build_realism_modules_for_scene(scene: SceneSpec) -> dict:
     }
     materials_parts = []
     if scene.has_humans:
-        materials_parts.append(REALISM_MODULES["human"])
+        materials_parts.append(REALISM_MODULES["human_face_and_body"])
+        if scene.has_visible_hands:
+            materials_parts.append(REALISM_MODULES["hands_when_visible"])
+        else:
+            materials_parts.append(REALISM_MODULES["hands_not_forced"])
+    if scene.has_animals:
+        materials_parts.append(REALISM_MODULES["animals"])
     if scene.has_clothing:
         materials_parts.append(REALISM_MODULES["clothing"])
     if scene.has_liquids_or_glass:
-        materials_parts.append(REALISM_MODULES["liquids"])
+        materials_parts.append(REALISM_MODULES["liquids_and_water"])
+    if scene.has_dirt_sweat_or_wear and not scene.is_clean_studio_or_portrait:
+        materials_parts.append(REALISM_MODULES["dirt_sweat_and_wear_contextual"])
     if materials_parts:
         mods["materials"] = " ".join(materials_parts)
-    if scene.has_indoor_furniture or scene.has_outdoor_nature or scene.has_humans or not scene.has_liquids_or_glass:
-        mods["environment"] = REALISM_MODULES["environment"]
+    mods["environment"] = REALISM_MODULES["environment_clean"]
     return mods

@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-الذاكرة البصرية الدائمة والمعزولة لكل مستخدم (Persistent Visual Memory):
-- حفظ الصورة الأصلية وكل نسخة معدّلة.
-- ربط النسخ ببعضها كشجرة إصدارات (parent_version_id -> version_id).
-- الرجوع لأي إصدار سابق (Revert / Undo).
-- معرفة آخر صورة جرى تعديلها لكل مستخدم بشكل مستقل تماماً (عدم خلط صور المستخدمين).
-- الاحتفاظ بتعليمات وخطة كل عملية.
-- تخزين دائم وآمن على القرص (مقاوم لإعادة التشغيل) مع إدارة الحصص اليومية (img_counts).
+ذاكرة الأصول والإصدارات الدائمة والمعزولة (Assets & Version History Store — Section 6 & Section 9):
+- تحفظ الصورة الأصلية المرفوعة كأصل غير قابل للكتابة فوقه أبداً (`is_original_upload=True`).
+- تحفظ كل تعديل كإصدار جديد مرتبط بالأصل وبالنسخة الأب (`parent_version_id` & `original_source_id`).
+- تعزل بيانات كل مستخدم بالكامل مع حفظ دائم على القرص.
 """
 from __future__ import annotations
 import os
@@ -21,9 +18,7 @@ from .schemas import ImageVersion
 
 
 class VisualMemoryStore:
-    """مخزن دائم وآمن لإصدارات صور المستخدمين وحصص الاستخدام اليومية."""
-
-    def __init__(self, storage_dir: Optional[str] = None, max_versions_per_user: int = 15):
+    def __init__(self, storage_dir: Optional[str] = None, max_versions_per_user: int = 20):
         base_dir = storage_dir or os.environ.get(
             "RYN_VISUAL_MEMORY_DIR",
             os.path.join(os.environ.get("RYN_DATA_DIR", tempfile.gettempdir()), "ryn_visual_memory")
@@ -32,7 +27,7 @@ class VisualMemoryStore:
         self.max_versions = max_versions_per_user
         self._lock = threading.Lock()
         self._users: Dict[str, List[ImageVersion]] = {}
-        self._active_cursor: Dict[str, str] = {}  # user_id -> current active version_id
+        self._active_cursor: Dict[str, str] = {}
         self._daily_counts: Dict[str, int] = {}
         os.makedirs(self.storage_dir, exist_ok=True)
         self._load_index()
@@ -92,6 +87,8 @@ class VisualMemoryStore:
                                 version_id=str(item["version_id"]),
                                 user_id=safe_u,
                                 parent_version_id=item.get("parent_version_id"),
+                                original_source_id=item.get("original_source_id") or str(item["version_id"]),
+                                is_original_upload=bool(item.get("is_original_upload", False)),
                                 created_at=float(item.get("created_at", 0.0)),
                                 operation_type=str(item.get("operation_type", "generate")),
                                 user_prompt=str(item.get("user_prompt", "")),
@@ -116,6 +113,38 @@ class VisualMemoryStore:
         except Exception:
             pass
 
+    def retain_original_upload(self, user_id: str, image_bytes: bytes, mime_type: str = "image/jpeg") -> ImageVersion:
+        """
+        حفظ الصورة المرفوعة من المستخدم كأصل ثابت غير قابل للكتابة فوقه (Section 6: Always retain original).
+        """
+        uri = "data:%s;base64,%s" % (mime_type or "image/jpeg", base64.b64encode(image_bytes).decode("ascii"))
+        safe_u = self._safe_user_key(user_id)
+        with self._lock:
+            versions = self._load_user_unlocked(safe_u)
+            if versions and versions[-1].is_original_upload and versions[-1].image_data_uri == uri:
+                return versions[-1]
+            vid = "orig_" + uuid.uuid4().hex[:10]
+            ver = ImageVersion(
+                version_id=vid,
+                user_id=safe_u,
+                parent_version_id=None,
+                original_source_id=vid,
+                is_original_upload=True,
+                created_at=time.time(),
+                operation_type="original_upload",
+                user_prompt="[الصورة الأصلية المرفوعة]",
+                final_prompt_en="",
+                provider_used="user_upload",
+                model_used="original",
+                image_data_uri=uri,
+                plan_summary={"immutable_original": True},
+            )
+            versions.append(ver)
+            self._active_cursor[safe_u] = vid
+            self._save_user_unlocked(safe_u)
+            self._save_index_unlocked()
+            return ver
+
     def save_version(
         self,
         user_id: str,
@@ -126,19 +155,28 @@ class VisualMemoryStore:
         provider_used: str = "",
         model_used: str = "",
         parent_version_id: Optional[str] = None,
-        plan_summary: Optional[ dict ] = None,
+        original_source_id: Optional[str] = None,
+        plan_summary: Optional[dict] = None,
     ) -> ImageVersion:
-        """حفظ صورة جديدة أو نسخة معدلة وربطها بالإصدار الأب لنفس المستخدم."""
+        """حفظ كل توليد أو تعديل كإصدار جديد دون الكتابة فوق النسخة الأصلية مطلقاً."""
         safe_u = self._safe_user_key(user_id)
         with self._lock:
             versions = self._load_user_unlocked(safe_u)
             if parent_version_id is None and operation_type != "generate" and versions:
                 parent_version_id = self._active_cursor.get(safe_u) or versions[-1].version_id
             vid = "v_" + uuid.uuid4().hex[:10]
+            if original_source_id is None:
+                if parent_version_id:
+                    parent_obj = next((v for v in versions if v.version_id == parent_version_id), None)
+                    original_source_id = parent_obj.original_source_id if parent_obj else vid
+                else:
+                    original_source_id = vid
             ver = ImageVersion(
                 version_id=vid,
                 user_id=safe_u,
                 parent_version_id=parent_version_id,
+                original_source_id=original_source_id,
+                is_original_upload=False,
                 created_at=time.time(),
                 operation_type=operation_type,
                 user_prompt=user_prompt[:600],
@@ -149,15 +187,17 @@ class VisualMemoryStore:
                 plan_summary=plan_summary or {},
             )
             versions.append(ver)
+            # عند تقليص السجل، لا نحذف النسخة الأصلية الأولى المرتبطة بالسلسلة الحالية
             if len(versions) > self.max_versions:
-                del versions[:-self.max_versions]
+                orig_ids = {v.original_source_id for v in versions[-5:]}
+                kept = [v for i, v in enumerate(versions) if i >= len(versions) - self.max_versions or v.version_id in orig_ids]
+                self._users[safe_u] = kept[-self.max_versions:]
             self._active_cursor[safe_u] = vid
             self._save_user_unlocked(safe_u)
             self._save_index_unlocked()
             return ver
 
     def get_latest_version(self, user_id: str) -> Optional[ImageVersion]:
-        """استرجاع النسخة النشطة أو الأخيرة للمستخدم."""
         safe_u = self._safe_user_key(user_id)
         with self._lock:
             versions = self._load_user_unlocked(safe_u)
@@ -184,7 +224,6 @@ class VisualMemoryStore:
             return None
 
     def revert_version(self, user_id: str, target: str = "previous") -> Optional[ImageVersion]:
-        """الرجوع إلى النسخة السابقة أو النسخة الأصلية الأولى أو معرف نسخة محدد."""
         safe_u = self._safe_user_key(user_id)
         with self._lock:
             versions = self._load_user_unlocked(safe_u)
@@ -209,7 +248,6 @@ class VisualMemoryStore:
             return chosen
 
     def list_history(self, user_id: str) -> List[Dict]:
-        """استرجاع سجل إصدارات الصور للمستخدم (بدون حمل بيانات Base64 الثقيلة)."""
         safe_u = self._safe_user_key(user_id)
         with self._lock:
             versions = self._load_user_unlocked(safe_u)
