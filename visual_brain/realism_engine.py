@@ -21,9 +21,9 @@ REALISM_MODULES = {
         "natural environmental color bounce and spill onto nearby surfaces; irregular realistic specular reflections on semi-gloss surfaces (wood, ceramic, leather)."
     ),
     "camera": (
-        "shot on a natural {lens} lens at {angle} with a subtle candid handheld feel and natural edge framing; "
-        "natural progressive depth of field with sharp focus strictly on the main subject and soft non-uniform bokeh balls in the out-of-focus background; "
-        "subtle 35mm film grain / organic sensor noise; slight natural lens distortion near frame edges, subtle corner softness, micro chromatic aberration on high-contrast edges, and a gentle natural optical vignette; "
+        "shot on a natural {lens} lens at {angle} with a subtle candid handheld tilt and casual edge framing/cropping of secondary elements at the frame borders; "
+        "natural progressive foreground and background depth of field with sharp focus strictly on the main subject, soft non-uniform bokeh balls in background lights, and slight motion blur on moving extremities or poured liquids; "
+        "subtle 35mm film grain / high-ISO sensor noise, natural lens flare or slight contrast drop against strong backlight, slight perspective lens distortion near frame edges, subtle corner softness in the four corners compared to the center, micro chromatic aberration on high-contrast edges, and a gentle natural optical vignette; "
         "muted natural color saturation, accurate white balance for the time and place, and moderate unfiltered RAW-photo contrast."
     ),
     "human": (
@@ -50,10 +50,11 @@ REALISM_MODULES = {
         "accurate geometry-matching reflections in mirrors, glass, and water."
     ),
     "environment": (
-        "level horizon line and plumb vertical walls/columns with accurate linear perspective and subtle atmospheric perspective haze fading distant background contrast; "
-        "natural everyday lived-in clutter (crumpled napkins, mismatched dishes, casually placed items) and authentic surface wear (fine wood scratches, light dust, faint fingerprints on glass, slightly worn non-razor-sharp corners); "
-        "tiny dust motes visible only inside direct sunbeams, natural warm window sunlight mixing with cool indoor light, and organic plant leaves with slight tip yellowing or tiny pinholes; "
-        "clean background behind the subject's head (no poles or trees growing out of the head) and background text/signage softly out of focus."
+        "level horizon line and plumb vertical walls/columns with accurate linear perspective size diminution and subtle atmospheric perspective haze fading distant background contrast; "
+        "soft surfaces (cushions, sofa, grass) naturally indenting and compressing under the physical weight of the person or object resting on them; "
+        "natural everyday lived-in clutter (crumpled napkins, mismatched dishes, casually placed items) and authentic surface wear (fine wood scratches, light dust, faint fingerprints on glass, subtle rust, slight paint peeling, and worn non-razor-sharp corners); "
+        "tiny dust motes visible only inside direct sunbeams, mixed color-temperature lighting (warm window sunlight blending with cool indoor ceiling light), and organic plant leaves with slight tip yellowing or tiny pinholes; "
+        "clean background behind the subject's head (no poles or trees growing out of the head) and background text/signage either accurately spelled or softly out of focus."
     ),
     "negative": (
         "strictly organic matte/natural textures with zero plastic, airbrushed, or waxy shine on faces or surfaces; "

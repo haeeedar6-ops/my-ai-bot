@@ -123,6 +123,7 @@ class VisualBrain:
                     "status": "done",
                     "image": rev_ver.image_data_uri,
                     "model": rev_ver.model_used or rev_ver.provider_used,
+                    "note": rev_ver.model_used or rev_ver.provider_used or "Visual Memory",
                     "prompt": rev_ver.final_prompt_en,
                     "version_id": rev_ver.version_id,
                     "parent_version_id": rev_ver.parent_version_id,
@@ -198,13 +199,15 @@ class VisualBrain:
             },
         )
 
-        caption_txt = "تم تعديل الصورة مع الحفاظ على الهوية والتفاصيل 🎨" if plan.edit_plan.is_edit else ""
+        caption_txt = "تم تعديل الصورة مع الحفاظ على الهوية والتفاصيل 🎨" if plan.edit_plan.is_edit else "تفضّل الصورة 🎨"
+        short_note = best_model or best_prov or "Visual Brain"
         return {
             "status": "done",
             "image": b64_uri,
             "image_bytes": best_bytes,
             "mime_type": best_mime,
             "model": best_model,
+            "note": short_note,
             "provider": best_prov,
             "prompt": cur_prompt,
             "version_id": saved_ver.version_id,
