@@ -1333,19 +1333,29 @@ def handle_photo(message):
                 vb = webapp.get_visual_brain() if hasattr(webapp, "get_visual_brain") and webapp.get_visual_brain is not None else None
                 tg_uid = f"tg_{message.chat.id}"
                 if vb is not None:
+                    p2p_inst = webapp.InstructPix2PixProvider(sys.modules[__name__]) if getattr(webapp, "InstructPix2PixProvider", None) is not None else None
+                    p2p_ready = bool(p2p_inst and p2p_inst.is_ready())
                     plan = vb.build_plan(
                         user_text=caption,
                         user_id=tg_uid,
                         attached_images_bytes=[data],
-                        available_providers={"gemini": bool(client), "flux": False},
+                        available_providers={"instruct_pix2pix": p2p_ready, "gemini": bool(client), "flux": False},
                         aspect_hint_str=webapp.aspect_hint(caption),
                         ref_parts=ref_p,
                     )
+                    tg_runners = {}
+                    if p2p_ready:
+                        tg_runners["instruct_pix2pix"] = lambda p_en, r_p=None: p2p_inst.generate(p_en, ref_parts=r_p or ref_p)
+                    if client:
+                        tg_runners["gemini"] = lambda p_en, r_p=None: webapp.gemini_image(sys.modules[__name__], p_en, ref_parts=r_p or ref_p)
+                    def _tg_vision_critic(gen_b, audit_q):
+                        return ask_gemini([types.Content(role="user", parts=[types.Part.from_bytes(data=gen_b, mime_type="image/png"), types.Part(text=audit_q)])], deep=False)
                     exec_out = vb.execute_plan(
                         plan,
                         user_id=tg_uid,
-                        provider_runners={"gemini": lambda p_en, r_p=None: webapp.gemini_image(sys.modules[__name__], p_en, ref_parts=r_p or ref_p)},
+                        provider_runners=tg_runners,
                         ref_parts=ref_p,
+                        vision_audit_fn=_tg_vision_critic if client else None,
                     )
                     out_bytes = exec_out.get("image_bytes")
                 else:

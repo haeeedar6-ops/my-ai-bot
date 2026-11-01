@@ -1618,6 +1618,7 @@ try:
     from visual_brain import get_visual_brain, get_provider_capabilities
     from visual_brain.brain import UnsupportedEditOperationError
     from image_providers import (
+        InstructPix2PixProvider,
         GeminiImageProvider,
         FluxCloudflareProvider,
         PollinationsProvider,
@@ -1626,7 +1627,7 @@ try:
 except Exception:
     get_visual_brain = get_provider_capabilities = None
     UnsupportedEditOperationError = RuntimeError
-    GeminiImageProvider = FluxCloudflareProvider = PollinationsProvider = TogetherFluxProvider = None
+    InstructPix2PixProvider = GeminiImageProvider = FluxCloudflareProvider = PollinationsProvider = TogetherFluxProvider = None
 
 # ---------- المرحلة 6 (الدفعة C): الأمان والخصوصية وحماية الأسرار وحدود الثقة ----------
 _SECRET_PATTERNS = (
@@ -4282,6 +4283,8 @@ def img_label(model):
         return "Together FLUX"
     if "pro-image" in m:
         return "Gemini Image Pro"
+    if "instruct-pix2pix" in m or "pix2pix" in m:
+        return "InstructPix2Pix (timbrooks/instruct-pix2pix)"
     if "flash-image" in m:
         return "Gemini Image"
     if "klein" in m:
@@ -5787,12 +5790,15 @@ def register(app, b):
     def _build_provider_instances():
         if GeminiImageProvider is None:
             return {}
-        return {
+        provs = {
             "gemini": GeminiImageProvider(b, gemini_image),
             "flux": FluxCloudflareProvider(b, cf_ready, flux_image),
             "pollinations": PollinationsProvider(b, fallback_on, pollinations_image),
             "together": TogetherFluxProvider(b, together_image),
         }
+        if InstructPix2PixProvider is not None:
+            provs["instruct_pix2pix"] = InstructPix2PixProvider(b)
+        return provs
 
     def run_image(job_id, prompt, day, u="main"):
         res = None
@@ -5829,6 +5835,10 @@ def register(app, b):
                 runners = {k: p.generate for k, p in provs.items() if p.is_ready()}
                 if not runners and plan.intent != "revert":
                     raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY أو Cloudflare أو الاحتياط المجاني.")
+                def _vision_critic_audit(gen_img_bytes, audit_prompt):
+                    img_part = T.Part.from_bytes(data=gen_img_bytes, mime_type="image/png")
+                    return b.ask_gemini([T.Content(role="user", parts=[img_part, T.Part(text=audit_prompt)])], deep=False)
+
                 exec_out = vbrain.execute_plan(
                     plan,
                     user_id=u,
@@ -5836,6 +5846,7 @@ def register(app, b):
                     ref_parts=ref_parts,
                     max_quality_retries=2,
                     progress_cb=lambda msg: set_progress(job_id, msg),
+                    vision_audit_fn=_vision_critic_audit if b.client else None,
                 )
                 exec_out.pop("image_bytes", None)
                 if exec_out.get("model"):
