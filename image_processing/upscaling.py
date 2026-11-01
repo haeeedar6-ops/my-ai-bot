@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 تحسين وترميم وتصحيح ألوان الصور (Workflow E: Image Enhancement / Restoration / Upscaling / Color Correction — Section 3).
-يعالج الصورة محلياً عبر Pillow دون إعادة توليد المشهد من الصفر عندما يكون المطلوب تحسيناً أو تصحيح ألوان.
 """
 from __future__ import annotations
 import io
 
 
 def enhance_image_clarity(image_bytes: bytes, mode: str = "upscale") -> bytes:
-    """تنفيذ التحسين المطلوب (sharpening, denoising, upscaling, color_correct, restore) بأمان."""
     try:
         from PIL import Image, ImageEnhance, ImageFilter
         with Image.open(io.BytesIO(image_bytes)) as im:

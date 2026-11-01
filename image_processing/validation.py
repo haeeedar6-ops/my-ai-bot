@@ -103,10 +103,6 @@ def compare_original_and_edited(
     edited_bytes: bytes,
     operation_type: str = "image_edit",
 ) -> Dict[str, Any]:
-    """
-    مقارنة الصورة المعدّلة بالصورة الأصلية (Section 6 & Section 8):
-    تفحص تناسب الأبعاد والحفاظ على الهيكلة خارج منطقة التعديل عند الإمكان.
-    """
     fmt_o, w_o, h_o = detect_image_format_and_size(orig_bytes)
     fmt_n, w_n, h_n = detect_image_format_and_size(edited_bytes)
     if not fmt_n or w_n <= 0 or h_n <= 0:
@@ -114,7 +110,6 @@ def compare_original_and_edited(
     if not fmt_o or w_o <= 0 or h_o <= 0:
         return {"passed": True, "preservation_score": 1.0, "warning": ""}
 
-    # للعمليات التي لا يفترض أن تغير أبعاد الإطار (ما عدا outpainting / camera_reframe / upscale)
     if operation_type not in ("outpainting", "camera_reframe", "enhance_upscale", "upscale"):
         ratio_o = w_o / float(h_o)
         ratio_n = w_n / float(h_n)
