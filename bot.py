@@ -36,15 +36,17 @@ PORT = int(os.environ.get("PORT", 10000))
 
 # موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
 FAST_MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-3.8-flash",
+    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3.5-flash",
 ]
 DEEP_MODELS = [
-    os.environ.get("GEMINI_DEEP_MODEL", "gemini-3.8-flash"),
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
+    os.environ.get("GEMINI_DEEP_MODEL", "gemini-2.5-pro"),
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-3.8-flash",
 ]
 MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000

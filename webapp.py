@@ -4374,9 +4374,9 @@ def flux_image(b, full, en):
     tok = os.environ["CLOUDFLARE_API_TOKEN"].strip()
     models = []
     for m in [os.environ.get("CLOUDFLARE_IMAGE_MODEL", "").strip(),
-              "@cf/black-forest-labs/flux-2-klein-4b",
               "@cf/leonardo/lucid-origin",
-              "@cf/black-forest-labs/flux-1-schnell"]:
+              "@cf/black-forest-labs/flux-1-schnell",
+              "@cf/black-forest-labs/flux-2-klein-4b"]:
         if m and m not in models:
             models.append(m)
     last_err = None
@@ -5819,16 +5819,35 @@ def register(app, b):
                 provs = _build_provider_instances()
                 avail_map = {k: p.is_ready() for k, p in provs.items()}
                 def _ask_llm_for_prompt(user_msg, sys_inst):
-                    return b.ask_gemini([T.Content(role="user", parts=[T.Part(text=user_msg)])], deep=False, system=sys_inst)
+                    if b.client:
+                        try:
+                            out = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=user_msg)])], deep=False, system=sys_inst)
+                            if out and len(out.strip()) >= 20:
+                                return out
+                        except Exception as _ge:
+                            log.warning("Prompt LLM Gemini fallback to Groq: %s", str(_ge)[:100])
+                    if hasattr(b, "_groq_ready") and b._groq_ready():
+                        try:
+                            g_backend = {**b.GROQ_CHAT_BACKEND, "system": sys_inst, "compact": False}
+                            return b._call_backend(g_backend, [T.Content(role="user", parts=[T.Part(text=user_msg)])], False, False, models=b.groq_code_models())
+                        except Exception as _gre:
+                            log.warning("Prompt LLM Groq fallback failed: %s", str(_gre)[:100])
+                    return ""
+
                 def _ask_vision_id(r_parts, v_prompt):
-                    return b.ask_gemini([T.Content(role="user", parts=list(r_parts) + [T.Part(text=v_prompt)])], deep=False)
+                    if b.client:
+                        try:
+                            return b.ask_gemini([T.Content(role="user", parts=list(r_parts) + [T.Part(text=v_prompt)])], deep=False)
+                        except Exception:
+                            pass
+                    return ""
                 plan = vbrain.build_plan(
                     user_text=prompt,
                     user_id=u,
                     available_providers=avail_map,
                     preferred_provider=IMG_PROVIDER,
                     aspect_hint_str=aspect_hint(prompt),
-                    ask_llm_fn=_ask_llm_for_prompt if b.client else None,
+                    ask_llm_fn=_ask_llm_for_prompt,
                     ask_vision_fn=_ask_vision_id if (b.client and ref_parts) else None,
                     ref_parts=ref_parts,
                 )
@@ -5836,8 +5855,42 @@ def register(app, b):
                 if not runners and plan.intent != "revert":
                     raise _ImgError("الرسم مش مفعّل: بده GEMINI_API_KEY أو Cloudflare أو الاحتياط المجاني.")
                 def _vision_critic_audit(gen_img_bytes, audit_prompt):
-                    img_part = T.Part.from_bytes(data=gen_img_bytes, mime_type="image/png")
-                    return b.ask_gemini([T.Content(role="user", parts=[img_part, T.Part(text=audit_prompt)])], deep=False)
+                    if b.client:
+                        try:
+                            img_part = T.Part.from_bytes(data=gen_img_bytes, mime_type="image/png")
+                            v_out = b.ask_gemini([T.Content(role="user", parts=[img_part, T.Part(text=audit_prompt)])], deep=False)
+                            if v_out:
+                                return v_out
+                        except Exception as _ve:
+                            log.warning("Vision Critic Gemini fallback to Groq Vision: %s", str(_ve)[:100])
+                    if hasattr(b, "_groq_ready") and b._groq_ready():
+                        try:
+                            b64_img = base64.b64encode(gen_img_bytes).decode("ascii")
+                            g_key = b._env_key("GROQ_API_KEY")
+                            for v_mdl in ("meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"):
+                                vr = b.requests.post(
+                                    b.GROQ_BASE + "/chat/completions",
+                                    headers={"Authorization": "Bearer " + g_key, "Content-Type": "application/json"},
+                                    json={
+                                        "model": v_mdl,
+                                        "messages": [{
+                                            "role": "user",
+                                            "content": [
+                                                {"type": "text", "text": audit_prompt},
+                                                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + b64_img}},
+                                            ],
+                                        }],
+                                        "max_tokens": 220,
+                                    },
+                                    timeout=30,
+                                )
+                                if vr.status_code == 200:
+                                    v_txt = ((vr.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+                                    if v_txt.strip():
+                                        return v_txt.strip()
+                        except Exception as _gve:
+                            log.warning("Vision Critic Groq failed: %s", str(_gve)[:100])
+                    return "OK"
 
                 exec_out = vbrain.execute_plan(
                     plan,
@@ -5846,7 +5899,7 @@ def register(app, b):
                     ref_parts=ref_parts,
                     max_quality_retries=2,
                     progress_cb=lambda msg: set_progress(job_id, msg),
-                    vision_audit_fn=_vision_critic_audit if b.client else None,
+                    vision_audit_fn=_vision_critic_audit,
                 )
                 exec_out.pop("image_bytes", None)
                 if exec_out.get("model"):
