@@ -1337,14 +1337,14 @@ def handle_photo(message):
                         user_text=caption,
                         user_id=tg_uid,
                         attached_images_bytes=[data],
-                        available_providers={"nano_banana": bool(client), "flux": False},
+                        available_providers={"gemini": bool(client), "flux": False},
                         aspect_hint_str=webapp.aspect_hint(caption),
                         ref_parts=ref_p,
                     )
                     exec_out = vb.execute_plan(
                         plan,
                         user_id=tg_uid,
-                        provider_runners={"nano_banana": lambda p_en, r_p=None: webapp.gemini_image(sys.modules[__name__], p_en, ref_parts=r_p or ref_p)},
+                        provider_runners={"gemini": lambda p_en, r_p=None: webapp.gemini_image(sys.modules[__name__], p_en, ref_parts=r_p or ref_p)},
                         ref_parts=ref_p,
                     )
                     out_bytes = exec_out.get("image_bytes")

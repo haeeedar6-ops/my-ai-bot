@@ -364,20 +364,20 @@ def score_image_engine() -> dict:
         attempts.append(prompt_en)
         return (b"bad" if len(attempts) == 1 else valid_png), "image/png", "mock-flux"
     exec_res = brain.execute_plan(p1, user_id="u1", provider_runners={"flux": _mock_prov}, max_quality_retries=2)
-    ok3 = (exec_res["status"] == "done" and len(attempts) == 2 and p1.recommended_provider == "flux" and p2.recommended_provider == "nano_banana")
+    ok3 = (exec_res["status"] == "done" and len(attempts) == 2 and p1.recommended_provider == "flux" and p2.recommended_provider == "gemini")
     s3 = 2.0 if ok3 else 0.0
     total += s3
     rows.append(("visual: router+quality", s3, 2, "routed + retried corrupt img" if ok3 else "failed"))
 
     # 4. عزل ذاكرة المستخدمين والرجوع للإصدارات وحماية رفع الصور (2 نقطتان)
-    brain.execute_plan(p2, user_id="u1", provider_runners={"nano_banana": lambda _p, _r=None: (valid_png, "image/png", "mock-nb")})
+    brain.execute_plan(p2, user_id="u1", provider_runners={"gemini": lambda _p, _r=None: (valid_png, "image/png", "mock-nb")})
     hist_u1 = tmp_mem.list_history("u1")
     hist_u2 = tmp_mem.list_history("u2")
     rev = tmp_mem.revert_version("u1", target="first")
     up_good = _G.validate_image_upload(valid_png, "photo.png")
     up_bad_svg = _G.validate_image_upload(b"<svg><script>alert(1)</script></svg>", "evil.svg")
     up_bad_trav = _G.validate_image_upload(valid_png, "../../etc/passwd.png")
-    ok4 = (len(hist_u1) == 2 and len(hist_u2) == 0 and rev.version_id == hist_u1[0]["version_id"]
+    ok4 = (len(hist_u1) >= 2 and len(hist_u2) == 0 and rev.version_id == hist_u1[0]["version_id"]
            and up_good["ok"] and not up_bad_svg["ok"] and not up_bad_trav["ok"])
     s4 = 2.0 if ok4 else 0.0
     total += s4

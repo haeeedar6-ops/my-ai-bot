@@ -1149,7 +1149,7 @@ function drawFloating(){
   if(hasGroq)h+='<button class="dia'+(codeAuto?' on':'')+'" data-m="__code"><span>كود<br>'+(codeAuto?'ON':'OFF')+'</span></button>';
   $('#floating').innerHTML=h;
 }
-function setPh(){inp.placeholder=current==='img:flux'?'اوصف الصورة اللي بدك ياها...':'اكتب رسالة...'}
+function setPh(){inp.placeholder=current==='img:flux'?'RYN Visual Brain: أنشئ صورة أو ارفع صورة وعدّلها (خلفية، إضاءة، ملابس، حذف عنصر، ترميم)...':'اكتب رسالة...'}
 $('#floating').addEventListener('click',async e=>{
   const b=e.target.closest('.dia');if(!b)return;e.stopPropagation();
   const m=b.dataset.m;
@@ -1209,7 +1209,7 @@ $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 '''
 
 
-# ---------- رسم الصور: Gemini Nano Banana (أساسي) + FLUX عبر Cloudflare (احتياط) ----------
+# ---------- RYN Visual Brain: توليد وتعديل الصور (Gemini Image + FLUX) ----------
 
 # ---------- محرك الواقعية الفوتوغرافية الذكي وتعديل الصور (حسب طلب المستخدم) ----------
 # يطبّق كافة بنود ملف «تفاصل صوره» ديناميكياً بحسب عناصر المشهد في طلب المستخدم (إضاءة، بشر، ملابس، سوائل، بيئة، عدسة، ومنع عيوب الذكاء الاصطناعي)
@@ -1615,16 +1615,18 @@ try:
 except Exception:
     S = None
 try:
-    from visual_brain import get_visual_brain
+    from visual_brain import get_visual_brain, get_provider_capabilities
+    from visual_brain.brain import UnsupportedEditOperationError
     from image_providers import (
-        NanoBananaProvider,
+        GeminiImageProvider,
         FluxCloudflareProvider,
         PollinationsProvider,
         TogetherFluxProvider,
     )
 except Exception:
-    get_visual_brain = None
-    NanoBananaProvider = FluxCloudflareProvider = PollinationsProvider = TogetherFluxProvider = None
+    get_visual_brain = get_provider_capabilities = None
+    UnsupportedEditOperationError = RuntimeError
+    GeminiImageProvider = FluxCloudflareProvider = PollinationsProvider = TogetherFluxProvider = None
 
 # ---------- المرحلة 6 (الدفعة C): الأمان والخصوصية وحماية الأسرار وحدود الثقة ----------
 _SECRET_PATTERNS = (
@@ -4279,9 +4281,9 @@ def img_label(model):
     if "together" in m:
         return "Together FLUX"
     if "pro-image" in m:
-        return "Nano Banana Pro"
-    if "flash-image" in m or "nano" in m:
-        return "Nano Banana"
+        return "Gemini Image Pro"
+    if "flash-image" in m:
+        return "Gemini Image"
     if "klein" in m:
         return "FLUX.2 klein"
     if "flux-2" in m:
@@ -4445,7 +4447,7 @@ def image_error(e):
 def describe(mid, ready=True, model=""):
     """تخصص الموديل بكلمتين بس."""
     if mid == "img:flux":
-        return "رسم صور واقعية" if ready else "غير مفعّل"
+        return "Understand · Plan · Create or Edit" if ready else "غير مفعّل"
     if mid == "mix":
         return "أدق جواب · كود مراجَع بعدة موديلات"
     if mid == "gemini":
@@ -5226,7 +5228,7 @@ def register(app, b):
 
     def build_options():
         """القائمة: الرسم فوق Gemini، وبعدها Qwen وGPT-OSS (Groq)، وDeepSeek وKimi (OpenRouter، مدفوع)."""
-        opts = [{"id": "img:flux", "label": "توليد صور", "desc": describe("img:flux", ready=image_ready())},
+        opts = [{"id": "img:flux", "label": "RYN Visual Brain", "desc": describe("img:flux", ready=image_ready())},
                 {"id": "gemini", "label": "Gemini", "desc": describe("gemini")},
                 {"id": "mix", "label": "Ryn mix", "desc": describe("mix")}]
         gid = groq_ids()
@@ -5783,10 +5785,10 @@ def register(app, b):
     vbrain = get_visual_brain() if get_visual_brain is not None else None
 
     def _build_provider_instances():
-        if NanoBananaProvider is None:
+        if GeminiImageProvider is None:
             return {}
         return {
-            "nano_banana": NanoBananaProvider(b, gemini_image),
+            "gemini": GeminiImageProvider(b, gemini_image),
             "flux": FluxCloudflareProvider(b, cf_ready, flux_image),
             "pollinations": PollinationsProvider(b, fallback_on, pollinations_image),
             "together": TogetherFluxProvider(b, together_image),
@@ -5853,7 +5855,7 @@ def register(app, b):
                 res = _img_result(data, model, en)
                 if res and res.get("image"):
                     last_generated_images[u] = res["image"]
-        except _ImgError as e:
+        except (_ImgError, UnsupportedEditOperationError) as e:
             res = {"status": "error", "text": str(e)}
         except Exception as e:
             log.exception("web image error")
@@ -5965,6 +5967,19 @@ def register(app, b):
             prompt=ver.final_prompt_en,
             text="تم الرجوع إلى النسخة المطلوبة ⏪🎨",
         )
+
+    @app.get("/api/image/capabilities")
+    def api_image_capabilities():
+        bad = guard()
+        if bad:
+            return bad
+        provs = _build_provider_instances()
+        flags = {k: p.is_ready() for k, p in provs.items()}
+        flags["local_enhance"] = True
+        if get_provider_capabilities is None:
+            return jsonify(capabilities={})
+        caps = {k: v.to_dict() for k, v in get_provider_capabilities(flags).items()}
+        return jsonify(capabilities=caps)
 
     @app.post("/api/cancel/<job_id>")
     def api_cancel(job_id):
