@@ -29,14 +29,14 @@ class TestIdentityAndMemory(unittest.TestCase):
             "غير الخلفية فقط لحديقة",
             user_id="user_imm",
             attached_images_bytes=[ORIG_PNG],
-            available_providers={"gemini": True},
+            available_providers={"instruct_pix2pix": True, "gemini": True},
         )
         from types import SimpleNamespace
         fake_part = SimpleNamespace(inline_data=SimpleNamespace(data=ORIG_PNG, mime_type="image/png"))
         res = self.brain.execute_plan(
             plan,
             user_id="user_imm",
-            provider_runners={"gemini": lambda _p, _r=None: (EDIT_PNG, "image/png", "gemini-2.5-flash-image")},
+            provider_runners={"instruct_pix2pix": lambda _p, _r=None: (EDIT_PNG, "image/png", "timbrooks/instruct-pix2pix")},
             ref_parts=[fake_part],
         )
         hist = self.store.list_history("user_imm")
@@ -46,7 +46,6 @@ class TestIdentityAndMemory(unittest.TestCase):
         self.assertEqual(res["parent_version_id"], hist[0]["version_id"])
         self.assertEqual(res["original_source_id"], hist[0]["version_id"])
 
-        # الرجوع للصورة الأصلية الأولى
         rev = self.store.revert_version("user_imm", target="first")
         self.assertEqual(rev.version_id, hist[0]["version_id"])
         self.assertTrue(rev.is_original_upload)

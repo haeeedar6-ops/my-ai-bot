@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-اختبارات توليد الصور والسيناريوهات الخمسة الأولى من القسم 13 (Section 13 Required Test Scenarios):
+اختبارات توليد الصور والسيناريوهات الخمسة الأولى من القسم 13 + اختبار بريميو الطلب (PremiumRequestBrief):
 1. Photorealistic hand holding a cup (5 digits when visible, natural grip & contact)
 2. Person crossing a river (balance, water contact, wet clothing only where appropriate, reflections/shadows)
 3. Child with a dog in a forest (subject count, animal anatomy, scale, fur, hand-to-dog contact)
 4. Close-up portrait (natural eyes, skin, hair, teeth, ears; NO random dirt/mud added; hands not forced)
 5. Dirty clothing after a muddy walk (mud follows contact/splash logic; no random dirt on clean surfaces)
-+ Ambiguous request handling
++ Ambiguous request handling & Premium Brief verification
 """
 import os
 import sys
@@ -26,12 +26,14 @@ class TestVisualGeneration(unittest.TestCase):
         self.assertTrue(plan.scene.has_visible_hands)
         self.assertIn("five digits per hand including the thumb", plan.final_prompt_en)
         self.assertIn("grip", plan.final_prompt_en)
+        self.assertTrue(bool(plan.premium_brief.brief_summary_ar))
+        self.assertIn("بريميو الطلب", plan.premium_brief.brief_summary_ar)
 
     def test_scenario_2_person_crossing_river(self):
         plan = self.brain.build_plan("Person crossing a shallow river in a forest", user_id="s2")
         self.assertTrue(plan.scene.has_humans)
         self.assertTrue(plan.scene.has_liquids_or_glass)
-        self.assertIn("wet clothing/skin strictly where water contact", plan.final_prompt_en)
+        self.assertIn("wet darkened clothing/skin strictly where water contact", plan.final_prompt_en)
         self.assertIn("reflections", plan.final_prompt_en)
 
     def test_scenario_3_child_with_dog_in_forest(self):
@@ -47,6 +49,7 @@ class TestVisualGeneration(unittest.TestCase):
         self.assertFalse(plan.scene.has_dirt_sweat_or_wear)
         self.assertNotIn("muddy walk", plan.final_prompt_en)
         self.assertIn("do not force hands into the frame", plan.final_prompt_en)
+        self.assertIn("subsurface scattering", plan.final_prompt_en)
 
     def test_scenario_5_dirty_clothing_after_muddy_walk(self):
         plan = self.brain.build_plan("Hiker with dirty clothing after a muddy walk in the rain", user_id="s5")

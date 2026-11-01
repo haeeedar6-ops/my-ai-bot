@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-اختبارات تعديل الصور والسيناريوهات 6 إلى 9 من القسم 13 + قيد No Silent Downgrade وقيد No Unconfigured Provider:
+اختبارات تعديل الصور والسيناريوهات 6 إلى 9 من القسم 13 + نموذج `timbrooks/instruct-pix2pix` + قيد No Silent Downgrade:
 6. Edit lighting only (face, clothing, pose, background remain stable)
 7. Change shirt color only (folds, fabric texture, body, background remain consistent)
 8. Remove a background object (reconstruct background perspective & texture)
 9. Restore an old image (damage reduced without inventing facial features or changing identity)
++ InstructPix2Pix (`timbrooks/instruct-pix2pix`) routing & execution test
 """
 import os
 import sys
@@ -12,8 +13,9 @@ if os.path.dirname(os.path.dirname(os.path.abspath(__file__))) not in sys.path:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 import base64
-from visual_brain import get_visual_brain
+from visual_brain import get_visual_brain, get_provider_capabilities
 from visual_brain.brain import UnsupportedEditOperationError
+from image_providers import InstructPix2PixProvider
 
 VALID_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
@@ -24,15 +26,36 @@ class TestVisualEditing(unittest.TestCase):
     def setUp(self):
         self.brain = get_visual_brain()
 
-    def test_no_unconfigured_provider_in_providers_or_plans(self):
+    def test_instruct_pix2pix_registered_and_routed_for_edits(self):
+        caps = get_provider_capabilities({"instruct_pix2pix": True, "gemini": True, "flux": True})
+        self.assertIn("instruct_pix2pix", caps)
+        self.assertEqual(caps["instruct_pix2pix"].model_id, "timbrooks/instruct-pix2pix")
+        self.assertTrue(caps["instruct_pix2pix"].image_to_image)
+        self.assertFalse(caps["instruct_pix2pix"].text_to_image)
+
         plan = self.brain.build_plan(
             "غير الخلفية لمكتبة خشبية",
-            user_id="u_no_nb",
+            user_id="u_p2p",
             attached_images_bytes=[VALID_PNG],
-            available_providers={"flux": True, "gemini": True},
+            available_providers={"instruct_pix2pix": True, "gemini": True, "flux": True},
         )
-        self.assertEqual(plan.recommended_provider, "gemini")
-        self.assertNotIn("unconfigured_provider", [plan.recommended_provider] + plan.fallback_providers)
+        self.assertEqual(plan.recommended_provider, "instruct_pix2pix")
+        self.assertIn("gemini", plan.fallback_providers)
+        self.assertTrue(bool(plan.edit_plan.instruct_pix2pix_instruction_en))
+
+        from types import SimpleNamespace
+        fake_part = SimpleNamespace(inline_data=SimpleNamespace(data=VALID_PNG, mime_type="image/png"))
+        p2p_prov = InstructPix2PixProvider(
+            custom_runner_fn=lambda prompt_en, _refs: (VALID_PNG, "image/png", "timbrooks/instruct-pix2pix")
+        )
+        res = self.brain.execute_plan(
+            plan,
+            user_id="u_p2p",
+            provider_runners={"instruct_pix2pix": p2p_prov.generate},
+            ref_parts=[fake_part],
+        )
+        self.assertEqual(res["status"], "done")
+        self.assertEqual(res["model"], "timbrooks/instruct-pix2pix")
 
     def test_scenario_6_edit_lighting_only(self):
         plan = self.brain.build_plan(
@@ -81,7 +104,7 @@ class TestVisualEditing(unittest.TestCase):
             "Change shirt color only to green",
             user_id="u_nodowngrade",
             attached_images_bytes=[VALID_PNG],
-            available_providers={"flux": True, "gemini": False, "pollinations": True},
+            available_providers={"flux": True, "gemini": False, "instruct_pix2pix": False, "pollinations": True},
         )
         self.assertEqual(plan.recommended_provider, "unsupported")
         with self.assertRaises(UnsupportedEditOperationError):
