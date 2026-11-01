@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
-"""الواجهة الأساسية الموحدة لجميع مزودات الصور في RYN."""
+"""الواجهة الأساسية الموحدة لجميع مزودات الصور المهيأة في RYN."""
 from __future__ import annotations
 from typing import Optional, List, Any, Tuple
 
 
 class ProviderUnavailableError(RuntimeError):
-    """خطأ يُرفع عندما يكون المزود غير مفعّل أو غير متاح."""
+    """يرفع عندما يكون المزود غير مهيأ أو غير متاح."""
 
 
 class BaseImageProvider:
     name: str = "base"
+    supports_text_to_image: bool = True
     supports_reference_image: bool = False
     supports_inpainting: bool = False
     supports_outpainting: bool = False
@@ -18,5 +19,4 @@ class BaseImageProvider:
         return False
 
     def generate(self, prompt_en: str, ref_parts: Optional[List[Any]] = None) -> Tuple[bytes, str, str]:
-        """يرجع (image_bytes, mime_type, model_name)."""
         raise NotImplementedError

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""مزود Together AI (FLUX.1-schnell) لتوليد الصور."""
+"""مزود Together AI (FLUX.1-schnell) لتوليد الصور من النص (Text-to-Image)."""
 from __future__ import annotations
 import os
 import base64
@@ -9,6 +9,7 @@ from .base import BaseImageProvider, ProviderUnavailableError
 
 class TogetherFluxProvider(BaseImageProvider):
     name = "together"
+    supports_text_to_image = True
     supports_reference_image = False
 
     def __init__(self, bot_module: Any, together_fn):
@@ -19,6 +20,8 @@ class TogetherFluxProvider(BaseImageProvider):
         return bool(os.environ.get("TOGETHER_API_KEY", "").strip())
 
     def generate(self, prompt_en: str, ref_parts: Optional[List[Any]] = None) -> Tuple[bytes, str, str]:
+        if ref_parts:
+            raise ProviderUnavailableError("Together FLUX endpoint is configured for Text-to-Image only.")
         if not self.is_ready():
             raise ProviderUnavailableError("TOGETHER_API_KEY is not set")
         res = self.together_fn(self.b, prompt_en, prompt_en)

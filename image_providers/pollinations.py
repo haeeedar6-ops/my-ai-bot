@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""مزود Pollinations الاحتياطي المجاني لتوليد الصور."""
+"""مزود Pollinations الاحتياطي لتوليد الصور من النص (Text-to-Image)."""
 from __future__ import annotations
 from typing import Optional, List, Any, Tuple
 import base64
@@ -8,6 +8,7 @@ from .base import BaseImageProvider, ProviderUnavailableError
 
 class PollinationsProvider(BaseImageProvider):
     name = "pollinations"
+    supports_text_to_image = True
     supports_reference_image = False
 
     def __init__(self, bot_module: Any, fallback_on_fn, pollinations_fn):
@@ -19,6 +20,8 @@ class PollinationsProvider(BaseImageProvider):
         return bool(self.fallback_on_fn())
 
     def generate(self, prompt_en: str, ref_parts: Optional[List[Any]] = None) -> Tuple[bytes, str, str]:
+        if ref_parts:
+            raise ProviderUnavailableError("Pollinations endpoint is Text-to-Image only and does not support reference-image editing.")
         if not self.is_ready():
             raise ProviderUnavailableError("Pollinations fallback is disabled")
         res = self.pollinations_fn(self.b, prompt_en, prompt_en)
