@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 سجل القدرات الفعلي والموثّق للمزودات المهيأة في المشروع (Section 7 Provider Capability Registry):
-- لا يحتوي على أي إشارة إلى Unconfigured Provider (قاعدة No Unconfigured Provider الصارمة).
-- يعتمد فقط على المسارات الموجودة فعلياً في المستودع:
-  1. gemini: تكامل Gemini Image الموجود في المشروع (يدعم T2I ويدعم التعديل بالصورة المرجعية I2I / Inpaint / Remove / Style Transfer).
-  2. flux: تكامل Cloudflare Workers AI FLUX (يدعم T2I فقط في المسار المهيأ حالياً، ولا يدعم تمرير صورة مرجعية).
-  3. together: تكامل Together AI FLUX (يدعم T2I فقط في المسار المهيأ حالياً).
-  4. pollinations: تكامل Pollinations (يدعم T2I فقط عبر رابط النص).
-  5. local_enhance: معالج الصور المحلي عبر Pillow (يدعم تحسين الحدة، إزالة التشويش، تصحيح الألوان، والترميم الأساسي بدون إعادة توليد المشهد).
+1. instruct_pix2pix: نموذج `timbrooks/instruct-pix2pix` المخصص لتعديل الصور بالتعليمات النصية (Image-to-Image / Inpaint / Remove / Style Transfer) مع الحفاظ العالي على بنية الصورة الأصلية.
+2. gemini: تكامل Gemini Image لتوليد الصور وتعديل الصور المرجعية.
+3. flux: تكامل Cloudflare Workers AI FLUX لتوليد الصور من النص (T2I).
+4. together: تكامل Together AI FLUX لتوليد الصور من النص (T2I).
+5. pollinations: تكامل Pollinations لتوليد الصور من النص (T2I).
+6. local_enhance: معالج الصور المحلي عبر Pillow (لتحسين الدقة وتصحيح الألوان والترميم الأساسي).
 """
 from __future__ import annotations
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 from .schemas import ProviderCapability
 
 
@@ -18,9 +17,25 @@ def get_provider_capabilities(configured_flags: Dict[str, bool] | None = None) -
     """بناء مصفوفة قدرات المزودات بناءً على حالة الإعداد الفعلية في البيئة."""
     flags = configured_flags or {}
     return {
+        "instruct_pix2pix": ProviderCapability(
+            provider_id="instruct_pix2pix",
+            display_name="InstructPix2Pix (timbrooks/instruct-pix2pix)",
+            model_id="timbrooks/instruct-pix2pix",
+            configured=bool(flags.get("instruct_pix2pix", False)),
+            text_to_image=False,
+            image_to_image=True,
+            inpainting_mask=True,
+            remove_object=True,
+            enhance_restore=True,
+            style_transfer=True,
+            max_reference_images=1,
+            accepted_formats=["image/png", "image/jpeg", "image/webp"],
+            notes="نموذج timbrooks/instruct-pix2pix المتخصص في تعديل الصور المرجعية عبر أوامر التعديل المباشرة مع التحكم في معامل الحفاظ على الصورة الأصلية (image_guidance_scale).",
+        ),
         "gemini": ProviderCapability(
             provider_id="gemini",
             display_name="Gemini Image",
+            model_id="gemini-2.5-flash-image",
             configured=bool(flags.get("gemini", False)),
             text_to_image=True,
             image_to_image=True,
@@ -35,6 +50,7 @@ def get_provider_capabilities(configured_flags: Dict[str, bool] | None = None) -
         "flux": ProviderCapability(
             provider_id="flux",
             display_name="Cloudflare FLUX",
+            model_id="@cf/black-forest-labs/flux-2-klein-4b",
             configured=bool(flags.get("flux", False)),
             text_to_image=True,
             image_to_image=False,
@@ -49,6 +65,7 @@ def get_provider_capabilities(configured_flags: Dict[str, bool] | None = None) -
         "together": ProviderCapability(
             provider_id="together",
             display_name="Together FLUX",
+            model_id="black-forest-labs/FLUX.1-schnell-Free",
             configured=bool(flags.get("together", False)),
             text_to_image=True,
             image_to_image=False,
@@ -63,6 +80,7 @@ def get_provider_capabilities(configured_flags: Dict[str, bool] | None = None) -
         "pollinations": ProviderCapability(
             provider_id="pollinations",
             display_name="Pollinations FLUX",
+            model_id="flux",
             configured=bool(flags.get("pollinations", False)),
             text_to_image=True,
             image_to_image=False,
@@ -77,6 +95,7 @@ def get_provider_capabilities(configured_flags: Dict[str, bool] | None = None) -
         "local_enhance": ProviderCapability(
             provider_id="local_enhance",
             display_name="Local Image Enhancer (Pillow)",
+            model_id="pillow-enhancer",
             configured=bool(flags.get("local_enhance", True)),
             text_to_image=False,
             image_to_image=False,
@@ -109,15 +128,13 @@ def verify_provider_for_task(
     if task_type == "text_to_image" and not requires_reference_image:
         if cap.text_to_image:
             return True, "يدعم التوليد من النص (T2I)."
-        return False, f"{cap.display_name} لا يدعم التوليد من النص."
+        return False, f"{cap.display_name} مخصص لتعديل الصور ولا يدعم التوليد من النص وحده."
 
-    # مهام التحسين والترميم وتصحيح الألوان على صورة مرفقة
     if task_type in ("upscale", "color_correct", "restore"):
         if cap.enhance_restore:
             return True, "يدعم تحسين وترميم الصور."
         return False, f"{cap.display_name} لا يدعم تحسين أو ترميم صورة مرجعية."
 
-    # مهام التعديل البصري، الحذف، التعديل الموضعي، أو تحويل النمط على صورة مرجعية
     if requires_reference_image or task_type in ("image_edit", "inpaint", "remove_object", "style_transfer"):
         if task_type == "inpaint" and not cap.inpainting_mask:
             return False, f"{cap.display_name} لا يدعم التعديل الموضعي (Inpainting) على صورة مرجعية."

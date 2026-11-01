@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-محلل الطلبات والنوايا والتعارضات والغموض (Request Understanding & Intent Analyzer — Section 3 & 4):
-- يصنّف الطلب بدقة إلى أحد مسارات العمل المطلوبة:
-  text_to_image | image_edit | inpaint | remove_object | restore | upscale | color_correct | style_transfer | revert
-- يكتشف الغموض (Ambiguous request) ويولّد افتراضاً آمناً واضحاً أو سؤال توضيح مختصراً.
-- يكتشف التعليمات المتعارضة ويحلها منطقياً دون اختراع تفاصيل لم يطلبها المستخدم.
+محلل الطلبات والنوايا والتعارضات والغموض (Request Understanding & Intent Analyzer — Section 3 & 4).
 """
 from __future__ import annotations
 import re
@@ -62,7 +58,7 @@ _RELIGHT_RE = re.compile(
 _EDIT_RE = re.compile(
     r"(?i)(عدّ?ل|تعديل|غيّ?ر|تغيير|بدّ?ل|تبديل|حسّ?ن|تحسين|خلّ?ي|اجعل|طبّ?ق|حوّ?ل|"
     r"بالصورة|عالـ?صورة|بهالصورة|على\s+الصورة|نفس\s+الصورة|وسّ?ع\s+الصورة|كبّ?ر\s+الصورة|ادمج|"
-    r"\b(?:edit|modify|change|replace|swap|enhance|upscale|outpaint|expand|inpaint|merge|blend|reframe|restore|this\s+photo|this\s+image)\b)"
+    r"\b(?:edit|modify|change|replace|swap|enhance|upscale|outpaint|expand|inpaint|merge|blend|reframe|restore|turn\s+the|make\s+the|this\s+photo|this\s+image)\b)"
 )
 
 _VAGUE_REQUEST_RE = re.compile(
@@ -108,11 +104,6 @@ def detect_language(text: str) -> str:
 
 
 def analyze_intent(text: str, has_attached_image: bool = False, has_memory_image: bool = False) -> Dict[str, object]:
-    """
-    تحليل نية المستخدم وتحديد:
-    - intent: generate | edit | remove | add | relight | enhance | style_transfer | revert
-    - task_type: text_to_image | image_edit | inpaint | remove_object | restore | upscale | color_correct | style_transfer
-    """
     t = (text or "").strip()
     lang = detect_language(t)
 
@@ -183,10 +174,6 @@ def analyze_intent(text: str, has_attached_image: bool = False, has_memory_image
 
 
 def detect_ambiguity_and_assumptions(text: str, is_edit: bool, has_ref_image: bool) -> Tuple[List[str], List[str], Optional[str]]:
-    """
-    فحص الغموض في الطلب (Section 4 & Section 13 - Ambiguous request):
-    لا نخترع هوية أو عمراً أو علامة تجارية أو نصاً لم يذكره المستخدم، ونحدد الغموض والافتراضات الآمنة.
-    """
     t = (text or "").strip()
     words = t.split()
     uncertainties: List[str] = []

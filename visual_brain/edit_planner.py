@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-مخطط التعديل ومسارات العمل الستة (Edit & Workflow Planner — Section 3 & Section 6):
-يحدد:
-- workflow_type: text_to_image | image_edit | inpaint | remove_object | restore | upscale | color_correct | style_transfer
-- operation_type: العملية الفرعية الدقيقة (background_only, clothing_only, shirt_color_only, lighting_adjustment, remove_object, restore_old_image, enhance_upscale, color_correct, style_transfer, outpainting, camera_reframe, multi_image_merge, localized_inpaint)
-- target_element, target_changes, protected_elements, expected_side_effects, allowed_edit_area.
+مخطط التعديل ومسارات العمل الستة (Edit & Workflow Planner — Section 3 & Section 6)
+مع توليد أمر التعديل المباشر المخصص لنموذج `timbrooks/instruct-pix2pix` وضبط `image_guidance_scale`.
 """
 from __future__ import annotations
 import re
@@ -18,14 +15,40 @@ _OP_PATTERNS = [
     ("outpainting", "image_edit", re.compile(r"(?i)(وسّ?ع\s+الصورة|توسيع\s+الصورة|كمّ?ل\s+حواف|خارج\s+حدودها|أعرض|\b(?:outpaint|outpainting|expand\s+image|uncrop|extend\s+borders)\b)")),
     ("multi_image_merge", "image_edit", re.compile(r"(?i)(ادمج\s+الصورتين|دمج\s+صور|ركّ?ب\s+الصورتين|اجمع\s+الصورتين|\b(?:merge\s+images|blend\s+photos|combine\s+two\s+images|composite)\b)")),
     ("shirt_color_only", "inpaint", re.compile(r"(?i)(لون\s+(?:القميص|الكنزة|الجاكيت)\s+فقط|\b(?:change\s+shirt\s+color\s+only|shirt\s+color\s+only)\b)")),
-    ("eye_color", "inpaint", re.compile(r"(?i)(لون\s+العيون|خلّ?ي\s+عيون[هو]?|غيّ?ر\s+عيون[هو]?|\b(?:eye\s+color|change\s+eyes\s+to|blue\s+eyes|green\s+eyes|hazel\s+eyes)\b)")),
-    ("background_only", "inpaint", re.compile(r"(?i)(غيّ?ر\s+الخلفية|بدّ?ل\s+الخلفية|الخلفية\s+بس|خلّ?ي\s+الخلفية|خلّ?ي\s+وراه|\b(?:change\s+background|replace\s+background|background\s+only|new\s+background)\b)")),
-    ("clothing_only", "inpaint", re.compile(r"(?i)(غيّ?ر\s+الملابس|بدّ?ل\s+الملابس|بدّ?ل\s+كنزة|بدّ?ل\s+القميص|لبّ?س[وه]?|خلّ?يه\s+لابس|\b(?:change\s+clothes|swap\s+outfit|change\s+shirt|change\s+jacket|wear\s+a)\b)")),
-    ("lighting_adjustment", "image_edit", re.compile(r"(?i)(عدّ?ل\s+الإضاءة|غيّ?ر\s+الإضاءة|خلّ?ي\s+الإضاءة|خلّ?ي\s+الجو|وقت\s+الغروب|بالليل|إضاءة\s+دافئة|\b(?:edit\s+lighting\s+only|change\s+only\s+the\s+lighting|change\s+lighting|relight|adjust\s+light|night\s+lighting|sunset\s+light)\b)")),
-    ("camera_reframe", "image_edit", re.compile(r"(?i)(غيّ?ر\s+زاوية|زاوية\s+المشهد|زاوية\s+الكاميرا|تكوين\s+الصورة|قرّ?ب\s+الكاميرا|بعّ?د\s+الكاميرا|\b(?:change\s+angle|reframe|camera\s+perspective|zoom\s+out|close-up\s+view)\b)")),
-    ("remove_object", "remove_object", re.compile(r"(?i)(احذف|شيل|أزل|ازل|امسح|فرّغ|إزالة|ازالة|\b(?:remove|delete|erase|get\s+rid\s+of)\b)")),
-    ("add_remove_object", "inpaint", re.compile(r"(?i)(ضيف|أضف|اضف|حطّ?ل?[وهي]?|\b(?:add\s+a|insert\s+a|put\s+a)\b)")),
+    ("background_only", "inpaint", re.compile(r"(?i)(غيّ?ر\s+الخلفية|بدّ?ل\s+الخلفية|خلفية\s+بس|الخلفية\s+فقط|خلي\s+الخلفية|خلّ?ي\s+وراه|\b(?:change\s+background|replace\s+background|background\s+only)\b)")),
+    ("clothing_only", "inpaint", re.compile(r"(?i)(غيّ?ر\s+(?:اللبس|الملابس|القميص|الجاكيت|البدلة)|لبّ?س[وه]?\s+|\b(?:change\s+clothes|change\s+outfit|change\s+shirt|wear\s+a)\b)")),
+    ("eye_color", "inpaint", re.compile(r"(?i)(غيّ?ر\s+لون\s+العيون|خلّ?ي\s+عيون[هو]?\s+|\b(?:change\s+eye\s+color|eyes\s+color\s+to)\b)")),
+    ("lighting_adjustment", "image_edit", re.compile(r"(?i)(عدّ?ل\s+الإضاءة|غيّ?ر\s+الإضاءة|خلّ?ي\s+الإضاءة|إضاءة\s+بس|إضاءة\s+فقط|خلّ?ي\s+الجو\s+(?:ليل|غروب|صباح)|\b(?:edit\s+lighting\s+only|change\s+lighting|relight|adjust\s+lighting|make\s+it\s+night|golden\s+hour\s+lighting)\b)")),
+    ("remove_object", "remove_object", re.compile(r"(?i)(احذف|شيل|أزل|ازل|امسح|\b(?:remove|delete|erase)\b)")),
+    ("add_remove_object", "inpaint", re.compile(r"(?i)(ضيف|أضف|اضف|حطّ?ل?[وهي]?|\b(?:add|insert|place)\b)")),
+    ("camera_reframe", "image_edit", re.compile(r"(?i)(غيّ?ر\s+زاوية\s+التصوير|من\s+زاوية\s+تانية|قرّ?ب\s+اللقطة|بعّ?د\s+اللقطة|\b(?:change\s+camera\s+angle|reframe|zoom\s+out|close-up\s+crop)\b)")),
 ]
+
+
+def build_instruct_pix2pix_directive(user_text: str, compat_op: str, protected_list: list) -> tuple[str, float, float]:
+    """
+    يبني تعليمة تحرير صريحة ومختصرة مصممة خصيصاً لنموذج `timbrooks/instruct-pix2pix`
+    مع ضبط `image_guidance_scale` للحفاظ على بنية الصورة الأصلية.
+    """
+    t = (user_text or "").strip()
+    # كلما زاد image_guidance_scale (مثلاً 1.6 - 1.85) حافظ instruct-pix2pix أكثر على تفاصيل وبنية الصورة الأصلية
+    scale_map = {
+        "lighting_adjustment": (1.75, 7.5),
+        "clothing_only": (1.65, 7.5),
+        "eye_color": (1.85, 7.0),
+        "background_only": (1.55, 7.5),
+        "add_remove_object": (1.65, 7.5),
+        "restore_old_image": (1.80, 6.5),
+        "color_correct": (1.85, 6.5),
+        "style_transfer": (1.35, 8.0),
+    }
+    img_g, txt_g = scale_map.get(compat_op, (1.60, 7.5))
+    keep_short = ", ".join(protected_list[:3]) if protected_list else "the subject's exact face, identity, and unrequested regions"
+    directive = (
+        f"Edit the image according to this instruction: {t}. "
+        f"Strictly preserve {keep_short}, maintaining realistic lighting, natural skin texture, and optical coherence."
+    )
+    return directive[:500], img_g, txt_g
 
 
 def plan_edit_operation(
@@ -35,12 +58,11 @@ def plan_edit_operation(
     ref_count: int = 0,
     task_type_override: str = "",
 ) -> EditPlan:
-    """بناء خطة التعديل المهيكلة وفق القسم 6 والقسم 11."""
     t = (user_text or "").strip()
     if not is_edit_like and ref_count == 0:
         return EditPlan(
             is_edit=False,
-            operation_type="generate",
+            operation_type="text_to_image",
             workflow_type="text_to_image",
             requires_reference_image=False,
         )
@@ -63,7 +85,6 @@ def plan_edit_operation(
     primary_op = detected_ops[0]
     workflow_type = task_type_override if (task_type_override and task_type_override != "image_edit") else detected_workflows[0]
 
-    # التوافق مع اختبار العمليات العشر: remove_object تصنف أيضاً ضمن add_remove_object عند فحص اسم العملية التقليدي
     compat_op = "add_remove_object" if primary_op == "remove_object" else (
         "clothing_only" if primary_op == "shirt_color_only" else primary_op
     )
@@ -105,6 +126,8 @@ def plan_edit_operation(
     allowed_area = area_map.get(compat_op, area_map.get(primary_op, "targeted region"))
     side_effects = side_effects_map.get(compat_op, ["preserve coherent lighting and contact shadows"])
 
+    pix2pix_inst, img_g_scale, txt_g_scale = build_instruct_pix2pix_directive(t, compat_op, protected_list)
+
     preserved_en = "; ".join(protected_list)
     edit_inst_en = (
         f"WORKFLOW: {workflow_type} | OPERATION: {primary_op}. "
@@ -129,5 +152,8 @@ def plan_edit_operation(
         requires_multi_image=requires_multi,
         can_run_local_enhancement=can_local,
         edit_instructions_en=edit_inst_en,
+        instruct_pix2pix_instruction_en=pix2pix_inst,
+        image_guidance_scale=img_g_scale,
+        guidance_scale=txt_g_scale,
         preserved_summary_en=preserved_en,
     )

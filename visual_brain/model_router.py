@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 موجّه النماذج والمزودات المبني على القدرات الموثّقة (Verified Provider Router — Section 7):
-- خالٍ تماماً من أي إشارة إلى Unconfigured Provider (قاعدة No Unconfigured Provider).
+- يدعم نموذج `timbrooks/instruct-pix2pix` (`instruct_pix2pix`) و `gemini` لمهام تعديل الصور.
 - يطبّق قاعدة No silent downgrade بصرامة:
-  لا يُسمح باختيار مزود احتياطي (Fallback) إلا إذا كان يدعم نفس نوع المهمة (`task_type`).
-  إذا طلب المستخدم تعديل صورة مرجعية ولم يتوفر أي مزود مفعّل يدعم التعديل، يُرجع قائمة فارغة مع رسالة خطأ صريحة
+  إذا طلب المستخدم تعديل صورة مرجعية ولم يتوفر أي مزود مفعّل يدعم التعديل، يُرجع `unsupported`
   بدلاً من تحويل الطلب بصمت إلى توليد صورة جديدة من النص (T2I).
 """
 from __future__ import annotations
@@ -16,13 +15,13 @@ from .provider_capabilities import get_provider_capabilities, verify_provider_fo
 TASK_ROUTING_TABLE: Dict[str, List[str]] = {
     "text_to_image_general": ["flux", "gemini", "together", "pollinations"],
     "text_to_image_photorealistic": ["flux", "gemini", "together", "pollinations"],
-    "image_edit": ["gemini"],
-    "inpaint": ["gemini"],
-    "remove_object": ["gemini"],
-    "style_transfer": ["gemini"],
-    "restore": ["gemini", "local_enhance"],
+    "image_edit": ["instruct_pix2pix", "gemini"],
+    "inpaint": ["instruct_pix2pix", "gemini"],
+    "remove_object": ["instruct_pix2pix", "gemini"],
+    "style_transfer": ["instruct_pix2pix", "gemini"],
+    "restore": ["gemini", "instruct_pix2pix", "local_enhance"],
     "upscale": ["local_enhance", "gemini"],
-    "color_correct": ["local_enhance", "gemini"],
+    "color_correct": ["local_enhance", "instruct_pix2pix", "gemini"],
 }
 
 
@@ -56,6 +55,10 @@ def route_model_for_task(
     candidates = list(TASK_ROUTING_TABLE.get(task_cat, TASK_ROUTING_TABLE["text_to_image_general"]))
 
     pref_map = {
+        "instruct_pix2pix": "instruct_pix2pix",
+        "instruct-pix2pix": "instruct_pix2pix",
+        "timbrooks/instruct-pix2pix": "instruct_pix2pix",
+        "pix2pix": "instruct_pix2pix",
         "gemini": "gemini",
         "cloudflare": "flux",
         "flux": "flux",
@@ -63,11 +66,10 @@ def route_model_for_task(
         "pollinations": "pollinations",
     }
     mapped_pref = pref_map.get((preferred_provider or "auto").lower())
-    if mapped_pref and mapped_pref in candidates and not requires_ref:
+    if mapped_pref and mapped_pref in candidates:
         candidates.remove(mapped_pref)
         candidates.insert(0, mapped_pref)
 
-    # فلترة المزودات بحيث تقتصر فقط على المزودات المفعّلة والتي تدعم نفس نوع المهمة فعلياً (No silent downgrade)
     verified_chain: List[str] = []
     check_task = "text_to_image" if not requires_ref else (edit_plan.workflow_type or "image_edit")
     for prov_id in candidates:
@@ -76,8 +78,7 @@ def route_model_for_task(
             verified_chain.append(prov_id)
 
     if not verified_chain:
-        # إذا لم يكن هناك أي مزود مفعّل (مثلاً في اختبارات الوحدة الجافة بدون مفاتيح)، نرجع المزود المتوافق نظرياً مع المهمة فقط
-        if not any(norm_avail.get(k, False) for k in ("gemini", "flux", "together", "pollinations")):
+        if not any(norm_avail.get(k, False) for k in ("instruct_pix2pix", "gemini", "flux", "together", "pollinations")):
             theoretical = [p for p in candidates if p != "local_enhance"] or candidates
             return theoretical[0], theoretical[1:], task_cat
         return "unsupported", [], task_cat

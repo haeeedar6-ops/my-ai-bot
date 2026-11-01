@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 المنسّق المركزي لـ RYN Visual Brain (Orchestrator — Section 1 to Section 12):
-- يفهم طلب المستخدم ويحوّله إلى خطة داخلية منظمة (VisualPlan / JSON Contract) قبل اختيار الموديل أو توليد البكسلات.
-- يطبّق مسارات العمل الستة (T2I, Reference-image edit, Inpainting, Object removal, Image enhancement/restoration, Style transfer).
-- يمنع التحويل الصامت لطلبات التعديل إلى توليد نصي (No silent downgrade).
-- يحفظ الصورة الأصلية المرفوعة كأصل ثابت ولا يكتب فوقها أبداً.
-- يعرض مراحل التقدم الحقيقية والصادقة فقط (No false progress).
+1. تحليل الطلب بعمق (Intent + Scene + Identity Lock + Edit Plan).
+2. إنشاء «بريميو الطلب» (`PremiumRequestBrief`) الذي يصيغ الرؤية الفوتوغرافية والفيزيائية وأوامر التعديل قبل إنشاء الصورة.
+3. توجيه الطلب إلى المزود المتوافق (`timbrooks/instruct-pix2pix` أو `Gemini Image` للتعديل، و `FLUX` / `Gemini` للتوليد) مع منع التحويل الصامت (`No silent downgrade`).
+4. فحص ومراجعة الصورة بعد التوليد/التعديل عبر نموذج المراجعة (`QualityInspector`)، وإذا وُجد فيها خطأ يكتب المراجع ملاحظات تصحيحية مباشرة (`generator_feedback_en` & `critic_notes_ar`) لنموذج التوليد ليُعيد رسمها بدقة.
 """
 from __future__ import annotations
 import base64
@@ -16,6 +15,7 @@ from .scene_analyzer import analyze_scene
 from .identity_engine import build_identity_lock, extract_reference_identity_signature
 from .edit_planner import plan_edit_operation
 from .prompt_engine import build_prompt_modules, synthesize_final_prompt
+from .request_brief import build_premium_request_brief
 from .model_router import route_model_for_task
 from .quality_inspector import inspect_generated_image
 from .visual_memory import VisualMemoryStore
@@ -46,8 +46,7 @@ class VisualBrain:
         ref_parts: Optional[List[Any]] = None,
     ) -> VisualPlan:
         """
-        المرحلة الإلزامية لفهم الطلب (Section 4):
-        تحويل طلب المستخدم إلى خطة داخلية منظمة (VisualPlan) قبل اختيار الموديل أو توليد البكسلات.
+        تحليل الطلب وبناء «بريميو الطلب» (`PremiumRequestBrief`) والخطة البصرية الكاملة (`VisualPlan`) قبل توليد أو تعديل الصورة.
         """
         raw = (user_text or "").strip()
         has_attached = bool(attached_images_bytes or ref_parts)
@@ -89,7 +88,7 @@ class VisualBrain:
             if mask_hint:
                 edit_plan.edit_instructions_en += " " + mask_hint
 
-        avail = dict(available_providers or {"flux": True, "gemini": True, "pollinations": True, "together": False})
+        avail = dict(available_providers or {"flux": True, "gemini": True, "instruct_pix2pix": False, "pollinations": True, "together": False})
         avail.setdefault("local_enhance", True)
         primary_prov, fallbacks, _task_cat = route_model_for_task(
             scene, edit_plan, avail, has_ref_image=uses_ref, preferred_provider=preferred_provider
@@ -102,11 +101,22 @@ class VisualBrain:
         if aspect_hint_str:
             final_en = f"{final_en} {aspect_hint_str}".strip()
 
+        # بناء «بريميو الطلب» الاحترافي (Request Analysis & Premium Blueprint) قبل توليد الصورة
+        premium_brief = build_premium_request_brief(
+            raw_request=raw,
+            scene=scene,
+            identity_lock=id_lock,
+            edit_plan=edit_plan,
+            final_prompt_en=final_en,
+            ask_llm_fn=ask_llm_fn,
+        )
+
         ref_id = latest_ver.version_id if (uses_ref and latest_ver) else ("uploaded_ref" if has_attached else None)
         prov_reqs = {
             "operation": task_type,
             "requires_reference_image": bool(edit_plan.is_edit or uses_ref),
             "requires_mask": bool(edit_plan.requires_mask),
+            "supports_instruct_pix2pix": bool(edit_plan.is_edit),
         }
 
         return VisualPlan(
@@ -119,6 +129,7 @@ class VisualBrain:
             scene=scene,
             identity_lock=id_lock,
             edit_plan=edit_plan,
+            premium_brief=premium_brief,
             must_keep=list(edit_plan.protected_elements),
             must_change=list(edit_plan.target_changes),
             uncertainties=uncertainties,
@@ -167,14 +178,14 @@ class VisualBrain:
         vision_audit_fn: Optional[Callable[[bytes, str], str]] = None,
     ) -> Dict[str, Any]:
         """
-        تنفيذ الخطة عبر مسارات العمل الستة مع احترام:
-        - No silent downgrade (رفض تحويل تعديل صورة مرجعية إلى توليد نصي T2I بصمت).
-        - حفظ الأصل كنسخة غير قابلة للكتابة فوقها.
-        - مراحل التقدم الحقيقية (Understanding request → Planning scene → Selecting model → Generating or editing → Inspecting → Refining).
+        تنفيذ الخطة عبر المراحل المتسلسلة:
+        1. تحليل الطلب وإنشاء بريميو الطلب (`PremiumRequestBrief`).
+        2. اختيار المحرك المتوافق (`timbrooks/instruct-pix2pix` أو `gemini` للتعديل، أو `flux`/`gemini` للتوليد).
+        3. توليد أو تعديل الصورة.
+        4. مراجعة الصورة عبر نموذج المراجعة (`QualityInspector`)، وإذا وُجد خطأ يكتب المراجع ملاحظات تصحيحية لنموذج توليد الصور ويعيد التوليد.
         """
         P = progress_cb or (lambda _msg: None)
 
-        # 1. الرجوع لإصدار سابق في الذاكرة البصرية
         if plan.intent == "revert":
             target = "first" if any(w in plan.raw_request for w in ("الأولى", "الأصلية", "first", "original")) else "previous"
             rev_ver = self.memory.revert_version(user_id, target=target)
@@ -188,18 +199,17 @@ class VisualBrain:
                     "version_id": rev_ver.version_id,
                     "parent_version_id": rev_ver.parent_version_id,
                     "plan": plan.to_dict(),
+                    "premium_brief": plan.premium_brief.to_dict(),
                     "text": "تم الرجوع إلى النسخة المطلوبة من ذاكرة الصور بنجاح ⏪🎨",
                 }
 
-        P("📐 Planning scene · تخطيط المشهد والعناصر المحمية...")
+        P("📐 Planning scene & Premium Brief · تحليل الطلب وإنشاء بريميو احترافي للمشهد...")
         orig_ref_bytes = self._extract_raw_ref_bytes(user_id, ref_parts)
         orig_ver: Optional[ImageVersion] = None
         if plan.edit_plan.is_edit and orig_ref_bytes:
-            # حفظ الصورة الأصلية المرفوعة كأصل ثابت قبل أي تعديل (Section 6)
             orig_ver = self.memory.retain_original_upload(user_id, orig_ref_bytes)
             plan.reference_image_id = orig_ver.version_id
 
-        # 2. التحقق الصارم من عدم التحويل الصامت (No silent downgrade — Section 2 & Section 7)
         if plan.edit_plan.is_edit:
             if not orig_ref_bytes and not ref_parts:
                 raise UnsupportedEditOperationError(
@@ -208,43 +218,50 @@ class VisualBrain:
 
         P("🧭 Selecting model · اختيار المحرك المتوافق مع العملية...")
         runners = dict(provider_runners or {})
-        # توفير معالج التحسين المحلي (Workflow E: Image enhancement / upscale / color_correct / restore) عند وجود صورة مرجعية
         if orig_ref_bytes and "local_enhance" not in runners:
             def _local_enhancer_runner(_prompt_en: str, _r_parts: Optional[List[Any]] = None) -> Tuple[bytes, str, str]:
                 enhanced = enhance_image_clarity(orig_ref_bytes, mode=plan.task_type)
                 return enhanced, "image/png", "Pillow-Enhancer"
-            if plan.task_type in ("upscale", "color_correct") or (plan.task_type == "restore" and "gemini" not in runners):
+            if plan.task_type in ("upscale", "color_correct") or (
+                plan.task_type == "restore" and not any(k in runners for k in ("gemini", "instruct_pix2pix"))
+            ):
                 runners["local_enhance"] = _local_enhancer_runner
 
         chain_names = [plan.recommended_provider] + [p for p in plan.fallback_providers if p != plan.recommended_provider]
         if plan.edit_plan.is_edit:
-            # ممنوع تماماً استخدام مزود T2I فقط (flux / pollinations / together) لتنفيذ تعديل على صورة مرجعية!
-            allowed_edit_providers = {"gemini", "local_enhance"}
+            # المسموح للتعديل على صورة مرجعية فقط: instruct_pix2pix, gemini, local_enhance (ممنوع التحويل الصامت لـ T2I)
+            allowed_edit_providers = {"instruct_pix2pix", "gemini", "local_enhance"}
             chain = [(name, runners[name]) for name in chain_names if name in runners and name in allowed_edit_providers]
             if not chain:
-                for k in ("gemini", "local_enhance"):
-                    if k in runners and (k == "gemini" or plan.task_type in ("upscale", "color_correct", "restore")):
+                for k in ("instruct_pix2pix", "gemini", "local_enhance"):
+                    if k in runners and (k in ("instruct_pix2pix", "gemini") or plan.task_type in ("upscale", "color_correct", "restore")):
                         chain.append((k, runners[k]))
             if not chain:
                 raise UnsupportedEditOperationError(
-                    "⚠️ تعديل الصورة المرجعية يتطلب تفعيل مزود يدعم التعديل البصري (GEMINI_API_KEY)؛ "
+                    "⚠️ تعديل الصورة المرجعية يتطلب تفعيل نموذج التعديل (timbrooks/instruct-pix2pix عبر HF_TOKEN / REPLICATE_API_TOKEN أو GEMINI_API_KEY)؛ "
                     "المزودات الأخرى المهيأة حالياً تدعم توليد صور جديدة من النص فقط، ولم يتم تحويل طلبك لتوليد نصي حفاظاً على صورتك الأصلية."
                 )
         else:
-            chain = [(name, runners[name]) for name in chain_names if name in runners and name != "local_enhance"]
+            chain = [(name, runners[name]) for name in chain_names if name in runners and name not in ("local_enhance", "instruct_pix2pix")]
             if not chain:
-                chain = [(k, v) for k, v in runners.items() if k != "local_enhance"]
+                chain = [(k, v) for k, v in runners.items() if k not in ("local_enhance", "instruct_pix2pix")]
 
         if not chain:
             raise RuntimeError("لا يوجد مزود صور مفعّل ومتوافق مع هذه العملية.")
 
-        cur_prompt = plan.final_prompt_en
+        cur_prompt = plan.premium_brief.premium_prompt_en or plan.final_prompt_en
+        cur_pix2pix_prompt = (
+            plan.premium_brief.instruct_pix2pix_command
+            or plan.edit_plan.instruct_pix2pix_instruction_en
+            or cur_prompt
+        )
         last_err: Optional[Exception] = None
         best_bytes: Optional[bytes] = None
         best_mime: str = "image/png"
         best_model: str = ""
         best_prov: str = ""
         quality_rep: Optional[QualityReport] = None
+        review_history: List[Dict[str, Any]] = []
 
         max_attempts = max(1, min(3, int(max_quality_retries)))
         for attempt in range(1, max_attempts + 1):
@@ -252,27 +269,37 @@ class VisualBrain:
                 try:
                     if attempt == 1:
                         stage_txt = (
-                            f"🎨 Generating · جاري توليد الصورة عبر {prov_name}..."
+                            f"🎨 Generating · جاري إنشاء الصورة بناءً على بريميو الطلب عبر {prov_name}..."
                             if not plan.edit_plan.is_edit
                             else f"🎨 Editing · جاري تعديل الصورة ({plan.task_type}) عبر {prov_name}..."
                         )
                     else:
-                        stage_txt = f"🔧 Refining · تحسين موجّه لتصحيح الملاحظات (محاولة {attempt}/{max_attempts})..."
+                        stage_txt = f"🔧 Refining · نموذج التوليد يطبق ملاحظات المراجع (محاولة {attempt}/{max_attempts})..."
                     P(stage_txt)
 
-                    img_bytes, mime, model_name = runner_fn(cur_prompt, ref_parts)
+                    prompt_for_runner = cur_pix2pix_prompt if prov_name == "instruct_pix2pix" else cur_prompt
+                    img_bytes, mime, model_name = runner_fn(prompt_for_runner, ref_parts)
                     if not img_bytes:
                         continue
                     if plan.task_type in ("upscale", "color_correct") and prov_name != "local_enhance":
                         img_bytes = enhance_image_clarity(img_bytes, mode=plan.task_type)
 
-                    P("🔎 Inspecting · فحص جودة النتيجة ومطابقتها للطلب...")
+                    P("🔎 Inspecting · نموذج المراجعة يفحص الصورة ويتحقق من خلوها من الأخطاء...")
                     q_rep = inspect_generated_image(
                         img_bytes,
                         plan,
                         original_image_bytes=orig_ref_bytes if plan.edit_plan.is_edit else None,
                         vision_audit_fn=vision_audit_fn,
                     )
+                    review_history.append({
+                        "attempt": attempt,
+                        "provider": prov_name,
+                        "model": model_name,
+                        "passed": q_rep.passed,
+                        "score": q_rep.score,
+                        "critic_notes_ar": list(q_rep.critic_notes_ar),
+                        "generator_feedback_en": q_rep.generator_feedback_en,
+                    })
                     best_bytes, best_mime, best_model, best_prov, quality_rep = (
                         img_bytes,
                         (mime or "image/png"),
@@ -290,8 +317,11 @@ class VisualBrain:
 
             if best_bytes and quality_rep and quality_rep.passed:
                 break
-            if quality_rep and quality_rep.retry_recommended and quality_rep.refined_prompt_addition:
-                cur_prompt = f"{plan.final_prompt_en[:3200]} {quality_rep.refined_prompt_addition}".strip()
+            if quality_rep and quality_rep.retry_recommended and (quality_rep.generator_feedback_en or quality_rep.refined_prompt_addition):
+                feedback_note = quality_rep.generator_feedback_en or quality_rep.refined_prompt_addition
+                P("📝 Critic Notes → Generator · المراجع رصد ملاحظات وأرسلها لنموذج التوليد لإعادة الرسم...")
+                cur_prompt = f"{plan.final_prompt_en[:3200]} {feedback_note}".strip()
+                cur_pix2pix_prompt = f"{cur_pix2pix_prompt[:350]} {feedback_note[:250]}".strip()
 
         if not best_bytes:
             if last_err:
@@ -320,16 +350,20 @@ class VisualBrain:
                 "task_type": plan.task_type,
                 "operation": plan.edit_plan.operation_type,
                 "style": plan.scene.style,
+                "premium_brief_ar": plan.premium_brief.brief_summary_ar,
                 "protected_elements": plan.must_keep[:5],
                 "target_changes": plan.must_change[:5],
                 "conflicts": plan.conflicts_detected,
                 "quality_score": quality_rep.score if quality_rep else 1.0,
                 "preservation_score": quality_rep.preservation_score if quality_rep else 1.0,
+                "review_history": review_history,
             },
         )
 
         caption_txt = "تم تعديل الصورة مع الحفاظ على الهوية والعناصر المحمية 🎨" if plan.edit_plan.is_edit else "تفضّل الصورة 🎨"
         short_note = best_model or best_prov or "RYN Visual Brain"
+        q_dict = quality_rep.to_dict() if quality_rep else {}
+        q_dict["review_history"] = review_history
         return {
             "status": "done",
             "image": b64_uri,
@@ -339,10 +373,12 @@ class VisualBrain:
             "note": short_note,
             "provider": best_prov,
             "prompt": cur_prompt,
+            "premium_brief": plan.premium_brief.to_dict(),
             "version_id": saved_ver.version_id,
             "parent_version_id": saved_ver.parent_version_id,
             "original_source_id": saved_ver.original_source_id,
-            "quality": quality_rep.to_dict() if quality_rep else {},
+            "quality": q_dict,
+            "review_history": review_history,
             "plan": plan.to_dict(),
             "contract": plan.to_contract_dict(),
             "text": caption_txt,

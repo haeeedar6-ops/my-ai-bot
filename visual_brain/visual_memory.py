@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-ذاكرة الأصول والإصدارات الدائمة والمعزولة (Assets & Version History Store — Section 6 & Section 9):
-- تحفظ الصورة الأصلية المرفوعة كأصل غير قابل للكتابة فوقه أبداً (`is_original_upload=True`).
-- تحفظ كل تعديل كإصدار جديد مرتبط بالأصل وبالنسخة الأب (`parent_version_id` & `original_source_id`).
-- تعزل بيانات كل مستخدم بالكامل مع حفظ دائم على القرص.
+ذاكرة الأصول والإصدارات الدائمة والمعزولة (Assets & Version History Store — Section 6 & Section 9).
 """
 from __future__ import annotations
 import os
@@ -114,9 +111,6 @@ class VisualMemoryStore:
             pass
 
     def retain_original_upload(self, user_id: str, image_bytes: bytes, mime_type: str = "image/jpeg") -> ImageVersion:
-        """
-        حفظ الصورة المرفوعة من المستخدم كأصل ثابت غير قابل للكتابة فوقه (Section 6: Always retain original).
-        """
         uri = "data:%s;base64,%s" % (mime_type or "image/jpeg", base64.b64encode(image_bytes).decode("ascii"))
         safe_u = self._safe_user_key(user_id)
         with self._lock:
@@ -158,7 +152,6 @@ class VisualMemoryStore:
         original_source_id: Optional[str] = None,
         plan_summary: Optional[dict] = None,
     ) -> ImageVersion:
-        """حفظ كل توليد أو تعديل كإصدار جديد دون الكتابة فوق النسخة الأصلية مطلقاً."""
         safe_u = self._safe_user_key(user_id)
         with self._lock:
             versions = self._load_user_unlocked(safe_u)
@@ -180,14 +173,13 @@ class VisualMemoryStore:
                 created_at=time.time(),
                 operation_type=operation_type,
                 user_prompt=user_prompt[:600],
-                final_prompt_en=final_prompt_en[:1800],
+                final_prompt_en=final_prompt_en[:2000],
                 provider_used=provider_used,
                 model_used=model_used,
                 image_data_uri=image_data_uri,
                 plan_summary=plan_summary or {},
             )
             versions.append(ver)
-            # عند تقليص السجل، لا نحذف النسخة الأصلية الأولى المرتبطة بالسلسلة الحالية
             if len(versions) > self.max_versions:
                 orig_ids = {v.original_source_id for v in versions[-5:]}
                 kept = [v for i, v in enumerate(versions) if i >= len(versions) - self.max_versions or v.version_id in orig_ids]

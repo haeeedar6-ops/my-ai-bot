@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-هياكل البيانات وعقود JSON الموحدة لـ RYN Visual Brain (Section 4 & Section 11 Data Contracts).
+هياكل البيانات وعقود JSON الموحدة لـ RYN Visual Brain (Section 4 & Section 11 Data Contracts)
++ عقد بريميو الطلب (PremiumRequestBrief) وملاحظات المراجع للمولّد (QualityReport.generator_feedback_en).
 """
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict
@@ -15,6 +16,7 @@ class ProviderCapability:
     provider_id: str
     display_name: str
     configured: bool
+    model_id: str = ""
     text_to_image: bool = False
     image_to_image: bool = False
     inpainting_mask: bool = False
@@ -46,6 +48,7 @@ class SceneSpec:
     materials: List[str] = field(default_factory=list)
     camera_angle: str = "eye-level"
     lens_mm: str = "35mm"
+    aperture: str = "f/2.0"
     style: str = "photorealistic"
     mood: str = "natural"
     text_overlay: str = ""
@@ -93,7 +96,7 @@ class IdentityLock:
 
 @dataclass
 class EditPlan:
-    """خطة التعديل المهيكلة (Section 4, Section 6 & Section 11)."""
+    """خطة التعديل المهيكلة (Section 4, Section 6 & Section 11) مع دعم timbrooks/instruct-pix2pix."""
     is_edit: bool = False
     operation_type: str = "text_to_image"
     workflow_type: str = "text_to_image"  # text_to_image | image_edit | inpaint | remove_object | restore | upscale | color_correct | style_transfer
@@ -110,6 +113,9 @@ class EditPlan:
     requires_multi_image: bool = False
     can_run_local_enhancement: bool = False
     edit_instructions_en: str = ""
+    instruct_pix2pix_instruction_en: str = ""
+    image_guidance_scale: float = 1.5
+    guidance_scale: float = 7.5
     preserved_summary_en: str = ""
 
     @property
@@ -121,16 +127,44 @@ class EditPlan:
 
 
 @dataclass
+class PremiumRequestBrief:
+    """
+    بريميو الطلب (Premium Request Analysis & Blueprint):
+    يُبنى بعد تحليل طلب المستخدم وقبل إرسال الأمر لنموذج توليد أو تعديل الصور.
+    """
+    raw_request: str = ""
+    analyzed_goal: str = ""
+    workflow_mode: str = "text_to_image"
+    subject_breakdown: List[str] = field(default_factory=list)
+    implicit_realism_requirements: List[str] = field(default_factory=list)
+    camera_and_optics_plan: str = ""
+    lighting_and_shadow_plan: str = ""
+    micro_texture_anchors: List[str] = field(default_factory=list)
+    edit_preservation_rules: List[str] = field(default_factory=list)
+    instruct_pix2pix_command: str = ""
+    brief_summary_ar: str = ""
+    premium_prompt_en: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class QualityReport:
-    """تقرير فحص جودة الصورة ومطابقة الطلب وحفظ المناطق المحمية (Section 8)."""
+    """
+    تقرير فحص ومراجعة الصورة بعد التوليد/التعديل مع ملاحظات المراجع الموجهة لنموذج التوليد (Section 8).
+    """
     passed: bool = True
     score: float = 1.0
     width: int = 0
     height: int = 0
     format: str = "png"
+    reviewer_model: str = "Optical- & Vision-Critic"
     checks_run: Dict[str, bool] = field(default_factory=dict)
     defects: List[Dict[str, str]] = field(default_factory=list)
     issues: List[str] = field(default_factory=list)
+    critic_notes_ar: List[str] = field(default_factory=list)
+    generator_feedback_en: str = ""
     preservation_score: float = 1.0
     retry_recommended: bool = False
     refined_prompt_addition: str = ""
@@ -176,6 +210,7 @@ class VisualPlan:
     scene: SceneSpec = field(default_factory=SceneSpec)
     identity_lock: IdentityLock = field(default_factory=IdentityLock)
     edit_plan: EditPlan = field(default_factory=EditPlan)
+    premium_brief: PremiumRequestBrief = field(default_factory=PremiumRequestBrief)
     must_keep: List[str] = field(default_factory=list)
     must_change: List[str] = field(default_factory=list)
     uncertainties: List[str] = field(default_factory=list)
@@ -194,6 +229,7 @@ class VisualPlan:
     retry_policy: Dict[str, Any] = field(default_factory=lambda: {
         "max_attempts": 2,
         "targeted_refinement_only": True,
+        "critic_writes_notes_to_generator": True,
     })
     recommended_provider: str = "flux"
     fallback_providers: List[str] = field(default_factory=list)
@@ -203,13 +239,14 @@ class VisualPlan:
     aspect_ratio_hint: str = ""
 
     def to_contract_dict(self) -> Dict[str, Any]:
-        """إرجاع العقد القياسي المطابق تماماً للقسم 11 من المواصفات."""
+        """إرجاع العقد القياسي المطابق تماماً للقسم 11 من المواصفات مع حقل بريميو الطلب."""
         return {
             "job_id": self.job_id,
             "task_type": self.task_type,
             "user_request": self.raw_request,
             "user_goal": self.user_goal or self.raw_request,
             "reference_image_id": self.reference_image_id,
+            "premium_brief": self.premium_brief.to_dict(),
             "scene_plan": {
                 "subjects": self.scene.subjects,
                 "actions": self.scene.actions_and_relations,
@@ -229,6 +266,8 @@ class VisualPlan:
                 "expected_side_effects": self.edit_plan.expected_side_effects,
                 "allowed_edit_area": self.edit_plan.allowed_edit_area,
                 "mask_required": self.edit_plan.requires_mask,
+                "instruct_pix2pix_instruction_en": self.edit_plan.instruct_pix2pix_instruction_en,
+                "image_guidance_scale": self.edit_plan.image_guidance_scale,
             },
             "provider_requirements": self.provider_requirements,
             "quality_checks": self.quality_checks,

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 محلل المشهد السياقي (Contextual Scene Plan Builder — Section 4 & Section 5):
-- يستخرج الأشخاص، الحيوانات، الأجسام، الأفعال والعلاقات المكانية (يحمل، يلمس، يعبر، خلف، بجانب).
+- يستخرج الأشخاص، الحيوانات، الأجسام، الأفعال والعلاقات المكانية.
 - يتحقق سياقياً: هل اليدان ظاهرتان أو تمسكان بشيء؟ هل المشهد يبرر وجود طين/أوساخ/عرق/ماء أم أنه بورتريه نظيف؟
-- لا يخترع هوية أو عمراً أو نصوصاً لم يذكرها المستخدم.
+- يحدد العدسة وفتحة العدسة الفيزيائية المناسبة لنوع اللقطة.
 """
 from __future__ import annotations
 import re
@@ -13,7 +13,7 @@ from .schemas import SceneSpec
 _HUMAN_RE = re.compile(
     r"(?i)(\b(?:person|man|woman|boy|girl|child|kid|baby|elderly|old\s+man|old\s+woman|portrait|selfie|face|eyes|smile|"
     r"hand|hands|fingers|doctor|engineer|worker|student|teacher|player|soldier|chef|driver|bride|groom|couple|family|crowd|"
-    r"human|character|model|actor|singer|gamer|barber|waiter)\b|"
+    r"human|character|model|actor|singer|gamer|barber|waiter|hiker)\b|"
     r"شخص|رجل|شاب|امرأة|بنت|فتاة|طفل|ولد|صبي|ختيار|عجوز|شيخ|وجه|عيون|ابتسامة|بورتريه|سيلفي|يد|أصابع|اصابع|"
     r"طبيب|مهندس|عامل|طالب|معلم|لاعب|جندي|طباخ|سائق|عريس|عروس|عائلة|ناس|بشر|انسان|إنسان|ملامح|بشرة|شعر|لحية|"
     r"قاعد|واقف|ماشي|عم\s+ي|عم\s+ت|جالس|نايم|نائم|يقرأ|يشرب|يأكل|يضحك|يبكي|يفكر|يلعب|يركض|يعبر)"
@@ -152,7 +152,6 @@ def analyze_scene(text: str, is_edit: bool = False, has_ref_image: bool = False,
     spec.has_indoor_furniture = bool(_INDOOR_RE.search(t))
     spec.has_outdoor_nature = bool(_OUTDOOR_RE.search(t))
 
-    # تجميع قائمة العناصر (subjects)
     subjects_all = list(spec.persons) + list(spec.animals)
     for obj_m in re.finditer(r"(?i)\b(cup|glass|mug|table|chair|car|tree|forest|river|shirt|jacket|book|phone|كاسة|كوب|طاولة|كرسي|شجرة|غابة|نهر|قميص|جاكيت)\b", t):
         w_obj = obj_m.group(0).strip()
@@ -163,46 +162,44 @@ def analyze_scene(text: str, is_edit: bool = False, has_ref_image: bool = False,
 
     materials: List[str] = []
     if spec.has_humans:
-        materials.extend(["skin", "hair", "eyes"])
+        materials.extend(["skin_subsurface_scattering", "hair_strands", "eyes_tear_film"])
     if spec.has_animals:
-        materials.append("fur")
+        materials.append("fur_micro_strands")
     if spec.has_clothing:
-        materials.append("fabric")
+        materials.append("woven_fabric_threads")
     if spec.has_liquids_or_glass:
-        materials.extend(["water", "glass"])
+        materials.extend(["water_refraction", "glass_fresnel"])
     if spec.has_dirt_sweat_or_wear:
         materials.append("context_dirt_or_moisture")
     if spec.has_indoor_furniture:
-        materials.extend(["wood", "surface"])
+        materials.extend(["natural_wood_grain", "matte_surface"])
     if re.search(r"(?i)(ذهب|فضة|معدن|حديد|ساعة|خاتم|نظارة|\b(?:metal|gold|silver|steel|watch|glasses)\b)", t):
-        materials.append("metal_and_lenses")
+        materials.append("metal_and_optical_lenses")
     spec.materials = materials
 
-    # الإضاءة والوقت
     if re.search(r"(?i)(ليل|مساء|قمر|نيون|\b(?:night|evening|moonlight|neon)\b)", t):
-        spec.lighting = "night ambient & practical warm/cool mixed lighting"
+        spec.lighting = "night ambient & practical warm/cool mixed lighting with realistic inverse-square falloff"
         spec.mood = "moody nocturnal"
     elif re.search(r"(?i)(صباح|شروق|صباحية|\b(?:morning|soft\s+morning\s+light|sunrise)\b)", t):
-        spec.lighting = "soft directional morning light with gentle natural shadows"
+        spec.lighting = "soft directional morning key light with gentle natural shadows and warm bounce"
         spec.mood = "fresh morning"
     elif re.search(r"(?i)(غروب|العصر|ذهبية|دافي|دافئة|\b(?:sunset|golden\s+hour|afternoon|warm\s+light)\b)", t):
-        spec.lighting = "warm golden-hour directional sunlight with long soft shadows"
+        spec.lighting = "warm golden-hour directional sunlight with long soft penumbra shadows and rim backlight"
         spec.mood = "warm inviting"
     elif re.search(r"(?i)(مطر|غائم|ضباب|شتاء|\b(?:rain|rainy|overcast|fog|cloudy|winter)\b)", t):
-        spec.lighting = "soft diffused overcast light with wet surface reflections"
+        spec.lighting = "soft diffused overcast sky light with wet Fresnel surface reflections"
         spec.mood = "atmospheric calm"
     elif re.search(r"(?i)(شباك|نافذة|غرفة|مقهى|\b(?:window|cafe|indoor|room)\b)", t):
-        spec.lighting = "natural side window key light mixing softly with ambient indoor light"
+        spec.lighting = "natural side window key light mixing softly with ambient indoor fill light"
         spec.mood = "intimate natural"
     else:
-        spec.lighting = "single unified natural key light with accurate contact shadows and soft penumbra"
+        spec.lighting = "single unified natural key light with accurate ambient occlusion contact shadows and soft penumbra"
 
-    # البيئة (environment)
-    bg_desc = "clean context-appropriate background with natural depth of field"
+    bg_desc = "clean context-appropriate background with natural optical depth of field"
     if spec.has_indoor_furniture and spec.has_outdoor_nature:
-        bg_desc = "indoor setting with window view to outdoor environment"
+        bg_desc = "indoor setting with natural window view to outdoor environment"
     elif spec.has_indoor_furniture:
-        bg_desc = "authentic indoor environment"
+        bg_desc = "authentic lived-in indoor environment with physically grounded furniture"
     elif spec.has_outdoor_nature:
         bg_desc = "natural outdoor environment with coherent horizon and atmospheric depth"
 
@@ -212,22 +209,29 @@ def analyze_scene(text: str, is_edit: bool = False, has_ref_image: bool = False,
         "weather_or_atmosphere": "wet/muddy" if spec.has_dirt_sweat_or_wear else "clear natural",
     }
 
-    # زاوية التصوير والعدسة والتكوين
     if re.search(r"(?i)(من\s+فوق|زاوية\s+علوية|\b(?:top-down|bird's-eye|overhead|high\s+angle)\b)", t):
         spec.camera_angle = "high-angle overhead"
+        spec.lens_mm = "35mm"
+        spec.aperture = "f/2.8"
     elif re.search(r"(?i)(من\s+تحت|زاوية\s+منخفضة|\b(?:low\s+angle|worm's-eye)\b)", t):
         spec.camera_angle = "low-angle"
+        spec.lens_mm = "35mm"
+        spec.aperture = "f/2.8"
     elif re.search(r"(?i)(قريب|بورتريه|وجه|ملامح|سيلفي|\b(?:close-up|portrait|macro|headshot|selfie)\b)", t):
         spec.camera_angle = "eye-level close-up portrait"
         spec.lens_mm = "50mm"
+        spec.aperture = "f/1.8"
     else:
         spec.camera_angle = "eye-level candid medium shot"
         spec.lens_mm = "35mm"
+        spec.aperture = "f/2.0"
 
     spec.camera = {
         "lens_mm": spec.lens_mm,
+        "aperture": spec.aperture,
+        "sensor": "full-frame 35mm CMOS RAW sensor",
         "viewpoint": spec.camera_angle,
-        "depth_of_field": "natural progressive depth of field focused on the main subject",
+        "depth_of_field": "natural progressive optical depth of field focused strictly on the main subject",
     }
     spec.composition = {
         "framing": spec.camera_angle,
