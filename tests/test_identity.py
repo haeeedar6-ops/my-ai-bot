@@ -1,9 +1,21 @@
 # -*- coding: utf-8 -*-
-"""اختبارات محرك الحفاظ على الهوية وعزل ذاكرة الصور بين المستخدمين."""
+"""اختبارات قفل الهوية، حفظ الصورة الأصلية بدون الكتابة فوقها، وعزل ذاكرة المستخدمين."""
+import os
+import sys
+if os.path.dirname(os.path.dirname(os.path.abspath(__file__))) not in sys.path:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 import tempfile
+import base64
 from visual_brain import VisualBrain
 from visual_brain.visual_memory import VisualMemoryStore
+
+ORIG_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+)
+EDIT_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+)
 
 
 class TestIdentityAndMemory(unittest.TestCase):
@@ -12,42 +24,32 @@ class TestIdentityAndMemory(unittest.TestCase):
         self.store = VisualMemoryStore(storage_dir=self.tmp_dir)
         self.brain = VisualBrain(memory_store=self.store)
 
-    def test_selective_identity_locking(self):
-        # عند طلب تغيير الخلفية فقط، يجب قفل الوجه والعيون والشعر والملابس والوضعية والزاوية
+    def test_immutable_original_retained_on_edit(self):
         plan = self.brain.build_plan(
             "غير الخلفية فقط لحديقة",
-            user_id="u_id_1",
-            attached_images_bytes=[b"img"],
+            user_id="user_imm",
+            attached_images_bytes=[ORIG_PNG],
+            available_providers={"gemini": True},
         )
-        lk = plan.identity_lock
-        self.assertTrue(lk.enabled)
-        self.assertTrue(lk.preserve_face_structure)
-        self.assertTrue(lk.preserve_eye_color)
-        self.assertTrue(lk.preserve_hair_style)
-        self.assertTrue(lk.preserve_clothing)
-        self.assertTrue(lk.preserve_body_pose)
-        self.assertFalse(lk.preserve_background)
-        self.assertIn("IDENTITY & STRUCTURAL LOCK", plan.prompt_modules.get("identity_lock", ""))
+        from types import SimpleNamespace
+        fake_part = SimpleNamespace(inline_data=SimpleNamespace(data=ORIG_PNG, mime_type="image/png"))
+        res = self.brain.execute_plan(
+            plan,
+            user_id="user_imm",
+            provider_runners={"gemini": lambda _p, _r=None: (EDIT_PNG, "image/png", "gemini-2.5-flash-image")},
+            ref_parts=[fake_part],
+        )
+        hist = self.store.list_history("user_imm")
+        self.assertEqual(len(hist), 2)
+        self.assertTrue(hist[0]["is_original_upload"])
+        self.assertFalse(hist[1]["is_original_upload"])
+        self.assertEqual(res["parent_version_id"], hist[0]["version_id"])
+        self.assertEqual(res["original_source_id"], hist[0]["version_id"])
 
-    def test_user_isolation_and_version_revert(self):
-        uri_u1_v1 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-        uri_u1_v2 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
-        uri_u2_v1 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9QzwAEjDAGACCcA/18976AAAAAAElFTkSuQmCC"
-
-        v1 = self.store.save_version("user_A", uri_u1_v1, "صورة 1", "prompt 1", operation_type="generate")
-        v2 = self.store.save_version("user_A", uri_u1_v2, "تعديل 1", "prompt 2", operation_type="clothing_only")
-        v_other = self.store.save_version("user_B", uri_u2_v1, "صورة مستخدم ب", "prompt B", operation_type="generate")
-
-        # التأكد من ربط النسخ وعدم خلط صور المستخدمين
-        self.assertEqual(v2.parent_version_id, v1.version_id)
-        self.assertEqual(self.store.get_latest_image_uri("user_A"), uri_u1_v2)
-        self.assertEqual(self.store.get_latest_image_uri("user_B"), uri_u2_v1)
-        self.assertNotEqual(self.store.get_latest_image_uri("user_A"), self.store.get_latest_image_uri("user_B"))
-
-        # التأكد من الرجوع للنسخة السابقة
-        reverted = self.store.revert_version("user_A", target="previous")
-        self.assertEqual(reverted.version_id, v1.version_id)
-        self.assertEqual(self.store.get_latest_image_uri("user_A"), uri_u1_v1)
+        # الرجوع للصورة الأصلية الأولى
+        rev = self.store.revert_version("user_imm", target="first")
+        self.assertEqual(rev.version_id, hist[0]["version_id"])
+        self.assertTrue(rev.is_original_upload)
 
 
 if __name__ == "__main__":

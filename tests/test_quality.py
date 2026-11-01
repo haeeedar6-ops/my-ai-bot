@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
-"""اختبارات فاحص جودة الصور وإعادة المحاولة عند فشل الصورة."""
+"""اختبارات فاحص الجودة السباعي وحلقة التحسين الموجهة (Section 8)."""
+import os
+import sys
+if os.path.dirname(os.path.dirname(os.path.abspath(__file__))) not in sys.path:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 import base64
+import tempfile
 from visual_brain import VisualBrain
 from visual_brain.visual_memory import VisualMemoryStore
 from visual_brain.quality_inspector import inspect_generated_image
-import tempfile
-
 
 VALID_1X1_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
@@ -23,6 +26,7 @@ class TestQualityInspector(unittest.TestCase):
         bad_rep = inspect_generated_image(b"not_an_image", plan)
         self.assertFalse(bad_rep.passed)
         self.assertTrue(bad_rep.retry_recommended)
+        self.assertTrue(len(bad_rep.defects) >= 1)
 
         good_rep = inspect_generated_image(VALID_1X1_PNG, plan)
         self.assertTrue(good_rep.passed)
