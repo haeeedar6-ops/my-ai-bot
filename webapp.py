@@ -962,7 +962,7 @@ async function send(){
   inp.value='';grow();
   const isImg=current==='img:flux';
   const hist=M().filter(m=>m.role!=='sys').slice(-14).map(m=>({role:m.role,text:m.text}));
-  const um={role:'user',text};if(pendingThumb){um.img=pendingThumb;pendingThumb=null}if(!isImg&&pendingFile){um.file=pendingFile;pendingFile=null}
+  const um={role:'user',text};if(pendingThumb){um.img=pendingThumb;pendingThumb=null}if(!isImg&&pendingFile){um.file=pendingFile;pendingFile=null}if(um.img||um.file)$('#chip').hidden=true;
   M().push(um);touch();busy=true;aborted=false;curJob=null;setSendMode(true);
   setBot('thinking');
   say(isImg?'عم أرسم 🎨...':(/(python|javascript|html|css|sql|كود|برمج|code)/i.test(text)?'عم أكتب الكود 💻':($('#chip').hidden?'عم أفكّر...':'عم أقرا المرفق 📎')));
@@ -4128,14 +4128,15 @@ def img_models():
     return seen
 
 
-def _extract_ref_image_parts(T, ctx, last_img_b64=None):
-    """استخراج أجزاء الصورة المرجعية (من المرفقات أو من آخر صورة مولّدة) لتعديلها."""
+def _extract_ref_image_parts(T, ctx, last_img_b64=None, prompt_text=""):
+    """استخراج أجزاء الصورة المرجعية (من المرفقات أو من آخر صورة مولّدة، مع دعم دمج صور متعددة وتوسيع الحواف)."""
     ref_parts = []
     if ctx and ctx.get("image"):
         for p in (ctx.get("parts") or []):
             if getattr(p, "inline_data", None) is not None:
                 ref_parts.append(p)
-    if not ref_parts and last_img_b64 and isinstance(last_img_b64, str) and last_img_b64.startswith("data:image/"):
+    wants_merge = bool(re.search(r"(?i)(ادمج|دمج|ركّ?ب\s+الصورتين|اجمع\s+الصورتين|\b(?:merge|blend|combine)\b)", prompt_text or ""))
+    if (not ref_parts or (wants_merge and len(ref_parts) == 1)) and last_img_b64 and isinstance(last_img_b64, str) and last_img_b64.startswith("data:image/"):
         try:
             header, b64data = last_img_b64.split(",", 1)
             mime = header.split(";")[0].replace("data:", "") or "image/jpeg"
@@ -4143,11 +4144,39 @@ def _extract_ref_image_parts(T, ctx, last_img_b64=None):
             ref_parts.append(T.Part.from_bytes(data=raw_bytes, mime_type=mime))
         except Exception:
             pass
+    # إذا كان الطلب توسيع صورة (Outpainting) نوسّع حواف الصورة المرجعية تلقائياً
+    if ref_parts and re.search(r"(?i)(وسّ?ع\s+الصورة|توسيع\s+الصورة|خارج\s+حدودها|\b(?:outpaint|outpainting|expand\s+image|uncrop)\b)", prompt_text or ""):
+        try:
+            from image_processing.preprocessing import expand_canvas_for_outpaint
+            p0 = ref_parts[0]
+            inl = getattr(p0, "inline_data", None)
+            raw_b = getattr(inl, "data", None) if inl else None
+            if isinstance(raw_b, (bytes, bytearray)) and len(raw_b) > 64:
+                expanded_b = expand_canvas_for_outpaint(bytes(raw_b))
+                ref_parts[0] = T.Part.from_bytes(data=expanded_b, mime_type="image/png")
+        except Exception:
+            pass
     return ref_parts
 
 
+def _decode_inline_image_bytes(raw_data):
+    if not raw_data:
+        return b""
+    if isinstance(raw_data, (bytes, bytearray)):
+        return bytes(raw_data)
+    if isinstance(raw_data, str):
+        try:
+            return base64.b64decode(raw_data, validate=True)
+        except Exception:
+            try:
+                return base64.b64decode(raw_data)
+            except Exception:
+                return raw_data.encode("utf-8")
+    return b""
+
+
 def _try_gemini_image(b, model, full, ref_parts=None):
-    """يدعم توليد صورة جديدة أو تعديل صورة مرفقة (Image-to-Image Editing) عبر Gemini."""
+    """يدعم توليد صورة جديدة أو تعديل صورة مرفقة (Image-to-Image Editing) عبر Gemini مع إعادة المحاولة لصيغ Modalities."""
     T = b.types
     client = b.client
     last = None
@@ -4158,49 +4187,56 @@ def _try_gemini_image(b, model, full, ref_parts=None):
             it = client.interactions.create(model=model, input=full)
             oi = getattr(it, "output_image", None)
             if oi is not None:
-                data = getattr(oi, "data", None)
-                if isinstance(data, str):
-                    try:
-                        data = base64.b64decode(data, validate=True)
-                    except Exception:
-                        data = data.encode("utf-8")
+                data = _decode_inline_image_bytes(getattr(oi, "data", None))
                 if data:
                     return data, (getattr(oi, "mime_type", None) or "image/png")
         except Exception as e:
             last = e
-    cfg = None
-    for modalities in (["IMAGE", "TEXT"], ["IMAGE"]):
+
+    req_contents = ([T.Content(role="user", parts=list(ref_parts) + [T.Part(text=full)])]
+                    if ref_parts else full)
+
+    for modalities in (["TEXT", "IMAGE"], ["IMAGE"]):
+        cfg = None
         try:
             cfg = T.GenerateContentConfig(response_modalities=modalities,
                                           http_options=T.HttpOptions(timeout=55000))
-            break
         except Exception:
             try:
                 cfg = T.GenerateContentConfig(response_modalities=modalities)
-                break
             except Exception:
                 cfg = None
-    req_contents = ([T.Content(role="user", parts=list(ref_parts) + [T.Part(text=full)])]
-                    if ref_parts else full)
-    resp = client.models.generate_content(model=model, contents=req_contents, config=cfg)
-    gen = getattr(resp, "generated_images", None) or []
-    if gen:
-        g = gen[0]
-        im = getattr(g, "image", None) or g
-        data = getattr(im, "image_bytes", None) or getattr(im, "_image_bytes", None)
-        if not data:
-            pil = getattr(im, "_pil_image", None)
-            if pil is not None:
-                buf = io.BytesIO()
-                pil.save(buf, format="PNG")
-                data = buf.getvalue()
-        if data:
-            return data, (getattr(im, "mime_type", None) or "image/png")
-    for c in (getattr(resp, "candidates", None) or []):
-        for p in (getattr(c.content, "parts", None) or []):
-            inline = getattr(p, "inline_data", None)
-            if inline is not None:
-                return (getattr(inline, "data", None) or b""), (getattr(inline, "mime_type", None) or "image/png")
+        try:
+            resp = client.models.generate_content(model=model, contents=req_contents, config=cfg)
+        except Exception as e:
+            last = e
+            code = getattr(e, "code", None)
+            if code in (401, 403, 429):
+                raise
+            continue
+
+        gen = getattr(resp, "generated_images", None) or []
+        if gen:
+            g = gen[0]
+            im = getattr(g, "image", None) or g
+            data = _decode_inline_image_bytes(getattr(im, "image_bytes", None) or getattr(im, "_image_bytes", None))
+            if not data:
+                pil = getattr(im, "_pil_image", None)
+                if pil is not None:
+                    buf = io.BytesIO()
+                    pil.save(buf, format="PNG")
+                    data = buf.getvalue()
+            if data:
+                return data, (getattr(im, "mime_type", None) or "image/png")
+
+        for c in (getattr(resp, "candidates", None) or []):
+            content_obj = getattr(c, "content", None)
+            for p in (getattr(content_obj, "parts", None) or []):
+                inline = getattr(p, "inline_data", None)
+                if inline is not None:
+                    data = _decode_inline_image_bytes(getattr(inline, "data", None))
+                    if data:
+                        return data, (getattr(inline, "mime_type", None) or "image/png")
     if last is not None:
         raise last
     raise RuntimeError("الرد ما فيه صورة")
@@ -5382,20 +5418,16 @@ def register(app, b):
                     mem_prompt = CODEFIX_RULES + FIX_RULES + diagnose(items) + numbered_listing(items) + mem_prompt
             full_user_text = (mem_prompt + text) if mem_prompt else text
             ctx = b.get_doc(W)
-            # إذا رفع المستخدم صورة وطلب تعديلها مباشرة من الشات (حتى خارج وضع الرسم)، نحوّلها لمحرك تعديل الصور الواقعي
-            if ctx and ctx.get("image") and _IMG_EDIT_INTENT_RE.search(text) and b.client and len(text) < 1200:
+            # إذا رفع المستخدم صورة وطلب تعديلها مباشرة من الشات، أو طلب الرجوع لنسخة صورة سابقة، نحوّلها للعقل البصري (run_image)
+            is_revert_img = bool(re.search(r"(?i)(ارجع\s+للصورة|رجّ?ع\s+الصورة|الصورة\s+القبلها|الصورة\s+السابقة|الصورة\s+الأولى|(?:revert\s+image|previous\s+image))", text))
+            if ((ctx and ctx.get("image") and _IMG_EDIT_INTENT_RE.search(text)) or is_revert_img) and len(text) < 1200:
                 try:
-                    set_progress(job_id, "🎨 عم يعدّل الصورة بواقعية...")
-                    ref_parts = _extract_ref_image_parts(T, ctx, last_generated_images.get(u))
-                    en = english_prompt(b, text, is_edit=True, has_ref_image=bool(ref_parts))
-                    ah = aspect_hint(text)
-                    full_img_p = (en + ((" " + ah) if ah else "")).strip()
-                    data_img, _mime_img, model_img = gemini_image(b, full_img_p, ref_parts=ref_parts)
-                    img_res = _img_result(data_img, model_img, en)
-                    img_res["text"] = "تم تعديل الصورة حسب طلبك 🎨"
-                    last_generated_images[u] = img_res["image"]
-                    finish(job_id, img_res)
-                    return
+                    day_key = u + "|" + time.strftime("%Y-%m-%d")
+                    run_image(job_id, text, day_key, u=u)
+                    with jlock:
+                        j_done = (jobs.get(job_id) or {}).get("status") == "done"
+                    if j_done:
+                        return
                 except Exception as e_img:
                     log.warning("تعديل الصورة المباشر بالشات فشل، بكمل دردشة: %s", redact_secrets(str(e_img)[:140]))
             if ctx:
@@ -5586,7 +5618,11 @@ def register(app, b):
             try:
                 mime = sniff_image(data)
                 low = name.lower()
-                if mime:   # صورة: بنعرفها من محتواها، مو من اسمها
+                if mime:   # صورة: نفحصها أمنياً عبر الحارس (ryn_guard) ونتأكد من سلامة بايتاتها
+                    if G is not None and hasattr(G, "validate_image_upload"):
+                        up_v = G.validate_image_upload(data, name, max_bytes=MAX_UPLOAD)
+                        if not up_v.get("ok"):
+                            raise ValueError("unsupported")
                     parts = [T.Part.from_bytes(data=data, mime_type=mime)]
                     any_img = True
                     n_img += 1
@@ -5766,7 +5802,7 @@ def register(app, b):
             has_attached_img = bool(ctx and ctx.get("image"))
             mem_latest_uri = vbrain.memory.get_latest_image_uri(u) if vbrain is not None else last_generated_images.get(u)
             ref_parts = _extract_ref_image_parts(
-                T, ctx, mem_latest_uri if is_edit_req else None
+                T, ctx, mem_latest_uri if is_edit_req else None, prompt_text=prompt
             )
             if is_cancelled(job_id):
                 return
@@ -5800,6 +5836,8 @@ def register(app, b):
                     progress_cb=lambda msg: set_progress(job_id, msg),
                 )
                 exec_out.pop("image_bytes", None)
+                if exec_out.get("model"):
+                    exec_out["note"] = img_label(exec_out["model"])
                 res = exec_out
                 if res.get("image"):
                     last_generated_images[u] = res["image"]
