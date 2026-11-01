@@ -21,14 +21,38 @@ STYLE_DIRECTIVES = {
 
 PROMPT_COMPOSER_SYS = (
     "You are the Premium Prompt Architect of RYN Visual Brain. "
-    "First analyze the user's request and the modular visual directives, then craft ONE cohesive, ultra-realistic English photographic prompt (110 to 200 words). "
+    "Translate and expand the user's request into ONE cohesive, front-loaded, ultra-realistic English photographic prompt (75 to 125 words). "
     "Rules:\n"
-    "1) Keep EVERY detail the user requested (subjects, exact counts, actions, spatial relations, colors, setting, clothing, mood). Never invent a person's identity, exact age, brand, or text that the user did not provide.\n"
-    "2) Weave the provided modular directives (Composition, Lighting Physics, Optical Camera & Lens, Subsurface Skin & Contextual Materials, Style, and Protected Elements Lock if editing) naturally.\n"
-    "3) Do NOT add dirt, mud, sweat, or damage unless explicitly specified in the scene modules. A clean portrait must remain clean.\n"
+    "1) FRONT-LOAD THE SUBJECT: Start the very first sentence in clear English with the exact subjects, count, candid action, and setting requested by the user. Never leave Arabic words in the output.\n"
+    "2) ANTI-DEFORMATION FRAMING & POSE: Unless the user explicitly asked for a full-body shot or sitting cross-legged on the ground, frame human subjects as a candid waist-up or chest-up medium shot (50mm lens, f/2.0) in a natural unposed 3/4 interaction (not staring stiffly dead-center at the camera with a fake stock-photo toothy grin). Keep legs/feet outside the frame to prevent limb distortion.\n"
+    "3) CONTEXTUAL REALISM: Weave the provided lighting, lens optics, and natural skin/fur/fabric texture naturally. Do NOT add dirt, mud, sweat, or damage unless explicitly specified in the scene modules.\n"
     "4) NEVER use forbidden digital hype buzzwords (8K, 4K, hyper-realistic, masterpiece, ultra detailed, CGI, 3D render, flawless).\n"
     "5) Output ONLY the final English prompt."
 )
+
+_AR_TO_EN_DICT = [
+    ("طفل صغير", "a young child"), ("طفل", "a young child"), ("ولد", "a young boy"), ("بنت صغيرة", "a young girl"),
+    ("بنت", "a girl"), ("شاب", "a young man"), ("رجل", "a man"), ("امرأة", "a woman"), ("ختيار", "an elderly man"),
+    ("عجوز", "an elderly person"), ("كلب", "a golden retriever dog"), ("قطة", "a cat"), ("بسينة", "a cat"),
+    ("حصان", "a horse"), ("غابة", "a sunlit forest with tall trees"), ("حديقة", "a green park with trees"),
+    ("نهر", "a shallow flowing river"), ("بحر", "the sea shore"), ("شارع", "an authentic city street"),
+    ("مقهى", "a cozy cafe"), ("غرفة", "a natural indoor room"), ("مطر", "gentle rain"),
+    ("ليل", "nighttime ambient light"), ("غروب", "warm golden hour sunset light"), ("صباح", "soft morning sunlight"),
+    ("يلعب مع", "candidly interacting with"), ("مع", "next to"), ("في", "in"), ("على", "on"),
+    ("يمسك", "holding"), ("يشرب", "drinking"), ("قهوة", "coffee"), ("كاسة", "a cup"), ("كوب", "a ceramic mug"),
+    ("بورتريه", "close-up portrait"), ("صورة", "candid photograph of"), ("ارسملي", ""), ("ارسم", ""), ("اعمل", ""),
+]
+
+
+def _fallback_translate_ar_to_en(text: str) -> str:
+    import re as _re
+    out = text or ""
+    for ar, en in _AR_TO_EN_DICT:
+        out = _re.sub(r"(?i)" + _re.escape(ar), f" {en} ", out)
+    # إزالة أي أحرف عربية متبقية حتى لا يرتبك محرك FLUX/T5
+    out = _re.sub(r"[؀-ۿ]+", " ", out)
+    out = _re.sub(r"\s{2,}", " ", out).strip(" ,.-")
+    return out or "a candid natural scene"
 
 
 def build_prompt_modules(
@@ -39,7 +63,8 @@ def build_prompt_modules(
 ) -> Dict[str, str]:
     modules: Dict[str, str] = {}
 
-    scene_parts = [f"Primary Request: {scene.user_goal}"]
+    en_goal = _fallback_translate_ar_to_en(scene.user_goal) if any("\u0600" <= c <= "\u06FF" for c in (scene.user_goal or "")) else scene.user_goal
+    scene_parts = [f"Primary Subject & Scene: {en_goal}"]
     if scene.subjects:
         scene_parts.append(f"Subjects: {', '.join(scene.subjects)}")
     if scene.actions_and_relations:

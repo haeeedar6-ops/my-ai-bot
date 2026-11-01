@@ -31,17 +31,17 @@ REALISM_MODULES = {
         "true-to-life color science, accurate Kelvin white balance for the environment, and natural unedited RAW-photo micro-contrast."
     ),
     "human_face_and_body": (
-        "plausible head-to-body proportions, natural neck sternocleidomastoid tension and shoulder alignment, accurate joint direction, balanced posture, and physical weight compressing the ground or seat; "
-        "authentic multi-layer skin subsurface scattering (warm translucent light diffusion through earlobes, nostrils, and thin skin edges), natural skin pore micro-geometry varying across forehead, nose bridge, and cheeks, fine expression lines around eyes and mouth, ultra-fine vellus peach fuzz catching grazing light, subtle natural skin tone variation, and context-appropriate skin moisture with zero waxy, airbrushed, or plastic shine; "
-        "consistent binocular eye gaze convergence on a single focal point, pupil size matching the ambient light, crisp cornea catchlights reflecting the actual light source, wet tear-film meniscus along the lower eyelid, and natural facial asymmetry within organic human variation; "
-        "gradual scalp-to-hairline transition with stray flyaway strands, natural anisotropic hair strand grouping interacting with light, individual eyebrow hairs and eyelashes of varied length, natural lip micro-creases, and natural ivory teeth."
+        "candid waist-up medium framing with natural head-to-shoulder proportions, relaxed unposed 3/4 posture, and genuine candid expression (not staring stiffly dead-center at the camera with a fake stock-photo grin); "
+        "authentic multi-layer skin subsurface scattering (warm translucent light diffusion through earlobes and thin skin edges), natural skin pores with matte-to-natural highlight roll-off, fine expression lines, ultra-fine vellus peach fuzz catching grazing light, subtle natural skin tone variation, and zero waxy, airbrushed, or plastic shine; "
+        "consistent eye gaze convergence on a single focal point, pupil size matching the ambient light, crisp cornea catchlights, wet tear-film moisture, and natural facial symmetry within organic human variation; "
+        "gradual scalp-to-hairline transition with stray flyaway strands, natural hair strand grouping interacting with light, individual eyebrow hairs and eyelashes, natural lip texture, and natural ivory teeth if smiling."
     ),
     "hands_when_visible": (
         "when hands are visible in the frame: anatomically accurate five digits per hand including the thumb, natural phalangeal finger lengths, distinct knuckle skin creases, curved fingernails with subtle lunula and nail bed translucency, realistic palm structure, extensor tendons, and wrist connection, "
         "and physically grounded grip and skin-blanching contact pressure with held objects (with no fused, extra, or duplicated fingers)."
     ),
     "hands_not_forced": (
-        "do not force hands into the frame if the composition is a close-up face portrait or hands are naturally outside the frame; if any fingers appear, render five natural digits per hand."
+        "do not force hands into the frame (and do not show crossed legs or feet on the ground) if the composition is a close-up or waist-up portrait where extremities are naturally outside the frame; if any fingers appear, render five natural digits per hand."
     ),
     "animals": (
         "plausible animal anatomy, accurate limb count and skeletal joints, believable scale relative to human subjects, layered multi-directional fur clumping and guard-hair sheen, wet nose leather texture, clear cornea reflections, and physically grounded paw/hand-to-animal contact."
