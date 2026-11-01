@@ -7,7 +7,6 @@ from .validation import detect_image_format_and_size
 
 
 def prepare_reference_image(image_bytes: bytes, max_side: int = 1536) -> Tuple[bytes, str]:
-    """التحقق من الصورة المرجعية وضبط أبعادها إن لزم الأمر."""
     fmt, _w, _h = detect_image_format_and_size(image_bytes)
     if fmt is None:
         raise ValueError("ملف الصورة المرجعية غير صالح أو بصيغة غير مدعومة")
@@ -26,7 +25,6 @@ def prepare_reference_image(image_bytes: bytes, max_side: int = 1536) -> Tuple[b
 
 
 def expand_canvas_for_outpaint(image_bytes: bytes, pad_ratio: float = 0.25) -> bytes:
-    """توسيع حواف الصورة استعداداً لعملية Outpainting عند توفر Pillow."""
     try:
         from PIL import Image
         with Image.open(io.BytesIO(image_bytes)) as im:

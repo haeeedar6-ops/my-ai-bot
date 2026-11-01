@@ -1,32 +1,27 @@
 # -*- coding: utf-8 -*-
-"""
-بناء أقنعة التعديل الموضعي (Localized Masking & Region Isolation):
-يولّد توصيف القناع الموضعي وقناع PNG للعمليات الموضعية (الخلفية، الملابس، العيون، الحذف/الإضافة)
-بحيث لا يتم إعادة توليد المناطق المحمية من الصورة.
-"""
+"""بناء أقنعة التعديل الموضعي (Localized Masking & Region Isolation — Section 3 & Section 6)."""
 from __future__ import annotations
 import io
 from typing import Optional
 
 
 def build_region_mask_hint(operation_type: str, user_text: str = "") -> str:
-    """إرشادات العزل الموضعي الدقيقة لكل نوع من عمليات التعديل العشر."""
     hints = {
         "background_only": (
             "[LOCALIZED MASK: BACKGROUND ONLY] Isolate the foreground subject with a sharp alpha boundary; "
             "replace ONLY the background pixels and match edge spill lighting while keeping 100% of the subject pixels intact."
         ),
         "clothing_only": (
-            "[LOCALIZED MASK: GARMENT ONLY] Mask strictly the torso/clothing region; "
-            "keep the face, neck, hands, pose, and entire background pixel-locked."
+            "[LOCALIZED MASK: GARMENT ONLY] Mask strictly the garment/shirt region; "
+            "preserve existing fabric weave, folds, seams, face, neck, hands, pose, and entire background."
         ),
         "eye_color": (
             "[LOCALIZED MICRO-MASK: IRIS ONLY] Mask strictly the iris area of both eyes; "
             "preserve natural pupil size, catchlight reflection, sclera, eyelids, and entire face."
         ),
         "add_remove_object": (
-            "[LOCALIZED INPAINT MASK] Inpaint strictly the bounding box of the target object to add/remove; "
-            "blend surrounding surface texture and contact shadows seamlessly without altering the rest of the scene."
+            "[LOCALIZED OBJECT REMOVAL / INPAINT MASK] Inpaint strictly the bounding box of the target object; "
+            "reconstruct the background consistently with nearby texture, perspective, depth, and lighting."
         ),
         "localized_inpaint": (
             "[SELECTIVE REGION INPAINT] Modify strictly the user-specified elements while locking all untouched regions."
@@ -36,7 +31,6 @@ def build_region_mask_hint(operation_type: str, user_text: str = "") -> str:
 
 
 def generate_focus_mask_bytes(width: int = 512, height: int = 512, region: str = "center") -> Optional[bytes]:
-    """توليد قناع أبيض وأسود (Mask PNG) عند الحاجة لأدوات Inpainting."""
     try:
         from PIL import Image, ImageDraw
         mask = Image.new("L", (width, height), 0)

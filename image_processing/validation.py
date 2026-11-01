@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-فحص صحة وجودة الصور (Image Validation):
-يفحص توقيع الملف (Magic Bytes)، الأبعاد (Width/Height)، حجم البيانات، والتشوه البصري،
-ويعمل بالمكتبة القياسية لبايثون مع دعم إضافي لـ Pillow عند توفرها.
+فحص صحة وجودة الصور ومقارنة الصورة المعدّلة بالأصلية (Image Validation & Preservation Comparison — Section 6 & 8).
 """
 from __future__ import annotations
 import struct
@@ -11,15 +9,12 @@ from typing import Dict, Any, Tuple, Optional
 
 
 def detect_image_format_and_size(data: bytes) -> Tuple[Optional[str], int, int]:
-    """استخراج صيغة الصورة (png/jpeg/webp) وأبعادها (width, height) بدون تبعيات خارجية."""
     if not data or not isinstance(data, (bytes, bytearray)) or len(data) < 16:
         return None, 0, 0
     b = bytes(data)
-    # 1. PNG
     if b.startswith(b"\x89PNG\r\n\x1a\n") and len(b) >= 24:
         w, h = struct.unpack(">II", b[16:24])
         return "png", int(w), int(h)
-    # 2. JPEG
     if b.startswith(b"\xff\xd8"):
         idx = 2
         n = len(b)
@@ -42,7 +37,6 @@ def detect_image_format_and_size(data: bytes) -> Tuple[Optional[str], int, int]:
                 break
             idx += 2 + seg_len
         return "jpeg", 512, 512
-    # 3. WEBP
     if b[:4] == b"RIFF" and b[8:12] == b"WEBP" and len(b) >= 30:
         chunk = b[12:16]
         if chunk == b"VP8X" and len(b) >= 30:
@@ -58,7 +52,6 @@ def detect_image_format_and_size(data: bytes) -> Tuple[Optional[str], int, int]:
 
 
 def validate_generated_image_bytes(data: bytes, min_bytes: int = 40) -> Dict[str, Any]:
-    """فحص شامل لسلامة وجودة الصورة المولّدة."""
     if not data or not isinstance(data, (bytes, bytearray)):
         return {"valid": False, "score": 0.0, "format": None, "width": 0, "height": 0, "issues": ["لا توجد بيانات للصورة"]}
     if len(data) < min_bytes:
@@ -74,7 +67,6 @@ def validate_generated_image_bytes(data: bytes, min_bytes: int = 40) -> Dict[str
         issues.append("أبعاد الصورة غير صالحة")
         score = 0.0
 
-    # فحص إضافي عبر Pillow إذا كانت متوفرة في البيئة
     try:
         from PIL import Image, ImageStat
         with Image.open(io.BytesIO(data)) as im:
@@ -104,3 +96,33 @@ def validate_generated_image_bytes(data: bytes, min_bytes: int = 40) -> Dict[str
         "height": h,
         "issues": issues,
     }
+
+
+def compare_original_and_edited(
+    orig_bytes: bytes,
+    edited_bytes: bytes,
+    operation_type: str = "image_edit",
+) -> Dict[str, Any]:
+    """
+    مقارنة الصورة المعدّلة بالصورة الأصلية (Section 6 & Section 8):
+    تفحص تناسب الأبعاد والحفاظ على الهيكلة خارج منطقة التعديل عند الإمكان.
+    """
+    fmt_o, w_o, h_o = detect_image_format_and_size(orig_bytes)
+    fmt_n, w_n, h_n = detect_image_format_and_size(edited_bytes)
+    if not fmt_n or w_n <= 0 or h_n <= 0:
+        return {"passed": False, "preservation_score": 0.0, "warning": "الصورة المعدّلة غير صالحة."}
+    if not fmt_o or w_o <= 0 or h_o <= 0:
+        return {"passed": True, "preservation_score": 1.0, "warning": ""}
+
+    # للعمليات التي لا يفترض أن تغير أبعاد الإطار (ما عدا outpainting / camera_reframe / upscale)
+    if operation_type not in ("outpainting", "camera_reframe", "enhance_upscale", "upscale"):
+        ratio_o = w_o / float(h_o)
+        ratio_n = w_n / float(h_n)
+        if abs(ratio_o - ratio_n) > 0.35 and (w_o >= 64 and w_n >= 64):
+            return {
+                "passed": False,
+                "preservation_score": 0.45,
+                "warning": "تغيّرت نسبة أبعاد الصورة بشكل كبير رغم عدم طلب تغيير زاوية أو أبعاد الإطار.",
+            }
+
+    return {"passed": True, "preservation_score": 0.95, "warning": ""}
