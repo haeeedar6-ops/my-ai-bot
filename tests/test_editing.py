@@ -104,7 +104,7 @@ class TestVisualEditing(unittest.TestCase):
             "Change shirt color only to green",
             user_id="u_nodowngrade",
             attached_images_bytes=[VALID_PNG],
-            available_providers={"flux": True, "gemini": False, "instruct_pix2pix": False, "pollinations": True},
+            available_providers={"flux": True, "gemini": False, "instruct_pix2pix": False, "together": True},
         )
         self.assertEqual(plan.recommended_provider, "unsupported")
         with self.assertRaises(UnsupportedEditOperationError):
