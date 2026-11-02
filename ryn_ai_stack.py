@@ -863,6 +863,10 @@ class GitHubFileManager:
                 with open(self.storage_path, "r", encoding="utf-8") as f:
                     d = json.load(f)
                 if isinstance(d, dict):
+                    # حساب المالك ما بياخد توكن من الملف أبداً (GITHUB_TOKEN فقط)
+                    for _u, _c in d.items():
+                        if isinstance(_c, dict) and self.is_owner(_u):
+                            _c.pop("token", None)
                     self._user_configs = d
         except Exception:
             pass
@@ -887,6 +891,13 @@ class GitHubFileManager:
     def _owner_default_repo() -> str:
         return os.environ.get("GITHUB_REPO", "haeeedar6-ops/my-ai-bot").strip()
 
+    @staticmethod
+    def _env_token() -> str:
+        return (
+            os.environ.get("GITHUB_TOKEN", "").strip()
+            or os.environ.get("GH_TOKEN", "").strip()
+        )
+
     def get_config(self, user_id: str = "main") -> Dict[str, Any]:
         u = str(user_id or "main").strip() or "main"
         owner_ok = self.is_owner(u)
@@ -894,16 +905,12 @@ class GitHubFileManager:
             uc = dict(self._user_configs.get(u) or {})
 
         if owner_ok:
-            # حساب WEB_PASSWORD يأخذ تلقائياً مفتاح البيئة ومستودع المالك
-            env_tok = (
-                os.environ.get("GITHUB_TOKEN", "").strip()
-                or os.environ.get("GH_TOKEN", "").strip()
-            )
-            tok = uc.get("token") or env_tok
+            # حساب WEB_PASSWORD: التوكن من GITHUB_TOKEN فقط
+            tok = self._env_token()
             repo = uc.get("repo") or self._owner_default_repo()
             branch = uc.get("branch") or os.environ.get("GITHUB_BRANCH", "main").strip()
         else:
-            # أي حساب آخر في WEB_USERS لا يأخذ مفتاح البيئة ولا مستودع المالك أبداً؛ يستخدم فقط ما أدخله بنفسه
+            # أي حساب ثاني: توكنه ومستودعه الخاصين فيه، منفصلين عن باقي الحسابات
             tok = uc.get("token") or ""
             repo = uc.get("repo") or ""
             branch = uc.get("branch") or "main"
@@ -919,19 +926,33 @@ class GitHubFileManager:
 
     def set_config(self, user_id: str, repo: str = "", branch: str = "", token: str = "") -> Dict[str, Any]:
         u = str(user_id or "main").strip() or "main"
-        owner_repo = self._owner_default_repo().lower()
+        owner = self.is_owner(u)
         clean_repo = (repo or "").strip().strip("/")
-        if not self.is_owner(u) and clean_repo.lower() == owner_repo:
-            raise PermissionError("⛔ هذا المستودع خاص بمالك البوت. يرجى إدخال اسم مستودعك الشخصي (username/repo) والتوكن الخاص بك.")
+        if not owner and clean_repo and clean_repo.lower() == self._owner_default_repo().lower():
+            raise PermissionError("⛔ هذا المستودع خاص بحساب المالك. أدخل مستودعك أنت (username/repo) مع التوكن الخاص فيك.")
         with self._lock:
             uc = self._user_configs.setdefault(u, {})
             if clean_repo and self._REPO_RE.match(clean_repo):
                 uc["repo"] = clean_repo
             if branch and branch.strip():
                 uc["branch"] = branch.strip()
-            if token and token.strip() and "••" not in token:
+            if owner:
+                uc.pop("token", None)  # المالك: GITHUB_TOKEN فقط
+            elif token and token.strip() and "••" not in token:
                 uc["token"] = token.strip()
             self._save_unlocked()
+        cfg = self.get_config(u)
+        cfg.pop("_token", None)
+        return cfg
+
+    def clear_token(self, user_id: str) -> Dict[str, Any]:
+        """حذف توكن حساب غير المالك (المالك ما إله توكن مخزن)."""
+        u = str(user_id or "main").strip() or "main"
+        with self._lock:
+            uc = self._user_configs.get(u)
+            if uc and not self.is_owner(u):
+                uc.pop("token", None)
+                self._save_unlocked()
         cfg = self.get_config(u)
         cfg.pop("_token", None)
         return cfg
@@ -953,16 +974,16 @@ class GitHubFileManager:
         repo = (repo_override or cfg["repo"] or "").strip().strip("/")
         branch = (cfg["branch"] or "main").strip()
 
-        if not self.is_owner(u):
+        if self.is_owner(u):
             if not tok:
-                raise PermissionError(
-                    "🔑 للوصول إلى ملفاتك على GitHub، يجب إدخال التوكن الخاص بك (Personal Access Token) واسم مستودعك أولاً "
-                    "(أرسل في الشات: `اربط جيتهاب ghp_XXXX مستودع username/repo` أو من نافذة 🐙 GitHub)."
-                )
+                raise RuntimeError("GITHUB_TOKEN مو مضاف على السيرفر (Render > Environment).")
+        else:
+            if not tok:
+                raise PermissionError("🔑 حط توكن GitHub الخاص فيك من زر 🐙 (أو من الشات: `اربط جيتهاب ghp_XXXX مستودع username/repo`).")
             if not repo:
-                raise ValueError("يرجى تحديد اسم مستودعك الشخصي بصيغة `username/repo` مع التوكن الخاص بك.")
+                raise ValueError("حدد مستودعك بصيغة `username/repo`.")
             if repo.lower() == self._owner_default_repo().lower():
-                raise PermissionError("⛔ لا يمكنك الوصول إلى مستودع مالك البوت؛ يمكنك فقط الوصول إلى مستودعاتك الخاصة عبر التوكن الخاص بك.")
+                raise PermissionError("⛔ ما بتقدر توصل لمستودع المالك؛ بس لمستودعاتك عبر توكنك.")
 
         if not repo or not self._REPO_RE.match(repo):
             raise ValueError("اسم المستودع غير صالح (يجب أن يكون بصيغة owner/repo).")
@@ -1225,11 +1246,12 @@ class GitHubFileManager:
         if not t:
             return None
 
-        # 1. ربط مفتاح GitHub (والمستودع الاختياري) من داخل المحادثة لكل حساب بشكل مستقل
+        # 1. ربط توكن من الشات: لحسابات غير المالك فقط، لكل حساب توكنه المنفصل
         m_tok = self._GH_TOKEN_RE.search(t)
         if m_tok and len(t) < 350:
+            if self.is_owner(user_id):
+                return "🔒 حساب WEB_PASSWORD مرتبط تلقائياً بـ GITHUB_TOKEN من السيرفر، ما بحتاج توكن من الشات. احذف الرسالة وسوّي Revoke للمفتاح اللي انكشف."
             tok_val = m_tok.group(1)
-            # البحث عن اسم مستودع بصيغة owner/repo في نفس الرسالة إن وُجد
             repo_val = ""
             for rm in self._INLINE_REPO_RE.finditer(t):
                 cand_r = rm.group(1)
@@ -1241,16 +1263,8 @@ class GitHubFileManager:
             except Exception as e:
                 return f"⛔ {e}"
             if not cfg["repo"]:
-                return (
-                    "🔐 **تم حفظ التوكن الخاص بك بنجاح!**\n"
-                    "• تبقى فقط أن ترسل لي اسم مستودعك بصيغة `username/repo` (أو تضعه في نافذة 🐙 GitHub) حتى نبدأ العمل على ملفاتك."
-                )
-            return (
-                "🔐 **تم حفظ وربط مفتاح GitHub بحسابك الشخصي بنجاح!**\n"
-                f"• **المستودع المتصل**: `{cfg['repo']}` (الفرع `{cfg['branch']}`)\n"
-                "• **العزل الأمني**: هذا المفتاح محفوظ لحسابك أنت فقط ولا يراه أي مستخدم آخر.\n"
-                "• الآن يمكنك أن تطلب مني في المحادثة استعراض ملفاتك، مناقشتها، أو تعديلها ورفعها مباشرة!"
-            )
+                return "🔐 انحفظ توكنك لحسابك بس. ابعتلي اسم مستودعك `username/repo`."
+            return f"🔐 انربط حسابك بمستودع `{cfg['repo']}` (الفرع `{cfg['branch']}`). التوكن محفوظ لحسابك بس."
 
         # 2. اعتماد ورفع التعديل المعلّق بعد المناقشة في الشات
         if self._APPROVE_CMD_RE.match(t):
@@ -1273,16 +1287,11 @@ class GitHubFileManager:
                 except Exception as e:
                     return f"⚠️ **تعذر رفع التعديل المعلّق إلى GitHub**: {e}"
 
-        # 3. إذا كان المستخدم ليس حساب WEB_PASSWORD (main) وطلب أوامر جيتهاب بدون أن يدخل التوكن والمستودع الخاصين به
         if not self.is_owner(user_id) and self._GH_MENTION_RE.search(t):
             cfg = self.get_config(user_id)
             if not cfg.get("has_token") or not cfg.get("repo"):
-                return (
-                    "🔑 **للوصول إلى ملفاتك الخاصة على GitHub وتعديلها من داخل المحادثة:**\n"
-                    "حساب المالك (`WEB_PASSWORD`) وحده مرتبط تلقائياً بمفتاح البيئة، أما لحسابك أنت فيمكنك ربط **التوكن والمستودع الخاصين بك** بإرسال رسالة هنا بالشكل التالي:\n"
-                    "`اربط جيتهاب ghp_XXXX مستودع username/repo`\n"
-                    "أو إدخالهما من زر **🐙 ملفات GitHub** في القائمة، وبعدها سأتصل بمستودعك الشخصي فوراً!"
-                )
+                return ("🔑 للوصول لملفاتك على GitHub حط توكنك الخاص من زر 🐙، أو ابعت هون:\n"
+                        "`اربط جيتهاب ghp_XXXX مستودع username/repo`")
 
         return None
 
@@ -1294,7 +1303,7 @@ class GitHubFileManager:
         cfg = self.get_config(user_id)
         if not cfg.get("repo"):
             return ""
-        if not self.is_owner(user_id) and not cfg.get("has_token"):
+        if not cfg.get("has_token"):
             return ""
 
         t = (text or "").strip()
@@ -1364,7 +1373,7 @@ class GitHubFileManager:
         if not bot_answer:
             return bot_answer, False
         cfg = self.get_config(user_id)
-        if not cfg.get("repo") or (not self.is_owner(user_id) and not cfg.get("has_token")):
+        if not cfg.get("repo") or not cfg.get("has_token"):
             return bot_answer, False
 
         ans = bot_answer

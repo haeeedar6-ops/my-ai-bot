@@ -736,7 +736,8 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
       <input id="ghRepo" placeholder="owner/repo (مثال: haeeedar6-ops/my-ai-bot)" value="haeeedar6-ops/my-ai-bot">
       <input id="ghBranch" placeholder="الفرع أو المسودة (مثال: main)" value="main" list="ghBranchList">
       <datalist id="ghBranchList"><option value="main"></datalist>
-      <input id="ghToken" type="password" placeholder="مفتاح GITHUB_TOKEN (لحفظ التعديلات)">
+      <input id="ghToken" type="password" placeholder="🔑 توكن GitHub الخاص فيك (ghp_...)" hidden>
+      <button type="button" class="gh-btn" id="ghTokClear" hidden>🗑️ حذف توكني</button>
       <button type="button" class="gh-btn" id="ghLoadBtn">🔄 جلب الملفات</button>
     </div>
     <div class="gh-split">
@@ -1512,7 +1513,13 @@ async function openGhModal(prefillCode,prefillPath){
     if(d&&d.config){
       if(d.config.repo)$('#ghRepo').value=d.config.repo;
       if(d.config.branch)$('#ghBranch').value=d.config.branch;
-      if(d.config.has_token&&!$('#ghToken').value)$('#ghToken').placeholder='مفتاح GitHub محفوظ ('+d.config.token_masked+')';
+      const own=!!d.config.is_owner;
+      $('#ghToken').hidden=own;$('#ghTokClear').hidden=own||!d.config.has_token;
+      if(own){if(!d.config.has_token)toast('GITHUB_TOKEN مو مضاف على السيرفر')}
+      else{
+        if(!d.config.repo)$('#ghRepo').value='';
+        $('#ghToken').placeholder=d.config.has_token?'🔑 توكنك محفوظ ('+d.config.token_masked+')':'🔑 توكن GitHub الخاص فيك (ghp_...)';
+      }
     }
   }catch(e){}
   if(prefillCode!=null){
@@ -1540,6 +1547,7 @@ async function loadGhTree(){
   try{
     if(tok||repo||branch){
       await api('/api/github/config',{method:'POST',body:JSON.stringify({repo,branch,token:tok})});
+      if(tok){$('#ghToken').value='';$('#ghTokClear').hidden=false}
     }
     const r=await api('/api/github/tree?repo='+encodeURIComponent(repo)+'&branch='+encodeURIComponent(branch));
     const d=await r.json();
@@ -1628,6 +1636,9 @@ if($('#ghFileList'))$('#ghFileList').addEventListener('click',e=>{
   if(item&&item.dataset.path)openGhFile(item.dataset.path);
 });
 if($('#ghSaveBtn'))$('#ghSaveBtn').onclick=saveGhFile;
+if($('#ghTokClear'))$('#ghTokClear').onclick=async()=>{
+  try{await api('/api/github/token',{method:'DELETE'});$('#ghTokClear').hidden=true;$('#ghToken').placeholder='🔑 توكن GitHub الخاص فيك (ghp_...)';ghFilesCache=[];renderGhFileList();toast('انحذف توكنك')}catch(e){toast('تعذر الحذف')}
+};
 if($('#ghAttachBtn'))$('#ghAttachBtn').onclick=attachGhFileToChat;
 
 /* إخفاء أزرار GitHub تلقائياً لأي حساب غير المالك + تفعيل الاعتماد المباشر من قلب المحادثة */
@@ -6575,6 +6586,16 @@ def register(app, b):
         except Exception as e:
             return jsonify(error=redact_secrets(str(e))), 400
 
+    @app.delete("/api/github/token")
+    def api_github_clear_token():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        cfg = AIStack.get_github_manager().clear_token(uid())
+        return jsonify(ok=True, config=cfg)
+
     @app.get("/api/github/tree")
     def api_github_tree():
         bad = guard()
@@ -6622,9 +6643,9 @@ def register(app, b):
         sha = str(body.get("sha") or "").strip() or None
         repo = str(body.get("repo") or "").strip()
         branch = str(body.get("branch") or "").strip()
-        if body.get("token"):
-            AIStack.get_github_manager().set_config(uid(), repo=repo, branch=branch, token=str(body.get("token")))
         try:
+            if body.get("token"):
+                AIStack.get_github_manager().set_config(uid(), repo=repo, branch=branch, token=str(body.get("token")))
             res = AIStack.get_github_manager().save_file(
                 path=path,
                 content=content,
