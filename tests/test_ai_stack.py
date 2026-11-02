@@ -84,10 +84,45 @@ class TestRynAIStack(unittest.TestCase):
         self.assertTrue(out["done"])
         self.assertEqual(out["_langgraph_trace"], ["plan"])
 
-    def test_github_file_manager_and_diagnostics(self):
-        gh = GitHubFileManager()
-        cfg = gh.get_config("u1")
-        self.assertIn("haeeedar6-ops/my-ai-bot", cfg["repo"])
+    def test_github_owner_only_env_token(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old = os.environ.get("GITHUB_TOKEN")
+            os.environ["GITHUB_TOKEN"] = "ghp_envtoken1234567890abcdef"
+            try:
+                gh = GitHubFileManager(storage_path=os.path.join(tmpdir, "gh.json"))
+                # المالك (WEB_PASSWORD) ياخد التوكن من البيئة
+                cfg_owner = gh.get_config("main")
+                self.assertTrue(cfg_owner["is_owner"])
+                self.assertTrue(cfg_owner["has_token"])
+                self.assertEqual(cfg_owner["_token"], "ghp_envtoken1234567890abcdef")
+                # حساب ثاني: فاضي ومنفصل، وما بياخد توكن البيئة
+                cfg_ali = gh.get_config("ali")
+                self.assertFalse(cfg_ali["has_token"])
+                self.assertEqual(cfg_ali["repo"], "")
+                with self.assertRaises(PermissionError):
+                    gh.list_files("ali")
+                self.assertIn("توكنك", gh.handle_direct_chat_command("ali", "عدلي ملف bot.py على جيتهاب"))
+                with self.assertRaises(PermissionError):
+                    gh.set_config("ali", repo="haeeedar6-ops/my-ai-bot", token="ghp_1234567890abcdefghijklmnop")
+                # ali يحط توكنه من الشات
+                r = gh.handle_direct_chat_command("ali", "اربط جيتهاب ghp_1234567890abcdefghijklmnop مستودع ali-dev/my-app")
+                self.assertIn("ali-dev/my-app", r)
+                self.assertEqual(gh.get_config("ali")["_token"], "ghp_1234567890abcdefghijklmnop")
+                # حساب ثالث منفصل عن ali
+                self.assertFalse(gh.get_config("omar")["has_token"])
+                # المالك: التوكن من البيئة فقط
+                self.assertIn("GITHUB_TOKEN", gh.handle_direct_chat_command("main", "اربط جيتهاب ghp_1234567890abcdefghijklmnop"))
+                gh.set_config("main", repo="x/y", token="ghp_zzzzzzzzzzzzzzzzzzzzzzzz")
+                self.assertEqual(gh.get_config("main")["_token"], "ghp_envtoken1234567890abcdef")
+                # حذف توكن ali
+                gh.clear_token("ali")
+                self.assertFalse(gh.get_config("ali")["has_token"])
+            finally:
+                if old is None:
+                    os.environ.pop("GITHUB_TOKEN", None)
+                else:
+                    os.environ["GITHUB_TOKEN"] = old
+
         diag = run_full_stack_diagnostics()
         self.assertTrue(diag["passed_all"])
         self.assertEqual(diag["passed_count"], 10)
