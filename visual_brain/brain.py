@@ -88,7 +88,7 @@ class VisualBrain:
             if mask_hint:
                 edit_plan.edit_instructions_en += " " + mask_hint
 
-        avail = dict(available_providers or {"flux": True, "gemini": True, "instruct_pix2pix": False, "pollinations": True, "together": False})
+        avail = dict(available_providers or {"flux": True, "gemini": True, "instruct_pix2pix": False, "together": False})
         avail.setdefault("local_enhance", True)
         primary_prov, fallbacks, _task_cat = route_model_for_task(
             scene, edit_plan, avail, has_ref_image=uses_ref, preferred_provider=preferred_provider

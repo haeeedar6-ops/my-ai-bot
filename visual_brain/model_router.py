@@ -13,8 +13,8 @@ from .provider_capabilities import get_provider_capabilities, verify_provider_fo
 
 
 TASK_ROUTING_TABLE: Dict[str, List[str]] = {
-    "text_to_image_general": ["flux", "gemini", "together", "pollinations"],
-    "text_to_image_photorealistic": ["flux", "gemini", "together", "pollinations"],
+    "text_to_image_general": ["flux", "gemini", "together"],
+    "text_to_image_photorealistic": ["flux", "gemini", "together"],
     "image_edit": ["instruct_pix2pix", "gemini"],
     "inpaint": ["instruct_pix2pix", "gemini"],
     "remove_object": ["instruct_pix2pix", "gemini"],
@@ -63,7 +63,6 @@ def route_model_for_task(
         "cloudflare": "flux",
         "flux": "flux",
         "together": "together",
-        "pollinations": "pollinations",
     }
     mapped_pref = pref_map.get((preferred_provider or "auto").lower())
     if mapped_pref and mapped_pref in candidates:
@@ -78,7 +77,7 @@ def route_model_for_task(
             verified_chain.append(prov_id)
 
     if not verified_chain:
-        if not any(norm_avail.get(k, False) for k in ("instruct_pix2pix", "gemini", "flux", "together", "pollinations")):
+        if not any(norm_avail.get(k, False) for k in ("instruct_pix2pix", "gemini", "flux", "together")):
             theoretical = [p for p in candidates if p != "local_enhance"] or candidates
             return theoretical[0], theoretical[1:], task_cat
         return "unsupported", [], task_cat

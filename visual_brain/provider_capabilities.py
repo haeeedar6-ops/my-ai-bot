@@ -5,7 +5,6 @@
 2. gemini: تكامل Gemini Image لتوليد الصور وتعديل الصور المرجعية.
 3. flux: تكامل Cloudflare Workers AI FLUX لتوليد الصور من النص (T2I).
 4. together: تكامل Together AI FLUX لتوليد الصور من النص (T2I).
-5. pollinations: تكامل Pollinations لتوليد الصور من النص (T2I).
 6. local_enhance: معالج الصور المحلي عبر Pillow (لتحسين الدقة وتصحيح الألوان والترميم الأساسي).
 """
 from __future__ import annotations
@@ -76,21 +75,6 @@ def get_provider_capabilities(configured_flags: Dict[str, bool] | None = None) -
             max_reference_images=0,
             accepted_formats=["image/png"],
             notes="مسار Together AI الحالي مهيأ لتوليد الصور من النص (Text-to-Image) فقط.",
-        ),
-        "pollinations": ProviderCapability(
-            provider_id="pollinations",
-            display_name="Pollinations FLUX",
-            model_id="flux",
-            configured=bool(flags.get("pollinations", False)),
-            text_to_image=True,
-            image_to_image=False,
-            inpainting_mask=False,
-            remove_object=False,
-            enhance_restore=False,
-            style_transfer=False,
-            max_reference_images=0,
-            accepted_formats=["image/jpeg", "image/png"],
-            notes="مسار Pollinations الحالي مهيأ لتوليد الصور من النص (Text-to-Image) فقط.",
         ),
         "local_enhance": ProviderCapability(
             provider_id="local_enhance",
