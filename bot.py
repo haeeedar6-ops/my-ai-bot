@@ -23,11 +23,7 @@ except Exception as _e:  # اختياري
     webapp = None
     print(f'webapp.py غير متاح: {_e}')
 
-try:
-    import visual  # رسم السكربتات كصور + مكتبة السكربتات الجاهزة
-except Exception as _e:  # الميزة اختيارية، البوت بيشتغل بدونها
-    visual = None
-    print(f'visual.py غير متاح: {_e}')
+visual = None
 
 # ============ الإعدادات ============
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -52,11 +48,11 @@ MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
 DEEP_TIMEOUT_MS = 75000
 
-SYSTEM_PROMPT = """أنت "Ryn"، مساعد ذكي شامل ومتقدم، مستعد للإجابة عن أي سؤال في شتى المجالات.
+SYSTEM_PROMPT = """أنت "Ryn"، مساعد ذكي شامل ومتقدم في البرمجة، الهندسة البرمجية، التحليل، والعلوم، مستعد للإجابة عن أي سؤال في شتى المجالات.
 
 هويتك وصانعك (مهم جداً):
 - تم تطويرك وبرمجتك بواسطة المطور "haydar_xe".
-- أنت مشروع ذكاء اصطناعي مستقل بالكامل، ولست تابعاً لشركة غارينا (Garena) أو أي شركة أخرى.
+- أنت مشروع ذكاء اصطناعي مستقل بالكامل.
 - إذا سُئلت "مين برمجك؟" أو "من صنعك؟" أو "لمين تتبع؟"، أجب دائماً وبكل فخر: "أنا مساعد ذكي من تطوير وبرمجة haydar_xe".
 
 أسلوبك:
@@ -64,73 +60,28 @@ SYSTEM_PROMPT = """أنت "Ryn"، مساعد ذكي شامل ومتقدم، مس
 - قدم إجابات مختصرة، عملية، ومرتبة. إذا كان السؤال يحتاج لخطوات، اجعلها قصيرة ومباشرة.
 
 خبراتك:
-- مساعد عام: تجيب باحترافية على أسئلة التقنية، البرمجة، العلوم، الثقافة، الصحة، الترجمة، والمواضيع اليومية.
-- خبير كرافتلاند (مهارة إضافية): تمتلك خبرة في Free Fire Craftland وأداة Craftland Studio. استخدم "قاعدة المعرفة" المرفقة للإجابة بدقة فقط عندما يسألك المستخدم عن هذا المجال تحديداً. استخدم أسماء البلوكات بالعربي متل ما بتظهر بالمحرر (مثال: "حدث عالمي"، "منطق"، "عامل"، "وظيفة").
-
-ملاحظات تقنية معروفة لكرافتلاند:
-- البوتات ما بتقدر تتبع مسار مخصص (Custom Path).
-- بلوكات الرسوم المتحركة ممكن يتغلب عليها متحكم اللاعب.
-- متغيرات منطقة الزناد (Trigger Zone) بتتصفّر لما اللاعب يموت.
-- انتبه للفرق بين "تدمير" و"إخفاء" عند إغلاق واجهة المستخدم (HUD) من ناحية التوقيت.
-- الدليل الرسمي: https://ffcraftland.garena.com/en/tutorial/fe/1-8/
+- مساعد برمجي وعام متقدم: تجيب باحترافية على أسئلة التقنية، البرمجة، مراجعة الكود، العلوم، الثقافة، الصحة، الترجمة، والمواضيع اليومية.
 
 قواعد عامة:
-- يمكنك قراءة وتحليل الصور والملفات (PDF، Word، نصوص) المرفقة للإجابة عن محتواها، لكن لا يمكنك توليد الصور من الشات مباشرة. إذا طلب منك المستخدم صورة، وجّهه لتفعيل وضع «رسم 🎨» من أزرار الموقع.
-- إذا طلب المستخدم سكربت كرافتلاند بصورة، وجّهه لاستخدام أمر /script. والسكربتات الجاهزة بأمر /scripts.
-- إذا طلب منك المستخدم ملف تحميل (Word أو نص أو HTML أو JSON أو CSV أو ملف كود): اكتب محتوى الملف مباشرةً وبدون أي كلام خارجي — لا مقدمات ولا خاتمة ولا «هاي الملف» — لأن الموقع بيحوّل ردك تلقائياً لملف تحميل حقيقي. الكود حطه ضمن ``` مع اسم اللغة، والنصوص نظّمها بـ Markdown خفيف.
+- يمكنك قراءة وتحليل الصور والملفات (PDF، Word، نصوص، مشاريع مضغوطة) المرفقة للإجابة عن محتواها، وتوليد وتعديل الصور عبر العقل البصري (RYN Visual Brain).
+- إذا طلب منك المستخدم ملف تحميل (Word أو نص أو HTML أو JSON أو CSV أو ملف كود): اكتب محتوى الملف مباشرةً وبدون أي كلام خارجي — لأن الموقع بيحوّل ردك تلقائياً لملف تحميل حقيقي. الكود حطه ضمن ``` مع اسم اللغة، والنصوص نظّمها بـ Markdown خفيف.
 - ما بتقدر تولّد ملفات PDF حالياً؛ إذا طلب منك PDF، جاوب بجملة وحدة إنه غير متاح واقترح Word أو نص أو HTML بدالو.
 - إذا لم تكن متأكداً من معلومة، اعترف بذلك ولا تخترع معلومات غير موجودة.
 """
 
-# ============ قاعدة المعرفة (ملفات كرافتلاند) ============
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge")
-_knowledge_cache = {"sig": None, "text": ""}
 
 
 def _knowledge_files():
-    """يدور على ملفات المعرفة بمجلد knowledge، وإذا ما لقاه بياخدها من نفس مجلد bot.py."""
-    skip = {"readme.md", "requirements.txt"}
-    found = {}
-    for folder in (BASE_DIR, KNOWLEDGE_DIR):
-        if not os.path.isdir(folder):
-            continue
-        for f in os.listdir(folder):
-            if f.lower().endswith((".md", ".txt")) and f.lower() not in skip:
-                found[f] = os.path.join(folder, f)
-    return sorted(found.items())
+    return []
 
 
 def load_knowledge():
-    files = _knowledge_files()
-    sig = tuple((name, os.path.getmtime(path)) for name, path in files)
-    if sig == _knowledge_cache["sig"]:
-        return _knowledge_cache["text"]
-    parts = []
-    for name, path in files:
-        try:
-            with open(path, encoding="utf-8") as fh:
-                parts.append(f"##### ملف: {name}\n{fh.read().strip()}")
-        except Exception as e:
-            log.warning("تعذر قراءة %s: %s", name, e)
-    text = "\n\n".join(parts)
-    _knowledge_cache.update(sig=sig, text=text)
-    log.info("Knowledge loaded: %s files, %s chars", len(files), len(text))
-    return text
+    return ""
 
 
 def get_system_prompt():
-    knowledge = load_knowledge()
-    if not knowledge:
-        return SYSTEM_PROMPT
-    return (
-        SYSTEM_PROMPT
-        + "\n\n=== قاعدة المعرفة الخاصة بكرافتلاند (مرجعك الأساسي) ===\n"
-        "اقرأ هالمرجع قبل ما تجاوب على أي سؤال عن كرافتلاند. "
-        "استخدم أسماء البلوكات بالضبط متل ما هي مكتوبة هون، "
-        "وإذا بلوك مو موجود بالقائمة قول هيك بصراحة وما تخترعه.\n\n"
-        + knowledge
-    )
+    return SYSTEM_PROMPT
 
 MAX_HISTORY = 20          # عدد الرسائل المحفوظة لكل مستخدم (سؤال + جواب)
 COOLDOWN_SECONDS = 1.5    # حماية من السبام
@@ -229,7 +180,7 @@ def typing(chat_id):
 
 DEEP_WORDS = {
     "كيف", "كيفية", "ليش", "لماذا", "شلون", "ازاي", "ليه",
-    "مشكلة", "مشاكل", "خطأ", "غلط", "بلوك", "بلوكات", "سكربت", "برمجة", "برمج",
+    "مشكلة", "مشاكل", "خطأ", "غلط", "سكربت", "برمجة", "برمج",
     "منطق", "صمم", "تصميم", "اعمل", "نظام", "قارن", "حل", "حلول", "اشرح", "شرح",
     "طريقة", "خطوات", "متغير", "متغيرات", "حدث", "احداث", "وظيفة", "دالة", "فكرة",
     "اقتصاد", "متجر", "واجهة", "كاميرا", "مسار", "ذكاء", "وحش", "جولة", "مرحلة",
@@ -296,7 +247,7 @@ REVIEW_PROMPT = """راجع جوابك قبل ما ينرسل للمستخدم.
 جوابك المبدئي:
 {answer}
 المطلوب:
-1. كل اسم بلوك مذكور لازم يكون مكتوب بالضبط بقاعدة المعرفة. إذا في اسم مو موجود، بدّله بأقرب بلوك موجود، أو احذفه وقول إنك مو متأكد منه.
+1. تأكد من دقة المعلومات وعدم اختراع دوال أو تفاصيل غير موجودة.
 2. صحّح أي خطأ بالمنطق أو أي خطوة ناقصة بالترتيب.
 3. إذا الجواب سليم، رجّعه كما هو.
 رجّع الجواب النهائي فقط، بدون أي كلام عن المراجعة."""
@@ -375,9 +326,9 @@ PROVIDERS = {
 chat_provider = {}
 
 COMPACT_PROMPT = (
-    "أنت Ryn، مساعد ذكي شامل، متخصص بـ Free Fire Craftland وCraftland Studio، وبتجاوب على أي سؤال تاني. "
+    "أنت Ryn، مساعد ذكي شامل ومتقدم من تطوير haydar_xe، متخصص بالبرمجة والتحليل وبتجاوب على أي سؤال تاني. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة ومختصرة ومرتبة. "
-    "إذا مو متأكد من اسم بلوك أو طريقة عمله قول هيك وما تخترع."
+    "إذا مو متأكد من معلومة قول هيك بصراحة وما تخترع."
 )
 
 _or_cache = {"t": 0.0, "items": [], "err": ""}
@@ -665,16 +616,11 @@ _CODE_STRONG = re.compile(
     re.I | re.S,
 )
 _CODE_WEAK = ("كود", "كودات", "برمج", "برمجة", "دالة", "دوال", "خوارزمية", "debug", "bug", "كلاس", "function", "algorithm")
-_CRAFT_MARKERS = ("كرافتلاند", "craftland", "بلوك", "ستوديو", "خريطة", "ماب", "سكربت")
-
-
 def is_code_request(text):
-    """طلب كود برمجي؟ (بيتجاهل أسئلة كرافتلاند لأنها بلوكات مو كود)."""
+    """فحص ما إذا كان الطلب برمجياً."""
     t = (text or "").lower()
     if _CODE_STRONG.search(text or ""):
         return True
-    if any(m in t for m in _CRAFT_MARKERS):
-        return False
     return any(w in t for w in _CODE_WEAK)
 
 
@@ -764,7 +710,7 @@ MIX_SYSTEM = (
     "ادمجهم بجواب واحد نهائي، صحيح ومرتب ومختصر: خذ الأدق من كل إجابة، "
     "وصحّح أي تناقض أو خطأ، وما تذكر أسماء الموديلات ولا إنك قارنت إجابات. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة. "
-    "إذا في اسم بلوك Craftland أو معلومة مو متأكد منها قول هيك بصراحة وما تخترع."
+    "إذا في معلومة مو متأكد منها قول هيك بصراحة وما تخترع."
 )
 
 
@@ -892,72 +838,6 @@ def process(message, user_parts, history_label, deep=False):
             except Exception:
                 pass
 
-# ============ سكربتات بصورة ============
-SCRIPT_PROMPT = """صمّم سكربت كرافتلاند للطلب التالي، ورجّع JSON فقط (بدون أي كلام ولا علامات ```)، بهالشكل:
-{{
-  "title": "عنوان قصير",
-  "scripts": [
-    {{
-      "event": "اسم بلوك الحدث",
-      "steps": [
-        {{"kind": "condition|action|variable|loop|function", "name": "اسم البلوك", "note": "شرح قصير اختياري", "children": []}}
-      ]
-    }}
-  ],
-  "tips": ["نصيحة قصيرة"]
-}}
-الطلب: {request}"""
-
-SCRIPT_WORDS = ("سكربت", "سكريبت", "نظام", "بلوكات")
-IMG_WORDS = ("صورة", "صوره", "ارسم", "رسم", "مخطط")
-
-def wants_script_image(text):
-    return any(w in text for w in SCRIPT_WORDS) and any(w in text for w in IMG_WORDS)
-
-def send_script(message, request_text):
-    chat_id = message.chat.id
-    if visual is None:
-        bot.reply_to(message, "ميزة رسم السكربتات مو مفعّلة (ملف visual.py ناقص).")
-        return
-    if is_spam(chat_id):
-        bot.reply_to(message, "استنى شوي وأرسل تاني 🙂")
-        return
-    status = None
-    try:
-        try:
-            status = bot.send_message(chat_id, "🛠️ عم صمّم السكربت وأرسمه...")
-        except Exception:
-            pass
-        with typing(chat_id):
-            prompt = SCRIPT_PROMPT.format(request=request_text)
-            contents = build_contents(chat_id)
-            contents.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
-            raw, _ = ask_model(chat_id, contents, deep=True, json_mode=True)
-        spec = visual.parse_spec(raw or "")
-        if not spec:
-            bot.reply_to(message, "ما قدرت أطلّع سكربت مرتب، جرّب توصف الفكرة بشكل أوضح.")
-            return
-        png = visual.spec_to_image(spec, load_knowledge())
-        bio = io.BytesIO(png)
-        bio.name = "script.png"
-        title = str(spec.get("title") or "السكربت")
-        tips = [str(t) for t in (spec.get("tips") or [])][:4]
-        caption = "🧩 " + title
-        if tips:
-            caption += "\n\n" + "\n".join("• " + t for t in tips)
-        bot.send_photo(chat_id, bio, caption=caption[:1000], reply_to_message_id=message.message_id)
-        save_turn(chat_id, request_text,
-                  "[أرسلت سكربت كصورة] " + json.dumps(spec, ensure_ascii=False)[:1500])
-    except Exception as e:
-        log.exception("Script error")
-        bot.reply_to(message, friendly_error(e))
-    finally:
-        if status:
-            try:
-                bot.delete_message(chat_id, status.message_id)
-            except Exception:
-                pass
-
 # ============ قراءة الملفات ============
 DOC_TTL = 30 * 60
 MAX_FILE_BYTES = 15 * 1024 * 1024
@@ -1046,8 +926,6 @@ def cmd_help(message):
         "• /model  ←  تبديل الموديل (Gemini / ChatGPT / Llama / Claude...)",
         "• طلبات الكود البرمجي بتروح تلقائياً لـ Groq  (/code on|off)",
     ]
-    if visual is not None:
-        lines += ["• /script فكرتك  ←  سكربت بصورة بلوكات", "• /scripts  ←  مكتبة السكربتات الجاهزة"]
     lines += ["• /clearfile لحذف الملف المرفق", "• /reset لبدء محادثة جديدة"]
     bot.reply_to(message, "\n".join(lines))
 
@@ -1058,40 +936,6 @@ def cmd_deep(message):
         bot.reply_to(message, "اكتب سؤالك بعد الأمر، مثال:\n/deep كيف أعمل نظام دم لا نهائي؟")
         return
     process(message, [types.Part(text=text)], text, deep=True)
-
-@bot.message_handler(commands=["script"])
-def cmd_script(message):
-    text = (message.text or "").partition(" ")[2].strip()
-    if not text:
-        bot.reply_to(message, "اكتب فكرة السكربت بعد الأمر، مثال:\n/script نظام محفظة ومتجر")
-        return
-    send_script(message, text)
-
-@bot.message_handler(commands=["scripts"])
-def cmd_scripts(message):
-    files = visual.list_library() if visual else []
-    if not files:
-        bot.reply_to(message, "مكتبة السكربتات فاضية حالياً. 📚")
-        return
-    kb = telebot.types.InlineKeyboardMarkup()
-    for i, f in enumerate(files[:40]):
-        kb.add(telebot.types.InlineKeyboardButton(visual.library_title(f), callback_data=f"lib:{i}"))
-    bot.send_message(message.chat.id, "📚 مكتبة السكربتات الجاهزة، اختار واحد:", reply_markup=kb)
-
-@bot.callback_query_handler(func=lambda c: (c.data or "").startswith("lib:"))
-def cb_library(call):
-    try:
-        files = visual.list_library()
-        f = files[int(call.data.split(":")[1])]
-        with open(os.path.join(visual.LIB_DIR, f), "rb") as fh:
-            bot.send_photo(call.message.chat.id, fh, caption=visual.library_caption(f))
-        bot.answer_callback_query(call.id)
-    except Exception:
-        log.exception("Library error")
-        try:
-            bot.answer_callback_query(call.id, "ما قدرت أفتح هالسكربت")
-        except Exception:
-            pass
 
 @bot.message_handler(commands=["clearfile"])
 def cmd_clearfile(message):
@@ -1300,9 +1144,6 @@ def cmd_reset(message):
 def handle_text(message):
     text = (message.text or "").strip()
     if not text:
-        return
-    if visual is not None and wants_script_image(text):
-        send_script(message, text)
         return
     ctx = get_doc(message.chat.id)
     if ctx:

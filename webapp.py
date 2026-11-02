@@ -381,20 +381,54 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 @keyframes twinkle{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
 @keyframes heartup{0%{transform:translateY(0) scale(.7);opacity:0}25%{opacity:1}100%{transform:translateY(-14px) scale(1.1);opacity:0}}
 
-/* ===== تحسينات بصرية عامة + زر ونافذة حدود استخدام النماذج + فاحص النظام ===== */
+/* ===== واجهة متصفح الكمبيوتر (PC Widescreen) وواجهة الهاتف بنفس الشكل والهوية ===== */
 .bubble{backdrop-filter:blur(10px);transition:transform .18s ease,box-shadow .18s ease}
 .mini,#mname,#memBtn,.dnew,.dbtn{transition:all .2s ease}
 .mini:hover,#mname:hover,#memBtn:hover{border-color:var(--g);box-shadow:0 0 14px rgba(var(--g-rgb),.4)}
-.dquota-btn{width:100%;margin-top:10px;padding:10px 12px;border-radius:13px;
- border:1.5px solid rgba(var(--g-rgb),.6);
- background:linear-gradient(135deg,rgba(var(--acc-rgb),.22),rgba(var(--g-rgb),.14));
- color:var(--g);font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;
- box-shadow:0 0 16px rgba(var(--g-rgb),.22);transition:all .22s ease;flex:none}
-.dquota-btn:hover{transform:translateY(-1.5px);background:linear-gradient(135deg,rgba(var(--acc-rgb),.35),rgba(var(--g-rgb),.25));
- box-shadow:0 0 22px rgba(var(--g-rgb),.45)}
-#quotaModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(7px);z-index:68;
+#ghTopBtn{left:46px}
+#pcLayoutBtn{right:46px;display:none}
+@media(min-width:960px){
+  #pcLayoutBtn{display:flex}
+  html:not([data-layout="mobile"]) #app{
+    max-width:min(1240px,95vw);height:min(880px,94vh);border-radius:34px;
+    padding:18px 326px 0 22px;
+    background:linear-gradient(165deg,var(--bg2) 0%,var(--bg1) 68%,var(--bg2) 100%);
+    box-shadow:0 28px 70px rgba(0,0,0,.88),0 0 46px rgba(var(--acc-rgb),.26),inset 0 0 28px rgba(var(--acc-rgb),.08);
+  }
+  html:not([data-layout="mobile"]) #drawer{
+    width:310px;transform:none!important;
+    background:rgba(8,6,26,.92);backdrop-filter:blur(18px);
+    border-left:1.5px solid rgba(var(--acc-rgb),.48);
+    box-shadow:-6px 0 28px rgba(0,0,0,.45);
+    z-index:20;
+  }
+  html:not([data-layout="mobile"]) #scrim{display:none!important}
+  html:not([data-layout="mobile"]) #histBtn,
+  html:not([data-layout="mobile"]) #dClose{display:none!important}
+  html:not([data-layout="mobile"]) #pcLayoutBtn{right:6px}
+  html:not([data-layout="mobile"]) main#msgs{padding:14px 18px 28px;gap:22px}
+  html:not([data-layout="mobile"]) .bubble.bot{max-width:86%}
+  html:not([data-layout="mobile"]) .bubble.me{max-width:76%}
+  html:not([data-layout="mobile"]) .floating{right:338px;bottom:96px}
+  html:not([data-layout="mobile"]) #sheet{right:336px;left:22px;max-width:520px;margin:0 auto}
+  html:not([data-layout="mobile"]) footer{padding-left:8px;padding-right:8px}
+}
+
+/* ===== أزرار القائمة الجانبية (حدود النماذج + ملفات GitHub) ===== */
+.d-actions{display:flex;flex-direction:column;gap:7px;margin-top:10px;flex:none}
+.dquota-btn,.dgh-btn{width:100%;padding:10px 12px;border-radius:13px;font-weight:800;font-size:13px;
+ display:flex;align-items:center;justify-content:center;gap:8px;transition:all .22s ease;flex:none}
+.dquota-btn{border:1.5px solid rgba(var(--g-rgb),.6);background:linear-gradient(135deg,rgba(var(--acc-rgb),.22),rgba(var(--g-rgb),.14));
+ color:var(--g);box-shadow:0 0 16px rgba(var(--g-rgb),.2)}
+.dquota-btn:hover{transform:translateY(-1.5px);background:linear-gradient(135deg,rgba(var(--acc-rgb),.35),rgba(var(--g-rgb),.25));box-shadow:0 0 22px rgba(var(--g-rgb),.45)}
+.dgh-btn{border:1.5px solid rgba(var(--acc-rgb),.75);background:linear-gradient(135deg,rgba(var(--acc-rgb),.28),rgba(14,12,40,.9));
+ color:var(--txt);box-shadow:0 0 16px rgba(var(--acc-rgb),.25)}
+.dgh-btn:hover{transform:translateY(-1.5px);border-color:var(--g);color:var(--g);box-shadow:0 0 22px rgba(var(--g-rgb),.4)}
+
+/* ===== نافذة حدود النماذج وفحص النظام (#quotaModal) ===== */
+#quotaModal,#ghModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(7px);z-index:68;
  display:flex;align-items:center;justify-content:center;padding:14px}
-.qlist{display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow-y:auto;padding-left:2px}
+.qlist{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;padding-left:2px}
 .qm-item{background:rgba(7,6,26,.85);border:1px solid rgba(var(--acc-rgb),.42);border-radius:14px;padding:9px 12px;
  display:flex;flex-direction:column;gap:5px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
 .qm-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -414,12 +448,43 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
  background:rgba(var(--g-rgb),.15);color:var(--g);font-weight:800;font-size:13px;
  box-shadow:0 0 14px rgba(var(--g-rgb),.25);transition:.2s}
 .syscheck-btn:hover{background:var(--g);color:#031a10;box-shadow:0 0 20px rgba(var(--g-rgb),.55)}
-.sys-box{display:flex;flex-direction:column;gap:5px;max-height:190px;overflow-y:auto;background:rgba(5,4,18,.9);
+.sys-box{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto;background:rgba(5,4,18,.9);
  border:1px solid rgba(var(--g-rgb),.4);border-radius:12px;padding:8px 10px;font-size:11.5px}
 .sys-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .sys-row:last-child{border-bottom:0}
 .sys-row b{color:var(--txt);direction:ltr;font-size:11px}
 .sys-row span{color:var(--g);font-size:11px}
+
+/* ===== استوديو ملفات GitHub (#ghModal) ===== */
+.gh-box{width:100%;max-width:780px;max-height:90vh;background:rgba(12,10,34,.98);border:1.5px solid var(--acc);
+ border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 42px rgba(var(--acc-rgb),.45)}
+.gh-bar{display:grid;grid-template-columns:1.2fr .8fr 1fr auto;gap:6px;align-items:center}
+@media(max-width:680px){.gh-bar{grid-template-columns:1fr 1fr}}
+.gh-bar input,.gh-bar select{background:rgba(5,4,20,.92);border:1px solid rgba(var(--acc-rgb),.48);border-radius:10px;
+ color:var(--txt);padding:8px 10px;font-size:12.5px;direction:ltr;outline:0}
+.gh-bar input:focus,.gh-bar select:focus{border-color:var(--g)}
+.gh-btn{background:linear-gradient(135deg,rgba(var(--acc-rgb),.32),rgba(var(--g-rgb),.22));border:1.5px solid var(--g);
+ color:var(--g);border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:800;white-space:nowrap}
+.gh-btn:hover{background:var(--g);color:#031a10}
+.gh-split{display:grid;grid-template-columns:230px 1fr;gap:10px;min-height:340px;max-height:58vh;flex:1;overflow:hidden}
+@media(max-width:680px){.gh-split{grid-template-columns:1fr;max-height:64vh;overflow-y:auto}}
+.gh-tree{display:flex;flex-direction:column;gap:6px;background:rgba(5,4,18,.82);border:1px solid rgba(var(--acc-rgb),.35);
+ border-radius:14px;padding:8px;overflow:hidden;min-height:140px}
+.gh-files{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.gh-f{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;
+ font-size:12px;color:var(--txt);background:rgba(var(--acc-rgb),.07);border:1px solid transparent;cursor:pointer;direction:ltr;text-align:left}
+.gh-f:hover,.gh-f.on{border-color:var(--g);background:rgba(var(--g-rgb),.14);color:var(--g)}
+.gh-f span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.gh-f small{color:var(--sub);font-size:10px;flex:none}
+.gh-ed{display:flex;flex-direction:column;gap:7px;min-width:0;overflow:hidden}
+.gh-code{flex:1;width:100%;min-height:210px;background:#050416;border:1px solid rgba(var(--acc-rgb),.48);border-radius:12px;
+ color:#e4ffef;font-family:Consolas,monospace;font-size:12.5px;line-height:1.5;padding:10px;direction:ltr;text-align:left;
+ resize:vertical;overflow:auto;white-space:pre;outline:0}
+.gh-code:focus{border-color:var(--g)}
+.gh-acts{display:flex;flex-wrap:wrap;gap:7px;justify-content:space-between;align-items:center}
+.ch-btns{display:inline-flex;gap:6px;align-items:center}
+.ch .gh-push{background:rgba(var(--acc-rgb),.25);border:1px solid rgba(var(--acc-rgb),.65);color:var(--txt);border-radius:8px;padding:3px 9px;font-size:11.5px;font-weight:700}
+.ch .gh-push:hover{border-color:var(--g);color:var(--g)}
 
 </style>
 </head>
@@ -481,6 +546,8 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <button class="mini" id="histBtn" aria-label="المحادثات السابقة" title="المحادثات السابقة">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg>
     </button>
+    <button class="mini" id="pcLayoutBtn" type="button" title="تبديل عرض الكمبيوتر (PC) / الهاتف">🖥️</button>
+    <button class="mini" id="ghTopBtn" type="button" title="ملفات GitHub وتعديلها مباشرة">🐙</button>
     <button class="mini" id="menuBtn" aria-label="القائمة">⋮</button>
     <div class="botwrap" id="botBox"></div>
     <div id="say"></div>
@@ -495,6 +562,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mFix">🐞 تصحيح كود</button>
     <button id="mAdl">⬇️ تنزيل الكود تلقائياً: شغّال</button>
+    <button id="mGh">🐙 ملفات GitHub وتعديلها</button>
     <button id="mEmo">💗 وضع المشاعر: طافي</button>
     <button id="mSfx">🔊 الأصوات المستقبلية: شغّالة</button>
     <button id="mAbout">ℹ️ عن __APP_NAME__</button>
@@ -555,7 +623,10 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
       <button id="dSearchX" aria-label="مسح البحث">✕</button>
     </div>
     <div id="dList"></div>
-    <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود استخدام النماذج وفحص النظام</button>
+    <div class="d-actions">
+      <button type="button" class="dgh-btn" id="dGhBtn">🐙 ملفات GitHub وتعديلها مباشرة</button>
+      <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود النماذج وفحص النظام</button>
+    </div>
     <div class="dfoot" id="dFoot">محفوظة على هالجهاز (حتى 100 محادثة)</div>
   </aside>
 </div>
@@ -650,9 +721,45 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
         <span>🌳 Tree-sitter</span>
         <span>🔮 DSPy</span>
         <span>🕸️ LangGraph</span>
+        <span>🐙 GitHub Sync</span>
       </div>
-      <button type="button" class="syscheck-btn" id="runSysCheckBtn">🧪 فحص شامل للتأكد أن كل الأنظمة الـ 9 شغّالة</button>
+      <button type="button" class="syscheck-btn" id="runSysCheckBtn">🧪 فحص شامل للتأكد أن كل الأنظمة الـ 10 شغّالة</button>
       <div class="sys-box" id="sysCheckBox" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="ghModal" hidden>
+  <div class="gh-box">
+    <div class="mh"><span>🐙 استوديو ملفات GitHub (قراءة وتعديل ورفع مباشر)</span><button id="ghClose" aria-label="إغلاق">✕</button></div>
+    <div class="gh-bar">
+      <input id="ghRepo" placeholder="owner/repo (مثال: haeeedar6-ops/my-ai-bot)" value="haeeedar6-ops/my-ai-bot">
+      <input id="ghBranch" placeholder="الفرع أو المسودة (مثال: main)" value="main" list="ghBranchList">
+      <datalist id="ghBranchList"><option value="main"></datalist>
+      <input id="ghToken" type="password" placeholder="مفتاح GITHUB_TOKEN (لحفظ التعديلات)">
+      <button type="button" class="gh-btn" id="ghLoadBtn">🔄 جلب الملفات</button>
+    </div>
+    <div class="gh-split">
+      <div class="gh-tree">
+        <input class="minp" id="ghSearch" placeholder="🔍 ابحث في ملفات المستودع..." style="font-size:12px;padding:6px 8px">
+        <div class="gh-files" id="ghFileList">
+          <small style="color:var(--sub);text-align:center;padding:18px 6px">اضغط «🔄 جلب الملفات» لعرض ملفات مستودعك</small>
+        </div>
+      </div>
+      <div class="gh-ed">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="minp" id="ghPath" placeholder="مسار الملف (مثال: webapp.py أو ryn_ai_stack.py)" style="direction:ltr;text-align:left;font-family:Consolas,monospace;font-size:12.5px;flex:1">
+          <span id="ghStat" style="font-size:11px;color:var(--g);white-space:nowrap"></span>
+        </div>
+        <textarea class="gh-code" id="ghCode" placeholder="// اختر ملفاً من القائمة اليسرى لقراءته وتعديله، أو الصق الكود هنا لرفعه مباشرة إلى GitHub..."></textarea>
+        <div class="gh-acts">
+          <input class="minp" id="ghMsg" placeholder="رسالة الحفظ (Commit message) — اختياري" style="flex:1;min-width:160px;font-size:12px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="gh-btn" id="ghAttachBtn" style="border-color:var(--acc);color:var(--txt)">🤖 أرفق للشات ليعدّله Ryn</button>
+            <button type="button" class="gh-btn" id="ghSaveBtn">💾 حفظ ورفع لـ GitHub (Commit)</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -933,7 +1040,7 @@ function md(text){
   flush();
   return html.replace(/<br>$/,'').replace(/\u0000(\d+)\u0000/g,(m,i)=>{
     const b=blocks[+i];
-    return '<div class="code"><div class="ch"><span>'+esc(b.l||'code')+'</span><button class="cp">نسخ</button></div><pre><code>'+esc(b.c.replace(/\n$/,''))+'</code></pre></div>';
+    return '<div class="code"><div class="ch"><span>'+esc(b.l||'code')+'</span><div class="ch-btns"><button type="button" class="gh-push" title="رفع وحفظ هذا الكود في ملف على GitHub">🐙 رفع لـ GitHub</button><button type="button" class="cp">نسخ</button></div></div><pre><code>'+esc(b.c.replace(/\n$/,''))+'</code></pre></div>';
   });
 }
 const pm=t=>md((t.match(/```/g)||[]).length%2?t+'\n```':t);
@@ -1247,6 +1354,27 @@ async function loadModels(){
 }
 
 
+/* ===== تبديل عرض متصفح الكمبيوتر (PC Widescreen) وعرض الهاتف بنفس الهوية ===== */
+let pcModePref=localStorage.getItem('ryn_layout')||'auto';
+function applyLayoutMode(m){
+  pcModePref=m;
+  try{localStorage.setItem('ryn_layout',m)}catch(e){}
+  if(m==='mobile'){document.documentElement.dataset.layout='mobile'}
+  else{delete document.documentElement.dataset.layout}
+  const btn=$('#pcLayoutBtn');
+  if(btn){
+    const isMob=document.documentElement.dataset.layout==='mobile';
+    btn.textContent=isMob?'🖥️':'📱';
+    btn.title=isMob?'التبديل إلى واجهة الكمبيوتر العريضة (PC)':'التبديل إلى واجهة الهاتف المدمجة';
+  }
+}
+applyLayoutMode(pcModePref);
+if($('#pcLayoutBtn'))$('#pcLayoutBtn').onclick=()=>{
+  const next=(document.documentElement.dataset.layout==='mobile')?'pc':'mobile';
+  applyLayoutMode(next);
+  toast(next==='mobile'?'📱 تم تفعيل عرض الهاتف المدمج':'🖥️ تم تفعيل واجهة الكمبيوتر العريضة (PC)');
+};
+
 /* ===== محرك الأصوات التقنية المستقبلية (Sci-Fi Futuristic Web Audio Synthesizer) ===== */
 let sfxOn=true;try{sfxOn=localStorage.getItem('ryn_sfx')!=='0'}catch(e){}
 let _actx=null;
@@ -1316,11 +1444,11 @@ function paintSfx(){const el=$('#mSfx');if(el)el.textContent=sfxOn?'🔊 الأ�
 paintSfx();
 if($('#mSfx'))$('#mSfx').onclick=()=>{sfxOn=!sfxOn;try{localStorage.setItem('ryn_sfx',sfxOn?'1':'0')}catch(e){}paintSfx();if(sfxOn)sfx.switchModel();$('#menu').hidden=true;toast(sfxOn?'🔊 تم تفعيل الأصوات المستقبلية':'🔇 تم كتم الأصوات')};
 document.addEventListener('click',e=>{
-  const btn=e.target.closest('button,.dia,.ci,#mname,.themes i');
+  const btn=e.target.closest('button,.dia,.ci,#mname,.themes i,.gh-f');
   if(btn&&btn.id!=='send')sfx.click();
 });
 
-/* ===== نافذة حدود استخدام كل نموذج + الفحص الشامل للأنظمة الـ 9 (#quotaModal) ===== */
+/* ===== نافذة حدود استخدام كل نموذج + الفحص الشامل للأنظمة الـ 10 (#quotaModal) ===== */
 async function openQuotaModal(){
   closeDrawer();
   const listEl=$('#quotaList');
@@ -1352,7 +1480,7 @@ async function openQuotaModal(){
 async function runSystemDiagnostics(){
   const box=$('#sysCheckBox'),btn=$('#runSysCheckBtn');
   box.hidden=false;
-  box.innerHTML='<small style="color:var(--g);text-align:center">🔍 جاري فحص جميع الأنظمة الـ 9...</small>';
+  box.innerHTML='<small style="color:var(--g);text-align:center">🔍 جاري فحص جميع الأنظمة الـ 10...</small>';
   btn.disabled=true;
   try{
     const r=await api('/api/system-check');
@@ -1361,7 +1489,7 @@ async function runSystemDiagnostics(){
     box.innerHTML='<div style="text-align:center;font-weight:800;color:'+(d.passed_all?'var(--g)':'var(--red)')+';margin-bottom:4px">'+
       (d.passed_all?'✅ جميع الأنظمة تعمل بنجاح ('+d.passed_count+'/'+d.total+' · '+d.elapsed_ms+'ms)':'⚠️ بعض الأنظمة تحتاج مراجعة')+'</div>'+
       checks.map(c=>'<div class="sys-row"><b>'+(c.ok?'✅ ':'❌ ')+esc(c.name)+'</b><span>'+esc(c.detail)+'</span></div>').join('');
-    if(d.passed_all){sfx.receive();toast('✅ الفحص الشامل: كل الأنظمة الـ 9 شغّالة 100%')}else{sfx.error()}
+    if(d.passed_all){sfx.receive();toast('✅ الفحص الشامل: كل الأنظمة الـ 10 شغّالة 100%')}else{sfx.error()}
   }catch(e){
     box.innerHTML='<small style="color:var(--red);text-align:center">تعذر تشغيل الفحص الشامل.</small>';
     sfx.error();
@@ -1372,6 +1500,147 @@ if($('#dQuotaBtn'))$('#dQuotaBtn').onclick=openQuotaModal;
 if($('#runSysCheckBtn'))$('#runSysCheckBtn').onclick=runSystemDiagnostics;
 if($('#quotaClose'))$('#quotaClose').onclick=()=>{$('#quotaModal').hidden=true};
 if($('#quotaModal'))$('#quotaModal').onclick=e=>{if(e.target===$('#quotaModal'))$('#quotaModal').hidden=true};
+
+/* ===== استوديو ملفات GitHub المباشر (#ghModal) ===== */
+let ghFilesCache=[],ghCurrentSha='';
+async function openGhModal(prefillCode,prefillPath){
+  $('#menu').hidden=true;closeDrawer();
+  $('#ghModal').hidden=false;
+  try{
+    const r=await api('/api/github/config');
+    const d=await r.json();
+    if(d&&d.config){
+      if(d.config.repo)$('#ghRepo').value=d.config.repo;
+      if(d.config.branch)$('#ghBranch').value=d.config.branch;
+      if(d.config.has_token&&!$('#ghToken').value)$('#ghToken').placeholder='مفتاح GitHub محفوظ ('+d.config.token_masked+')';
+    }
+  }catch(e){}
+  if(prefillCode!=null){
+    $('#ghCode').value=prefillCode;
+    if(prefillPath)$('#ghPath').value=prefillPath;
+    $('#ghStat').textContent='جاهز للرفع ⬆️';
+  }
+  if(!ghFilesCache.length)loadGhTree();
+}
+function renderGhFileList(){
+  const q=($('#ghSearch').value||'').trim().toLowerCase();
+  const list=q?ghFilesCache.filter(f=>f.path.toLowerCase().includes(q)):ghFilesCache;
+  const el=$('#ghFileList');
+  if(!list.length){
+    el.innerHTML='<small style="color:var(--sub);text-align:center;padding:14px">ما في ملفات مطابقة</small>';
+    return;
+  }
+  const curP=$('#ghPath').value.trim();
+  el.innerHTML=list.map(f=>'<div class="gh-f'+(f.path===curP?' on':'')+'" data-path="'+esc(f.path)+'"><span title="'+esc(f.path)+'">📄 '+esc(f.path)+'</span><small>'+(f.size>1024?Math.round(f.size/1024)+'KB':f.size+'B')+'</small></div>').join('');
+}
+async function loadGhTree(){
+  const repo=$('#ghRepo').value.trim(),branch=$('#ghBranch').value.trim(),tok=$('#ghToken').value.trim();
+  const el=$('#ghFileList');
+  el.innerHTML='<small style="color:var(--g);text-align:center;padding:16px">⏳ جاري جلب شجرة ملفات '+esc(repo)+'...</small>';
+  try{
+    if(tok||repo||branch){
+      await api('/api/github/config',{method:'POST',body:JSON.stringify({repo,branch,token:tok})});
+    }
+    const r=await api('/api/github/tree?repo='+encodeURIComponent(repo)+'&branch='+encodeURIComponent(branch));
+    const d=await r.json();
+    if(!r.ok){el.innerHTML='<small style="color:var(--red);text-align:center;padding:12px">'+esc(d.error||'تعذر الجلب')+'</small>';sfx.error();return}
+    ghFilesCache=d.files||[];
+    if(Array.isArray(d.branches)&&d.branches.length){
+      $('#ghBranchList').innerHTML=d.branches.map(b=>'<option value="'+esc(b)+'">').join('');
+    }
+    renderGhFileList();
+    $('#ghStat').textContent=ghFilesCache.length+' ملف';
+    sfx.receive();
+  }catch(e){
+    el.innerHTML='<small style="color:var(--red);text-align:center;padding:12px">تعذر الاتصال بـ GitHub</small>';
+  }
+}
+async function openGhFile(path){
+  const repo=$('#ghRepo').value.trim(),branch=$('#ghBranch').value.trim();
+  $('#ghPath').value=path;
+  $('#ghStat').textContent='⏳ جاري فتح الملف...';
+  renderGhFileList();
+  try{
+    const r=await api('/api/github/file?repo='+encodeURIComponent(repo)+'&branch='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
+    const d=await r.json();
+    if(!r.ok){toast(d.error||'تعذر قراءة الملف');sfx.error();return}
+    ghCurrentSha=d.sha||'';
+    $('#ghCode').value=d.content||'';
+    $('#ghStat').textContent='✅ فُتح ('+Math.round((d.size||0)/1024*10)/10+' KB)';
+  }catch(e){toast('تعذر فتح الملف من GitHub')}
+}
+async function saveGhFile(){
+  const repo=$('#ghRepo').value.trim(),branch=$('#ghBranch').value.trim(),tok=$('#ghToken').value.trim();
+  const path=$('#ghPath').value.trim(),content=$('#ghCode').value,message=$('#ghMsg').value.trim();
+  if(!path){toast('اكتب مسار الملف أولاً (مثال: webapp.py)');return}
+  $('#ghStat').textContent='⏳ جاري الرفع إلى GitHub...';
+  $('#ghSaveBtn').disabled=true;
+  try{
+    const r=await api('/api/github/save',{
+      method:'POST',
+      body:JSON.stringify({repo,branch,token:tok,path,content,message,sha:ghCurrentSha})
+    });
+    const d=await r.json();
+    if(!r.ok){
+      $('#ghStat').textContent='❌ فشل الحفظ';
+      toast(d.error||'فشل حفظ الملف على GitHub');sfx.error();
+    }else{
+      ghCurrentSha=d.sha||ghCurrentSha;
+      $('#ghStat').textContent='✅ تم الرفع لـ GitHub!';
+      sfx.receive();
+      toast('✅ تم حفظ ورفع '+path+' إلى GitHub بنجاح!');
+      loadGhTree();
+    }
+  }catch(e){
+    $('#ghStat').textContent='❌ خطأ اتصال';
+    toast('تعذر الاتصال بـ GitHub');sfx.error();
+  }
+  $('#ghSaveBtn').disabled=false;
+}
+async function attachGhFileToChat(){
+  const path=$('#ghPath').value.trim(),content=$('#ghCode').value;
+  if(!path||!content.trim()){toast('افتح ملفاً من GitHub أولاً لإرفاقه للشات');return}
+  try{
+    const r=await api('/api/github/attach',{method:'POST',body:JSON.stringify({path,content})});
+    const d=await r.json();
+    if(!r.ok){toast(d.error||'فشل إرفاق الملف');return}
+    pendingFile=path;
+    showChip(path,false,null);
+    $('#ghModal').hidden=true;
+    if(!inp.value.trim()){
+      inp.value='عدّل ملف `'+path+'` المرفق من مستودع GitHub حسب التالي: ';
+      grow();
+    }
+    inp.focus();
+    sfx.receive();
+    say('أرفقت ملف '+path+' من GitHub! قلّي شو التعديل المطلوب 💻');
+  }catch(e){toast('تعذر إرفاق الملف للشات')}
+}
+if($('#ghTopBtn'))$('#ghTopBtn').onclick=()=>openGhModal();
+if($('#dGhBtn'))$('#dGhBtn').onclick=()=>openGhModal();
+if($('#mGh'))$('#mGh').onclick=()=>openGhModal();
+if($('#ghClose'))$('#ghClose').onclick=()=>{$('#ghModal').hidden=true};
+if($('#ghModal'))$('#ghModal').onclick=e=>{if(e.target===$('#ghModal'))$('#ghModal').hidden=true};
+if($('#ghLoadBtn'))$('#ghLoadBtn').onclick=loadGhTree;
+if($('#ghSearch'))$('#ghSearch').addEventListener('input',renderGhFileList);
+if($('#ghFileList'))$('#ghFileList').addEventListener('click',e=>{
+  const item=e.target.closest('.gh-f');
+  if(item&&item.dataset.path)openGhFile(item.dataset.path);
+});
+if($('#ghSaveBtn'))$('#ghSaveBtn').onclick=saveGhFile;
+if($('#ghAttachBtn'))$('#ghAttachBtn').onclick=attachGhFileToChat;
+
+/* زر «🐙 رفع لـ GitHub» داخل بلوكات الكود في الشات */
+msgs.addEventListener('click',e=>{
+  const gp=e.target.closest('.gh-push');
+  if(!gp)return;
+  const codeBox=gp.closest('.code');
+  if(!codeBox)return;
+  const codeTxt=(codeBox.querySelector('code')||{}).innerText||'';
+  const hdrTxt=((codeBox.querySelector('.ch span')||{}).textContent||'').trim();
+  const guessedPath=(/\.[a-z0-9]{1,5}$/i.test(hdrTxt))?hdrTxt:(pendingFile||'');
+  openGhModal(codeTxt,guessedPath);
+});
 
 /* ===== الدخول ===== */
 function showLogin(){$('#login').hidden=false;setTimeout(()=>$('#pw').focus(),50)}
@@ -3690,7 +3959,7 @@ def is_mix_engineering_request(text, ctx=None):
                               "function", "algorithm", "مشروع", "ملف", "ملفات", "طوّر", "طور", "عدّل", "عدل",
                               "راجع", "مراجعة", "اختبر", "اختبار", "واجهة", "أمان", "امان", "ثغرة", "ثغرات",
                               "صفحة", "موقع", "تطبيق", "سكربت", "api", "sql", "json", "html", "css")):
-        if not any(cm in low for cm in ("كرافتلاند", "craftland", "بلوكات كرافت")):
+        if True:
             return True
     if ctx:
         if doc_code_items(ctx):
@@ -4473,8 +4742,6 @@ class _ImgError(Exception):
 def img_label(model):
     """اسم قصير ومفهوم لموديل الرسم."""
     m = (model or "").lower()
-    if "pollinations" in m:
-        return "Pollinations"
     if "together" in m:
         return "Together FLUX"
     if "pro-image" in m:
@@ -4516,32 +4783,6 @@ def _img_result(data, model_name, en):
     return {"status": "done", "text": "تفضّل الصورة 🎨",
             "image": "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()),
             "note": img_label(model_name)}
-
-
-def pollinations_image(b, full, en):
-    """احتياط مجاني (Pollinations). POLLINATIONS_MODEL ممكن يكون كذا موديل مفصولين بفاصلة، بيجرّبن بالترتيب.
-    POLLINATIONS_KEY اختياري (مفتاح مجاني بيشيل العلامة المائية وبيرفع الحد)."""
-    import random
-    q = quote(full[:900], safe="")
-    models = [m.strip() for m in os.environ.get("POLLINATIONS_MODEL", "flux").split(",") if m.strip()] or ["flux"]
-    key = os.environ.get("POLLINATIONS_KEY", "").strip()
-    last = "ما رد"
-    for model in models:
-        params = "model=%s&width=1024&height=1024&nologo=true&seed=%d" % (quote(model), random.randint(1, 999999))
-        if key:
-            params += "&key=" + quote(key, safe="")
-        for base in ("https://gen.pollinations.ai/image/", "https://image.pollinations.ai/prompt/"):
-            try:
-                r = b.requests.get(base + q + "?" + params, timeout=90, headers={"User-Agent": "Mozilla/5.0"})
-            except Exception as e:
-                last = str(e)[:80]
-                continue
-            ct = str((getattr(r, "headers", None) or {}).get("content-type", ""))
-            if r.status_code == 200 and ct.startswith("image/") and len(r.content) > 1000:
-                return _img_result(r.content, "%s (Pollinations)" % model, en)
-            last = "%s كود %s" % (model, r.status_code)
-            log.warning("Pollinations %s %s: %s", base, model, last)
-    raise _ImgError("Pollinations: " + last)
 
 
 def together_image(b, full, en):
@@ -5268,12 +5509,9 @@ def register(app, b):
     def cf_ready():
         return bool(os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip() and os.environ.get("CLOUDFLARE_API_TOKEN", "").strip())
 
-    def fallback_on():
-        return os.environ.get("IMAGE_FALLBACK", "1") != "0"
-
     def image_ready():
-        """الرسم متاح؟ (Gemini، أو Cloudflare، أو الاحتياط المجاني)."""
-        return bool(b.client) or cf_ready() or fallback_on()
+        """الرسم متاح؟ (Gemini، أو Cloudflare، أو Together، أو InstructPix2Pix)."""
+        return bool(b.client) or cf_ready() or bool(os.environ.get("TOGETHER_API_KEY", "").strip() or os.environ.get("HF_TOKEN", "").strip() or os.environ.get("REPLICATE_API_TOKEN", "").strip())
 
     def finish(job_id, res):
         """بيحفظ نتيجة المهمة إلا إذا انلغت."""
@@ -5601,10 +5839,9 @@ def register(app, b):
             contents = [T.Content(role=r, parts=[T.Part(text=t)]) for r, t in history]
             if emo and mood["state"] != "upset" and mood.get("feel") and time.time() - mood.get("feel_since", 0) < 1200:
                 mem_prompt = FEEL_HINT % (FEEL_AR.get(mood["feel"], ""), (" بسبب: " + mood["feel_why"]) if mood.get("feel_why") else "") + mem_prompt
-            # إذا كتب المستخدم «فحص النظام» أو «/check» بالشات، نشغّل فاحص الأدوات الـ 8 فوراً ونرجع التقرير
             if re.match(r"^(?:فحص\s+النظام|اختبار\s+النظام|افحص\s+النظام|/check|/systest)\s*[؟?!.]*$", text.strip(), re.I) and AIStack is not None:
                 diag_res = AIStack.run_full_stack_diagnostics()
-                finish(job_id, {"status": "done", "text": diag_res["report_ar"], "note": "System Check · 9/9 ✅"})
+                finish(job_id, {"status": "done", "text": diag_res["report_ar"], "note": "System Check · 10/10 ✅"})
                 return
             pctx = page_context(b, text) if len(text) < 3000 else ""
             if pctx:
@@ -6261,7 +6498,7 @@ def register(app, b):
         day = cur_u + "|" + time.strftime("%Y-%m-%d")
         img_used = max(img_counts.get(day, 0), vbrain.memory.get_daily_count(day) if vbrain is not None else 0)
         if AIStack is not None:
-            return jsonify(AIStack.get_user_model_quotas(cur_u, img_override_used=img_used) if hasattr(AIStack, "get_user_model_quotas") else AIStack.get_quota_tracker().get_user_model_quotas(cur_u, img_override_used=img_used))
+            return jsonify(AIStack.get_quota_tracker().get_user_model_quotas(cur_u, img_override_used=img_used))
         return jsonify({"user": cur_u, "models": [], "stack": {}})
 
     @app.get("/api/system-check")
@@ -6286,6 +6523,145 @@ def register(app, b):
             return jsonify(ok=True, url=url, title=title, markdown=md_body)
         except Exception as e:
             return jsonify(error=str(e)), 400
+
+    # ---------- مسارات استوديو ملفات GitHub (قراءة / تعديل / رفع / حذف / إرفاق للشات) ----------
+    @app.get("/api/github/config")
+    def api_github_get_config():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        cfg = AIStack.get_github_manager().get_config(uid())
+        cfg.pop("_token", None)
+        return jsonify(ok=True, config=cfg)
+
+    @app.post("/api/github/config")
+    def api_github_set_config():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            cfg = AIStack.get_github_manager().set_config(
+                uid(),
+                repo=str(body.get("repo") or ""),
+                branch=str(body.get("branch") or ""),
+                token=str(body.get("token") or ""),
+            )
+            return jsonify(ok=True, config=cfg)
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 400
+
+    @app.get("/api/github/tree")
+    def api_github_tree():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        repo = str(request.args.get("repo") or "").strip()
+        branch = str(request.args.get("branch") or "").strip()
+        try:
+            gh = AIStack.get_github_manager()
+            res = gh.list_files(uid(), repo_override=repo, branch_override=branch)
+            res["branches"] = gh.list_branches(uid(), repo_override=repo)
+            return jsonify(ok=True, **res)
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 400
+
+    @app.get("/api/github/file")
+    def api_github_get_file():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        path = str(request.args.get("path") or "").strip()
+        repo = str(request.args.get("repo") or "").strip()
+        branch = str(request.args.get("branch") or "").strip()
+        try:
+            res = AIStack.get_github_manager().get_file(path, uid(), repo_override=repo, branch_override=branch)
+            return jsonify(ok=True, **res)
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 400
+
+    @app.post("/api/github/save")
+    def api_github_save_file():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        path = str(body.get("path") or "").strip()
+        content = str(body.get("content") or "")
+        msg = str(body.get("message") or "").strip()
+        sha = str(body.get("sha") or "").strip() or None
+        repo = str(body.get("repo") or "").strip()
+        branch = str(body.get("branch") or "").strip()
+        if body.get("token"):
+            AIStack.get_github_manager().set_config(uid(), repo=repo, branch=branch, token=str(body.get("token")))
+        try:
+            res = AIStack.get_github_manager().save_file(
+                path=path,
+                content=content,
+                commit_message=msg,
+                sha=sha,
+                user_id=uid(),
+                repo_override=repo,
+                branch_override=branch,
+            )
+            return jsonify(**res)
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 400
+
+    @app.post("/api/github/delete")
+    def api_github_delete_file():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        path = str(body.get("path") or "").strip()
+        msg = str(body.get("message") or "").strip()
+        sha = str(body.get("sha") or "").strip() or None
+        repo = str(body.get("repo") or "").strip()
+        branch = str(body.get("branch") or "").strip()
+        try:
+            res = AIStack.get_github_manager().delete_file(
+                path=path,
+                commit_message=msg,
+                sha=sha,
+                user_id=uid(),
+                repo_override=repo,
+                branch_override=branch,
+            )
+            return jsonify(**res)
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 400
+
+    @app.post("/api/github/attach")
+    def api_github_attach_file():
+        bad = guard()
+        if bad:
+            return bad
+        body = request.get_json(silent=True) or {}
+        path = str(body.get("path") or "").strip()
+        content = str(body.get("content") or "")
+        if not path or not content.strip():
+            return jsonify(error="الملف فارغ أو بدون اسم"), 400
+        try:
+            parts, trunc = text_file_parts(b.types, path, content.encode("utf-8"))
+            W = wid()
+            b.set_doc(W, path, parts)
+            b.doc_ctx[W]["image"] = False
+            return jsonify(ok=True, name=path, truncated=trunc)
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 400
 
     @app.get("/api/image/capabilities")
     def api_image_capabilities():

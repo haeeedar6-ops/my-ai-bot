@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-ryn_ai_stack.py — الحزمة الذكية الموحدة لـ Ryn (8 محركات متكاملة):
+ryn_ai_stack.py — الحزمة الذكية الموحدة لـ Ryn (8 محركات + مدير GitHub المباشر):
 1. LiteLLM Unified Router (https://github.com/BerriAI/litellm)
 2. Chroma Semantic Vector Memory (https://github.com/chroma-core/chroma)
 3. Crawl4AI Web-to-Markdown Extractor (https://github.com/unclecode/crawl4ai)
@@ -9,6 +9,7 @@ ryn_ai_stack.py — الحزمة الذكية الموحدة لـ Ryn (8 محر�
 6. Tree-sitter Multi-Language AST & Symbol Analyzer (https://github.com/tree-sitter/tree-sitter)
 7. DSPy Declarative Prompt Optimizer & ChainOfThought (https://github.com/stanfordnlp/dspy)
 8. LangGraph Stateful Cyclic Multi-Agent Graph Engine (https://github.com/langchain-ai/langgraph)
+9. GitHubFileManager — الوصول المباشر لملفات مستودع GitHub وقراءتها وتعديلها ورفعها (Commit/Push)
 """
 from __future__ import annotations
 import os
@@ -17,9 +18,11 @@ import ast
 import json
 import math
 import time
+import base64
 import hashlib
 import threading
 import tempfile
+import requests
 from html.parser import HTMLParser
 from typing import Dict, List, Any, Optional, Callable, Tuple
 
@@ -174,6 +177,7 @@ class ModelQuotaTracker:
                     "treesitter": True,
                     "dspy": True,
                     "langgraph": True,
+                    "github_sync": True,
                 },
             }
 
@@ -182,12 +186,6 @@ class ModelQuotaTracker:
 # القسم 2: LiteLLM Unified Router (https://github.com/BerriAI/litellm)
 # ==============================================================================
 class LiteLLMRouter:
-    """
-    موحد للـ APIs بأسلوب LiteLLM:
-    يتيح استدعاء Gemini و Groq و OpenRouter و DeepSeek و Qwen عبر دالة موحدة `completion(...)`
-    مع دعم التوجيه التلقائي (Routing)، البدائل (Fallbacks)، وتتبع استهلاك كل نموذج.
-    """
-
     def __init__(self, quota_tracker: Optional[ModelQuotaTracker] = None):
         self.quota_tracker = quota_tracker or get_quota_tracker()
 
@@ -260,12 +258,6 @@ class LiteLLMRouter:
 # القسم 3: Chroma Semantic Vector Memory (https://github.com/chroma-core/chroma)
 # ==============================================================================
 class ChromaSemanticMemory:
-    """
-    قاعدة بيانات متجهات دلالية خفيفة وسريعة (Chroma-style Vector Collection):
-    تحوّل رسائل وسياق المحادثات السابقة إلى متجهات رياضية (Hashed N-Gram TF-IDF Cosine Embeddings)
-    وتسترجع أدق الذكريات والسياقات المرتبطة دلالياً بسؤال المستخدم الحالي.
-    """
-
     def __init__(self, storage_path: Optional[str] = None, dim: int = 256, max_docs_per_user: int = 120):
         base_dir = os.environ.get("RYN_DATA_DIR", tempfile.gettempdir())
         self.storage_path = storage_path or os.path.join(base_dir, "ryn_chroma_vectors.json")
@@ -381,7 +373,6 @@ class ChromaSemanticMemory:
 # القسم 4: Crawl4AI Web-to-Markdown Extractor (https://github.com/unclecode/crawl4ai)
 # ==============================================================================
 class _Crawl4AIMarkdownParser(HTMLParser):
-    """يحول HTML الخام إلى صيغة Markdown نظيفة ومهيكلة جاهزة لنماذج الذكاء الاصطناعي."""
     _SKIP_TAGS = {"script", "style", "noscript", "svg", "template", "iframe", "canvas", "nav", "footer", "aside", "form"}
     _HEADING_MAP = {"h1": "# ", "h2": "## ", "h3": "### ", "h4": "#### ", "h5": "##### ", "h6": "###### "}
 
@@ -472,7 +463,6 @@ class _Crawl4AIMarkdownParser(HTMLParser):
 
 
 def html_to_clean_markdown(html_text: str, max_chars: int = 14000) -> Tuple[str, str]:
-    """تحويل كود HTML إلى (العنوان، نص Markdown نظيف ومهيكل بأسلوب Crawl4AI)."""
     parser = _Crawl4AIMarkdownParser()
     try:
         parser.feed(html_text or "")
@@ -489,10 +479,6 @@ def html_to_clean_markdown(html_text: str, max_chars: int = 14000) -> Tuple[str,
 # القسم 5: Instructor Structured Output Enforcer (https://github.com/jxnl/instructor)
 # ==============================================================================
 class InstructorStructuredEngine:
-    """
-    أداة إجبار النماذج على إرجاع بيانات مهيكلة (JSON / Schema Validation) بأسلوب Instructor.
-    """
-
     @staticmethod
     def extract_json_dict(raw_text: str) -> Optional[Dict[str, Any]]:
         t = (raw_text or "").strip()
@@ -552,10 +538,6 @@ class InstructorStructuredEngine:
 # القسم 6: Promptfoo Prompt & Output Evaluator (https://github.com/promptfoo/promptfoo)
 # ==============================================================================
 class PromptfooEvalEngine:
-    """
-    محرك تقييم وفحص جودة البرومبت والردود ضد قواعد التحقق والأمان (Promptfoo-style Assertions & Red-Teaming):
-    يدعم فحوصات: contains, not-contains, is-json, python-syntax-valid, no-secret-leak, no-ai-buzzwords.
-    """
     _SECRET_LEAK_RE = re.compile(r"\b(?:AIza[0-9A-Za-z\-_]{30,}|sk-(?:proj-)?[0-9A-Za-z\-_]{20,}|gsk_[0-9A-Za-z]{20,})\b")
     _BUZZWORDS_RE = re.compile(r"(?i)\b(?:8k|4k|hyper-?realistic|masterpiece|ultra\s*detailed|unreal\s*engine)\b")
 
@@ -627,14 +609,6 @@ class PromptfooEvalEngine:
 # القسم 7: Tree-sitter Multi-Language AST Analyzer (https://github.com/tree-sitter/tree-sitter)
 # ==============================================================================
 class TreeSitterASTAnalyzer:
-    """
-    محلل الشجرة النحوية والهيكلية المتعدد اللغات بأسلوب Tree-sitter:
-    يحلل كود Python, JavaScript, TypeScript, Go, Rust, Java, C/C++ ويستخرج:
-    - العقد الدلالية (functions, classes, methods, imports) مع أرقام الأسطر.
-    - خريطة استدعاءات الدوال (Call Graph edges).
-    - عقد الأخطاء النحوية وعدم توازن الأقواس (`ERROR` nodes).
-    """
-
     def parse_code_structure(self, lang: str, code: str) -> Dict[str, Any]:
         lg = (lang or "python").lower().strip()
         src = code or ""
@@ -676,7 +650,6 @@ class TreeSitterASTAnalyzer:
             except SyntaxError as se:
                 error_nodes.append({"type": "ERROR", "line": se.lineno or 1, "message": se.msg})
         else:
-            # تحليل شجري متعدد اللغات (JS / TS / Go / Rust / Java / C++)
             lines = src.splitlines()
             for idx, ln in enumerate(lines, 1):
                 for m_fn in re.finditer(
@@ -692,7 +665,6 @@ class TreeSitterASTAnalyzer:
                     imp = m_im.group(1) or m_im.group(2)
                     if imp:
                         imports.append(imp)
-            # فحص توازن الأقواس لاكتشاف عقد ERROR
             pairs = {"(": ")", "[": "]", "{": "}"}
             stack: List[Tuple[str, int]] = []
             in_str = None
@@ -735,12 +707,6 @@ class TreeSitterASTAnalyzer:
 # القسم 8: DSPy Declarative Prompt Optimizer (https://github.com/stanfordnlp/dspy)
 # ==============================================================================
 class DSPyPromptOptimizer:
-    """
-    مُحسّن البرومبت التصريحي بأسلوب DSPy (Signatures + ChainOfThought + Few-Shot Bootstrap):
-    يبني تواقيع برمجية منظمة (`input_fields -> rationale -> output_fields`) ويحسّن البرومبت تلقائياً
-    بناءً على دالة تقييم (Metric) من Promptfoo.
-    """
-
     def compile_chain_of_thought_prompt(
         self,
         task_signature: str,
@@ -800,11 +766,6 @@ class DSPyPromptOptimizer:
 # القسم 9: LangGraph Stateful Multi-Agent Engine (https://github.com/langchain-ai/langgraph)
 # ==============================================================================
 class LangGraphStateEngine:
-    """
-    محرك تدفق بياني متعدد الوكلاء بالحالة والحلقات الشرطية (LangGraph StateGraph):
-    يتيح تعريف عقد المعالجة (`add_node`) والانتقالات المباشرة (`add_edge`) والانتقالات الشرطية (`add_conditional_edges`)
-    مع حفظ سجل انتقالات الحالة (`trace`) ومنع الحلقات اللانهائية (`max_steps`).
-    """
     END = "__END__"
 
     def __init__(self, entry_point: str = "start", max_steps: int = 12):
@@ -852,17 +813,248 @@ class LangGraphStateEngine:
 
 
 # ==============================================================================
-# القسم 10: فاحص النظام التفاعلي الشامل (Live System & 8-Tool Diagnostic Suite)
+# القسم 10: GitHub Repository File Manager (قراءة وتعديل ورفع وحذف ملفات GitHub مباشرة)
+# ==============================================================================
+class GitHubFileManager:
+    """
+    يتيح لـ Ryn الوصول إلى ملفات مستودع GitHub (مثل haeeedar6-ops/my-ai-bot)،
+    استعراض شجرة الملفات والفروع، قراءة أي ملف، تعديله ورفعه (Commit & Push) أو حذفه مباشرة.
+    """
+    _REPO_RE = re.compile(r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
+
+    def __init__(self, storage_path: Optional[str] = None):
+        base_dir = os.environ.get("RYN_DATA_DIR", tempfile.gettempdir())
+        self.storage_path = storage_path or os.path.join(base_dir, "ryn_github_config.json")
+        self._lock = threading.Lock()
+        self._user_configs: Dict[str, Dict[str, str]] = {}
+        self._load()
+
+    def _load(self) -> None:
+        try:
+            if os.path.isfile(self.storage_path):
+                with open(self.storage_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                if isinstance(d, dict):
+                    self._user_configs = d
+        except Exception:
+            pass
+
+    def _save_unlocked(self) -> None:
+        try:
+            with open(self.storage_path, "w", encoding="utf-8") as f:
+                json.dump(self._user_configs, f, ensure_ascii=False)
+        except Exception:
+            pass
+
+    def get_config(self, user_id: str = "main") -> Dict[str, Any]:
+        u = str(user_id or "main")
+        with self._lock:
+            uc = dict(self._user_configs.get(u) or {})
+        env_tok = (
+            os.environ.get("GITHUB_TOKEN", "").strip()
+            or os.environ.get("GH_TOKEN", "").strip()
+        )
+        tok = uc.get("token") or env_tok
+        repo = uc.get("repo") or os.environ.get("GITHUB_REPO", "haeeedar6-ops/my-ai-bot").strip()
+        branch = uc.get("branch") or os.environ.get("GITHUB_BRANCH", "main").strip()
+        return {
+            "repo": repo,
+            "branch": branch,
+            "has_token": bool(tok),
+            "token_masked": (tok[:6] + "••••••••" + tok[-4:]) if len(tok) > 10 else ("••••" if tok else ""),
+            "_token": tok,
+        }
+
+    def set_config(self, user_id: str, repo: str = "", branch: str = "", token: str = "") -> Dict[str, Any]:
+        u = str(user_id or "main")
+        with self._lock:
+            uc = self._user_configs.setdefault(u, {})
+            if repo and self._REPO_RE.match(repo.strip()):
+                uc["repo"] = repo.strip()
+            if branch and branch.strip():
+                uc["branch"] = branch.strip()
+            if token and token.strip() and "••" not in token:
+                uc["token"] = token.strip()
+            self._save_unlocked()
+        cfg = self.get_config(u)
+        cfg.pop("_token", None)
+        return cfg
+
+    @staticmethod
+    def _headers(token: str) -> Dict[str, str]:
+        h = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "Ryn-GitHub-Studio/2.0",
+        }
+        if token:
+            h["Authorization"] = f"Bearer {token}"
+        return h
+
+    def _validate_repo_and_path(self, repo: str, path: str = "") -> Tuple[str, str]:
+        r = (repo or "").strip().strip("/")
+        if not self._REPO_RE.match(r):
+            raise ValueError("اسم المستودع غير صالح (يجب أن يكون بصيغة owner/repo مثل haeeedar6-ops/my-ai-bot)")
+        p = (path or "").strip().lstrip("/")
+        if ".." in p.split("/"):
+            raise ValueError("مسار الملف غير آمن")
+        return r, p
+
+    def list_branches(self, user_id: str = "main", repo_override: str = "") -> List[str]:
+        cfg = self.get_config(user_id)
+        repo, _ = self._validate_repo_and_path(repo_override or cfg["repo"])
+        tok = cfg["_token"]
+        r = requests.get(
+            f"https://api.github.com/repos/{repo}/branches",
+            headers=self._headers(tok),
+            params={"per_page": 50},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return [cfg["branch"] or "main"]
+        return [b["name"] for b in (r.json() or []) if isinstance(b, dict) and b.get("name")] or ["main"]
+
+    def list_files(self, user_id: str = "main", repo_override: str = "", branch_override: str = "") -> Dict[str, Any]:
+        cfg = self.get_config(user_id)
+        repo, _ = self._validate_repo_and_path(repo_override or cfg["repo"])
+        branch = (branch_override or cfg["branch"] or "main").strip()
+        tok = cfg["_token"]
+        url = f"https://api.github.com/repos/{repo}/git/trees/{branch}"
+        r = requests.get(url, headers=self._headers(tok), params={"recursive": "1"}, timeout=20)
+        if r.status_code != 200:
+            raise RuntimeError(f"GitHub HTTP {r.status_code}: تعذر جلب ملفات المستودع ({r.text[:140]})")
+        data = r.json() or {}
+        files = []
+        for item in (data.get("tree") or []):
+            if isinstance(item, dict) and item.get("type") == "blob":
+                files.append({
+                    "path": item.get("path", ""),
+                    "size": int(item.get("size") or 0),
+                    "sha": item.get("sha", ""),
+                })
+        return {"repo": repo, "branch": branch, "files": files, "count": len(files)}
+
+    def get_file(self, path: str, user_id: str = "main", repo_override: str = "", branch_override: str = "") -> Dict[str, Any]:
+        cfg = self.get_config(user_id)
+        repo, clean_p = self._validate_repo_and_path(repo_override or cfg["repo"], path)
+        if not clean_p:
+            raise ValueError("حدد مسار الملف المطلوب قراءته")
+        branch = (branch_override or cfg["branch"] or "main").strip()
+        tok = cfg["_token"]
+        url = f"https://api.github.com/repos/{repo}/contents/{clean_p}"
+        r = requests.get(url, headers=self._headers(tok), params={"ref": branch}, timeout=20)
+        if r.status_code != 200:
+            raise RuntimeError(f"GitHub HTTP {r.status_code}: تعذر قراءة الملف {clean_p}")
+        d = r.json() or {}
+        b64_content = (d.get("content") or "").replace("\n", "").replace("\r", "")
+        raw_bytes = base64.b64decode(b64_content) if b64_content else b""
+        text_content = raw_bytes.decode("utf-8", errors="replace")
+        return {
+            "repo": repo,
+            "branch": branch,
+            "path": clean_p,
+            "sha": d.get("sha", ""),
+            "size": int(d.get("size") or len(raw_bytes)),
+            "html_url": d.get("html_url", ""),
+            "content": text_content,
+        }
+
+    def save_file(
+        self,
+        path: str,
+        content: str,
+        commit_message: str = "",
+        sha: Optional[str] = None,
+        user_id: str = "main",
+        repo_override: str = "",
+        branch_override: str = "",
+    ) -> Dict[str, Any]:
+        cfg = self.get_config(user_id)
+        repo, clean_p = self._validate_repo_and_path(repo_override or cfg["repo"], path)
+        if not clean_p:
+            raise ValueError("حدد مسار الملف المطلوب حفظه")
+        branch = (branch_override or cfg["branch"] or "main").strip()
+        tok = cfg["_token"]
+        if not tok:
+            raise RuntimeError("تعديل ملفات GitHub يتطلب إدخال مفتاح GITHUB_TOKEN (Personal Access Token بصلاحية repo).")
+
+        url = f"https://api.github.com/repos/{repo}/contents/{clean_p}"
+        cur_sha = (sha or "").strip()
+        if not cur_sha:
+            # جلب الـ SHA الحالي تلقائياً إذا كان الملف موجوداً مسبقاً
+            chk = requests.get(url, headers=self._headers(tok), params={"ref": branch}, timeout=15)
+            if chk.status_code == 200:
+                cur_sha = (chk.json() or {}).get("sha", "")
+
+        b64_new = base64.b64encode((content or "").encode("utf-8")).decode("ascii")
+        payload: Dict[str, Any] = {
+            "message": (commit_message or f"تحديث {clean_p} عبر Ryn GitHub Studio").strip()[:160],
+            "content": b64_new,
+            "branch": branch,
+        }
+        if cur_sha:
+            payload["sha"] = cur_sha
+
+        r = requests.put(url, headers=self._headers(tok), json=payload, timeout=25)
+        if r.status_code not in (200, 201):
+            raise RuntimeError(f"GitHub Save HTTP {r.status_code}: {r.text[:180]}")
+        res_j = r.json() or {}
+        new_content = res_j.get("content") or {}
+        commit_obj = res_j.get("commit") or {}
+        return {
+            "ok": True,
+            "repo": repo,
+            "branch": branch,
+            "path": clean_p,
+            "sha": new_content.get("sha", ""),
+            "commit_sha": commit_obj.get("sha", ""),
+            "commit_url": commit_obj.get("html_url") or new_content.get("html_url") or f"https://github.com/{repo}/blob/{branch}/{clean_p}",
+        }
+
+    def delete_file(
+        self,
+        path: str,
+        commit_message: str = "",
+        sha: Optional[str] = None,
+        user_id: str = "main",
+        repo_override: str = "",
+        branch_override: str = "",
+    ) -> Dict[str, Any]:
+        cfg = self.get_config(user_id)
+        repo, clean_p = self._validate_repo_and_path(repo_override or cfg["repo"], path)
+        if not clean_p:
+            raise ValueError("حدد مسار الملف المطلوب حذفه")
+        branch = (branch_override or cfg["branch"] or "main").strip()
+        tok = cfg["_token"]
+        if not tok:
+            raise RuntimeError("حذف ملف من GitHub يتطلب إدخال مفتاح GITHUB_TOKEN.")
+
+        url = f"https://api.github.com/repos/{repo}/contents/{clean_p}"
+        cur_sha = (sha or "").strip()
+        if not cur_sha:
+            chk = requests.get(url, headers=self._headers(tok), params={"ref": branch}, timeout=15)
+            if chk.status_code == 200:
+                cur_sha = (chk.json() or {}).get("sha", "")
+        if not cur_sha:
+            raise RuntimeError(f"الملف {clean_p} غير موجود في الفرع {branch}")
+
+        payload = {
+            "message": (commit_message or f"حذف {clean_p} عبر Ryn GitHub Studio").strip()[:160],
+            "sha": cur_sha,
+            "branch": branch,
+        }
+        r = requests.delete(url, headers=self._headers(tok), json=payload, timeout=20)
+        if r.status_code not in (200, 204):
+            raise RuntimeError(f"GitHub Delete HTTP {r.status_code}: {r.text[:180]}")
+        return {"ok": True, "repo": repo, "branch": branch, "deleted_path": clean_p}
+
+
+# ==============================================================================
+# القسم 11: فاحص النظام التفاعلي الشامل (Live System & 10-Component Diagnostic Suite)
 # ==============================================================================
 def run_full_stack_diagnostics() -> Dict[str, Any]:
-    """
-    يشغّل اختباراً حياً ومباشراً على الأدوات الـ 8 + العقل البصري + حارس الأمان (ryn_guard)
-    للتأكد من أن كل أداة تعمل 100% ويرجع تقريراً مفصلاً للواجهة أو للشات.
-    """
     t0 = time.time()
     checks = []
 
-    # 1. LiteLLM & Quota Tracker
     try:
         qt = get_quota_tracker()
         q_state = qt.get_user_model_quotas("diag_user")
@@ -871,7 +1063,6 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
     except Exception as e:
         checks.append({"id": "litellm", "name": "LiteLLM Unified Router & Quotas", "ok": False, "detail": str(e)[:80]})
 
-    # 2. Chroma Semantic Vector Memory
     try:
         cm = ChromaSemanticMemory(storage_path=os.path.join(tempfile.gettempdir(), "ryn_diag_chroma.json"))
         cm.add_interaction("diag_u", "تطوير بوت بايثون مع Flask و قاعدة بيانات", "تم ربط Flask بنجاح")
@@ -881,7 +1072,6 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
     except Exception as e:
         checks.append({"id": "chroma", "name": "Chroma Semantic Vector Memory", "ok": False, "detail": str(e)[:80]})
 
-    # 3. Crawl4AI Web-to-Markdown
     try:
         title, md = html_to_clean_markdown("<html><head><title>Test</title></head><body><h1>Header</h1><p>Clean <b>Markdown</b></p></body></html>")
         ok3 = (title == "Test" and "# Header" in md and "**Markdown**" in md)
@@ -889,7 +1079,6 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
     except Exception as e:
         checks.append({"id": "crawl4ai", "name": "Crawl4AI Web-to-Markdown", "ok": False, "detail": str(e)[:80]})
 
-    # 4. Instructor Structured JSON
     try:
         inst = get_instructor_engine()
         res_i = inst.create_structured("test", ["status", "code"], lambda _p: '{"status": "ok", "code": 200}')
@@ -898,7 +1087,6 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
     except Exception as e:
         checks.append({"id": "instructor", "name": "Instructor Structured JSON", "ok": False, "detail": str(e)[:80]})
 
-    # 5. Promptfoo Evaluator
     try:
         pf = get_promptfoo_engine()
         ev = pf.evaluate_output("def hello():\n    return 42\n", assertions=[{"type": "python-syntax-valid"}, {"type": "no-secret-leak"}])
@@ -907,7 +1095,6 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
     except Exception as e:
         checks.append({"id": "promptfoo", "name": "Promptfoo Quality & Security Eval", "ok": False, "detail": str(e)[:80]})
 
-    # 6. Tree-sitter Multi-Language AST
     try:
         ts = get_treesitter_analyzer()
         parsed_ts = ts.parse_code_structure("python", "class RynBot:\n    def run(self, x):\n        return x + 1\n")
@@ -916,7 +1103,6 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
     except Exception as e:
         checks.append({"id": "treesitter", "name": "Tree-sitter Multi-Lang AST", "ok": False, "detail": str(e)[:80]})
 
-    # 7. DSPy Prompt Optimizer
     try:
         dspy_opt = get_dspy_optimizer()
         opt_res = dspy_opt.optimize_with_metric(
@@ -930,7 +1116,6 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
     except Exception as e:
         checks.append({"id": "dspy", "name": "DSPy Signature & Prompt Optimizer", "ok": False, "detail": str(e)[:80]})
 
-    # 8. LangGraph Stateful Multi-Agent Engine
     try:
         lg = LangGraphStateEngine(entry_point="plan")
         lg.add_node("plan", lambda st: {"planned": True, "tries": st.get("tries", 0) + 1})
@@ -943,7 +1128,6 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
     except Exception as e:
         checks.append({"id": "langgraph", "name": "LangGraph Stateful Agent Graph", "ok": False, "detail": str(e)[:80]})
 
-    # 9. RYN Visual Brain + InstructPix2Pix + Vision Critic
     try:
         from visual_brain import get_visual_brain
         vb = get_visual_brain()
@@ -952,6 +1136,14 @@ def run_full_stack_diagnostics() -> Dict[str, Any]:
         checks.append({"id": "visual_brain", "name": "RYN Visual Brain + InstructPix2Pix", "ok": ok9, "detail": "بريميو الطلب ومحرك الواقعية والمراجع شغّال"})
     except Exception as e:
         checks.append({"id": "visual_brain", "name": "RYN Visual Brain + InstructPix2Pix", "ok": False, "detail": str(e)[:80]})
+
+    try:
+        gh = get_github_manager()
+        cfg = gh.get_config("diag_u")
+        ok10 = bool(cfg.get("repo")) and "/" in cfg["repo"]
+        checks.append({"id": "github_studio", "name": "GitHub Direct File Studio", "ok": ok10, "detail": f"مهيأ للمستودع ({cfg.get('repo')})"})
+    except Exception as e:
+        checks.append({"id": "github_studio", "name": "GitHub Direct File Studio", "ok": False, "detail": str(e)[:80]})
 
     passed_all = all(c["ok"] for c in checks)
     elapsed_ms = int((time.time() - t0) * 1000)
@@ -979,6 +1171,7 @@ _GLOBAL_INSTRUCTOR: Optional[InstructorStructuredEngine] = None
 _GLOBAL_PROMPTFOO: Optional[PromptfooEvalEngine] = None
 _GLOBAL_TREESITTER: Optional[TreeSitterASTAnalyzer] = None
 _GLOBAL_DSPY: Optional[DSPyPromptOptimizer] = None
+_GLOBAL_GITHUB: Optional[GitHubFileManager] = None
 
 
 def get_quota_tracker() -> ModelQuotaTracker:
@@ -1028,3 +1221,10 @@ def get_dspy_optimizer() -> DSPyPromptOptimizer:
     if _GLOBAL_DSPY is None:
         _GLOBAL_DSPY = DSPyPromptOptimizer()
     return _GLOBAL_DSPY
+
+
+def get_github_manager() -> GitHubFileManager:
+    global _GLOBAL_GITHUB
+    if _GLOBAL_GITHUB is None:
+        _GLOBAL_GITHUB = GitHubFileManager()
+    return _GLOBAL_GITHUB
