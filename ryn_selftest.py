@@ -418,6 +418,21 @@ if __name__ == "__main__":
         print(TEST_PROMPT)
     elif a[0] == "--gold":
         show(score_answer(GOLD_ANSWER))
+    elif a[0] == "--all":
+        show(score_answer(GOLD_ANSWER))
+        print("=" * 44)
+        im_res = score_image_engine()
+        for lbl, got, mx, why in im_res["rows"]:
+            print("%-24s %5s / %-3s %s" % (lbl, got, mx, why))
+        print("-" * 44)
+        print("IMAGE ENGINE TOTAL %.2f / %d" % (im_res["score"], im_res["max"]))
+        print("=" * 44)
+        from ryn_ai_stack import run_full_stack_diagnostics
+        diag = run_full_stack_diagnostics()
+        for c in diag["checks"]:
+            print("%-34s %s (%s)" % (c["name"], "PASS" if c["ok"] else "FAIL", c["detail"]))
+        print("-" * 44)
+        print("AI STACK DIAGNOSTICS: %d / %d PASSED (%dms)" % (diag["passed_count"], diag["total"], diag["elapsed_ms"]))
     elif a[0] == "--image":
         im_res = score_image_engine()
         for lbl, got, mx, why in im_res["rows"]:

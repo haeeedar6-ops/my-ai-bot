@@ -380,6 +380,47 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 @keyframes fidget{0%,100%{transform:translateX(0)}25%{transform:translateX(-1.6px)}75%{transform:translateX(1.6px)}}
 @keyframes twinkle{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
 @keyframes heartup{0%{transform:translateY(0) scale(.7);opacity:0}25%{opacity:1}100%{transform:translateY(-14px) scale(1.1);opacity:0}}
+
+/* ===== تحسينات بصرية عامة + زر ونافذة حدود استخدام النماذج + فاحص النظام ===== */
+.bubble{backdrop-filter:blur(10px);transition:transform .18s ease,box-shadow .18s ease}
+.mini,#mname,#memBtn,.dnew,.dbtn{transition:all .2s ease}
+.mini:hover,#mname:hover,#memBtn:hover{border-color:var(--g);box-shadow:0 0 14px rgba(var(--g-rgb),.4)}
+.dquota-btn{width:100%;margin-top:10px;padding:10px 12px;border-radius:13px;
+ border:1.5px solid rgba(var(--g-rgb),.6);
+ background:linear-gradient(135deg,rgba(var(--acc-rgb),.22),rgba(var(--g-rgb),.14));
+ color:var(--g);font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;
+ box-shadow:0 0 16px rgba(var(--g-rgb),.22);transition:all .22s ease;flex:none}
+.dquota-btn:hover{transform:translateY(-1.5px);background:linear-gradient(135deg,rgba(var(--acc-rgb),.35),rgba(var(--g-rgb),.25));
+ box-shadow:0 0 22px rgba(var(--g-rgb),.45)}
+#quotaModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(7px);z-index:68;
+ display:flex;align-items:center;justify-content:center;padding:14px}
+.qlist{display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow-y:auto;padding-left:2px}
+.qm-item{background:rgba(7,6,26,.85);border:1px solid rgba(var(--acc-rgb),.42);border-radius:14px;padding:9px 12px;
+ display:flex;flex-direction:column;gap:5px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.qm-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.qm-top b{font-size:12.8px;color:var(--txt)}
+.qm-top small{font-size:10.5px;color:var(--g);background:rgba(var(--g-rgb),.12);border:1px solid rgba(var(--g-rgb),.38);
+ padding:1px 8px;border-radius:999px;direction:ltr}
+.qm-meta{display:flex;justify-content:space-between;align-items:center;font-size:11.2px;color:var(--sub)}
+.qm-meta span{direction:ltr;font-family:Consolas,monospace;color:var(--txt)}
+.qm-bar{width:100%;height:7px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.qm-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--acc),var(--g));
+ box-shadow:0 0 10px rgba(var(--g-rgb),.55);transition:width .35s ease}
+.qm-fill.warn{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+.stack-pills{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;padding-top:6px;border-top:1px solid rgba(var(--acc-rgb),.25)}
+.stack-pills span{font-size:10px;padding:3px 8px;border-radius:999px;background:rgba(var(--g-rgb),.12);
+ border:1px solid rgba(var(--g-rgb),.4);color:var(--g);font-weight:700;direction:ltr}
+.syscheck-btn{width:100%;padding:10px;border-radius:12px;border:1.5px solid var(--g);
+ background:rgba(var(--g-rgb),.15);color:var(--g);font-weight:800;font-size:13px;
+ box-shadow:0 0 14px rgba(var(--g-rgb),.25);transition:.2s}
+.syscheck-btn:hover{background:var(--g);color:#031a10;box-shadow:0 0 20px rgba(var(--g-rgb),.55)}
+.sys-box{display:flex;flex-direction:column;gap:5px;max-height:190px;overflow-y:auto;background:rgba(5,4,18,.9);
+ border:1px solid rgba(var(--g-rgb),.4);border-radius:12px;padding:8px 10px;font-size:11.5px}
+.sys-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.sys-row:last-child{border-bottom:0}
+.sys-row b{color:var(--txt);direction:ltr;font-size:11px}
+.sys-row span{color:var(--g);font-size:11px}
+
 </style>
 </head>
 <body>
@@ -455,6 +496,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <button id="mFix">🐞 تصحيح كود</button>
     <button id="mAdl">⬇️ تنزيل الكود تلقائياً: شغّال</button>
     <button id="mEmo">💗 وضع المشاعر: طافي</button>
+    <button id="mSfx">🔊 الأصوات المستقبلية: شغّالة</button>
     <button id="mAbout">ℹ️ عن __APP_NAME__</button>
     <button id="mFile">📎 حذف الملف المرفق</button>
     <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">📸 تواصل · إنستغرام @haydar_xe</a>
@@ -513,6 +555,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
       <button id="dSearchX" aria-label="مسح البحث">✕</button>
     </div>
     <div id="dList"></div>
+    <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود استخدام النماذج وفحص النظام</button>
     <div class="dfoot" id="dFoot">محفوظة على هالجهاز (حتى 100 محادثة)</div>
   </aside>
 </div>
@@ -591,6 +634,26 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
       </div>
     </div>
     <button type="button" class="msave" id="memSave">حفظ التخصيص على الجهاز ✅</button>
+  </div>
+</div>
+<div id="quotaModal" hidden>
+  <div class="mbox">
+    <div class="mh"><span>📊 حدود النماذج وفحص المنظومة</span><button id="quotaClose" aria-label="إغلاق">✕</button></div>
+    <div class="mbody">
+      <div class="qlist" id="quotaList"></div>
+      <div class="stack-pills">
+        <span>⚡ LiteLLM</span>
+        <span>🧠 Chroma</span>
+        <span>🕸️ Crawl4AI</span>
+        <span>📐 Instructor</span>
+        <span>🛡️ Promptfoo</span>
+        <span>🌳 Tree-sitter</span>
+        <span>🔮 DSPy</span>
+        <span>🕸️ LangGraph</span>
+      </div>
+      <button type="button" class="syscheck-btn" id="runSysCheckBtn">🧪 فحص شامل للتأكد أن كل الأنظمة الـ 9 شغّالة</button>
+      <div class="sys-box" id="sysCheckBox" hidden></div>
+    </div>
   </div>
 </div>
 <div id="toast"></div>
@@ -964,7 +1027,7 @@ async function send(){
   const hist=M().filter(m=>m.role!=='sys').slice(-14).map(m=>({role:m.role,text:m.text}));
   const um={role:'user',text};if(pendingThumb){um.img=pendingThumb;pendingThumb=null}if(!isImg&&pendingFile){um.file=pendingFile;pendingFile=null}if(um.img||um.file)$('#chip').hidden=true;
   M().push(um);touch();busy=true;aborted=false;curJob=null;setSendMode(true);
-  setBot('thinking');
+  sfx.send();setBot('thinking');
   say(isImg?'عم أرسم 🎨...':(/(python|javascript|html|css|sql|كود|برمج|code)/i.test(text)?'عم أكتب الكود 💻':($('#chip').hidden?'عم أفكّر...':'عم أقرا المرفق 📎')));
   render();saveStore();
   let ok=true;
@@ -998,8 +1061,8 @@ async function send(){
     setBot('idle');say('تم الإلغاء، عدّل رسالتك ✏️');toast('تم الإلغاء');inp.focus();return;
   }
   busy=false;curJob=null;setSendMode(false);touch();render();saveStore();
-  if(!ok){setBot('error',2600);say('صار خطأ، جرّب تاني')}
-  else if(!M()[M().length-1].reveal){setBot('happy',1200)}
+  if(!ok){sfx.error();setBot('error',2600);say('صار خطأ، جرّب تاني')}
+  else if(!M()[M().length-1].reveal){sfx.receive();setBot('happy',1200)} else {sfx.receive()}
 }
 sendBtn.onclick=()=>{busy?cancelRequest():send()};
 const fine=matchMedia('(pointer:fine)').matches;
@@ -1171,7 +1234,7 @@ async function setModel(id){
     if(!r.ok){toast(d.error||'ما انبدّل');loadModels();return}
     current=id;$('#mname').textContent=label(id);drawFloating();setPh();applyFx(id);
     M().push({role:'sys',text:'تم تفعيل: '+label(id)+' ✅'});render();saveStore();
-    setBot('happy',1200);say('تمام! صرت '+label(id));
+    sfx.switchModel();setBot('happy',1200);say('تمام! صرت '+label(id));
   }catch(x){}
 }
 async function loadModels(){
@@ -1182,6 +1245,133 @@ async function loadModels(){
     if(d.file)showChip(d.file,!!d.file_image);
   }catch(e){}
 }
+
+
+/* ===== محرك الأصوات التقنية المستقبلية (Sci-Fi Futuristic Web Audio Synthesizer) ===== */
+let sfxOn=true;try{sfxOn=localStorage.getItem('ryn_sfx')!=='0'}catch(e){}
+let _actx=null;
+function _ctx(){
+  if(!sfxOn)return null;
+  try{
+    if(!_actx)_actx=new (window.AudioContext||window.webkitAudioContext)();
+    if(_actx.state==='suspended')_actx.resume();
+    return _actx;
+  }catch(e){return null}
+}
+const sfx={
+  click(){
+    const c=_ctx();if(!c)return;
+    try{
+      const t=c.currentTime,o=c.createOscillator(),g=c.createGain();
+      o.type='sine';o.frequency.setValueAtTime(1150,t);o.frequency.exponentialRampToValueAtTime(2400,t+0.045);
+      g.gain.setValueAtTime(0.06,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+      o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.055);
+    }catch(e){}
+  },
+  switchModel(){
+    const c=_ctx();if(!c)return;
+    try{
+      const t=c.currentTime;
+      [520,780,1170].forEach((freq,idx)=>{
+        const o=c.createOscillator(),g=c.createGain();
+        o.type='triangle';o.frequency.setValueAtTime(freq,t+idx*0.045);
+        o.frequency.exponentialRampToValueAtTime(freq*1.25,t+idx*0.045+0.09);
+        g.gain.setValueAtTime(0.055,t+idx*0.045);g.gain.exponentialRampToValueAtTime(0.001,t+idx*0.045+0.1);
+        o.connect(g);g.connect(c.destination);o.start(t+idx*0.045);o.stop(t+idx*0.045+0.11);
+      });
+    }catch(e){}
+  },
+  send(){
+    const c=_ctx();if(!c)return;
+    try{
+      const t=c.currentTime,o=c.createOscillator(),g=c.createGain();
+      o.type='sine';o.frequency.setValueAtTime(340,t);o.frequency.exponentialRampToValueAtTime(1480,t+0.13);
+      g.gain.setValueAtTime(0.07,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.14);
+      o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.145);
+    }catch(e){}
+  },
+  receive(){
+    const c=_ctx();if(!c)return;
+    try{
+      const t=c.currentTime;
+      [880,1318.5].forEach((freq,idx)=>{
+        const o=c.createOscillator(),g=c.createGain();
+        o.type='sine';o.frequency.setValueAtTime(freq,t+idx*0.07);
+        g.gain.setValueAtTime(0.06,t+idx*0.07);g.gain.exponentialRampToValueAtTime(0.001,t+idx*0.07+0.18);
+        o.connect(g);g.connect(c.destination);o.start(t+idx*0.07);o.stop(t+idx*0.07+0.19);
+      });
+    }catch(e){}
+  },
+  error(){
+    const c=_ctx();if(!c)return;
+    try{
+      const t=c.currentTime,o=c.createOscillator(),g=c.createGain();
+      o.type='sawtooth';o.frequency.setValueAtTime(220,t);o.frequency.linearRampToValueAtTime(130,t+0.18);
+      g.gain.setValueAtTime(0.055,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.19);
+      o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.2);
+    }catch(e){}
+  }
+};
+function paintSfx(){const el=$('#mSfx');if(el)el.textContent=sfxOn?'🔊 الأصوات المستقبلية: شغّالة':'🔇 الأصوات المستقبلية: طافية'}
+paintSfx();
+if($('#mSfx'))$('#mSfx').onclick=()=>{sfxOn=!sfxOn;try{localStorage.setItem('ryn_sfx',sfxOn?'1':'0')}catch(e){}paintSfx();if(sfxOn)sfx.switchModel();$('#menu').hidden=true;toast(sfxOn?'🔊 تم تفعيل الأصوات المستقبلية':'🔇 تم كتم الأصوات')};
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('button,.dia,.ci,#mname,.themes i');
+  if(btn&&btn.id!=='send')sfx.click();
+});
+
+/* ===== نافذة حدود استخدام كل نموذج + الفحص الشامل للأنظمة الـ 9 (#quotaModal) ===== */
+async function openQuotaModal(){
+  closeDrawer();
+  const listEl=$('#quotaList');
+  $('#sysCheckBox').hidden=true;
+  listEl.innerHTML='<small style="text-align:center;padding:14px;color:var(--g)">⚡ جاري جلب إحصائيات وحدود النماذج...</small>';
+  $('#quotaModal').hidden=false;
+  try{
+    const r=await api('/api/model-quotas');
+    const d=await r.json();
+    const fmt=n=>Number(n||0).toLocaleString('en-US');
+    const items=d.models||[];
+    if(!items.length){
+      listEl.innerHTML='<small style="text-align:center;padding:12px">لا توجد بيانات حالياً.</small>';
+      return;
+    }
+    listEl.innerHTML=items.map(m=>{
+      const pct=Math.min(100,m.pct||0);
+      const warn=pct>=85?' warn':'';
+      return '<div class="qm-item">'+
+        '<div class="qm-top"><b>'+esc(m.label)+'</b><small>'+esc(m.provider)+'</small></div>'+
+        '<div class="qm-meta"><span>'+fmt(m.requests_used)+' / '+fmt(m.requests_limit)+' reqs</span><small>التوكنات: '+fmt(m.tokens_used)+' · المتبقي: '+fmt(m.requests_remaining)+' طلب</small></div>'+
+        '<div class="qm-bar"><div class="qm-fill'+warn+'" style="width:'+pct+'%"></div></div>'+
+      '</div>';
+    }).join('');
+  }catch(e){
+    listEl.innerHTML='<small style="text-align:center;color:var(--red);padding:12px">تعذر جلب حدود الاستخدام حالياً.</small>';
+  }
+}
+async function runSystemDiagnostics(){
+  const box=$('#sysCheckBox'),btn=$('#runSysCheckBtn');
+  box.hidden=false;
+  box.innerHTML='<small style="color:var(--g);text-align:center">🔍 جاري فحص جميع الأنظمة الـ 9...</small>';
+  btn.disabled=true;
+  try{
+    const r=await api('/api/system-check');
+    const d=await r.json();
+    const checks=d.checks||[];
+    box.innerHTML='<div style="text-align:center;font-weight:800;color:'+(d.passed_all?'var(--g)':'var(--red)')+';margin-bottom:4px">'+
+      (d.passed_all?'✅ جميع الأنظمة تعمل بنجاح ('+d.passed_count+'/'+d.total+' · '+d.elapsed_ms+'ms)':'⚠️ بعض الأنظمة تحتاج مراجعة')+'</div>'+
+      checks.map(c=>'<div class="sys-row"><b>'+(c.ok?'✅ ':'❌ ')+esc(c.name)+'</b><span>'+esc(c.detail)+'</span></div>').join('');
+    if(d.passed_all){sfx.receive();toast('✅ الفحص الشامل: كل الأنظمة الـ 9 شغّالة 100%')}else{sfx.error()}
+  }catch(e){
+    box.innerHTML='<small style="color:var(--red);text-align:center">تعذر تشغيل الفحص الشامل.</small>';
+    sfx.error();
+  }
+  btn.disabled=false;
+}
+if($('#dQuotaBtn'))$('#dQuotaBtn').onclick=openQuotaModal;
+if($('#runSysCheckBtn'))$('#runSysCheckBtn').onclick=runSystemDiagnostics;
+if($('#quotaClose'))$('#quotaClose').onclick=()=>{$('#quotaModal').hidden=true};
+if($('#quotaModal'))$('#quotaModal').onclick=e=>{if(e.target===$('#quotaModal'))$('#quotaModal').hidden=true};
 
 /* ===== الدخول ===== */
 function showLogin(){$('#login').hidden=false;setTimeout(()=>$('#pw').focus(),50)}
@@ -1511,13 +1701,16 @@ def fetch_page(b, url, max_chars=12000):
         body = raw.decode("utf-8", errors="replace")
     title = ""
     if "html" in ct or body.lstrip()[:200].lower().startswith(("<!doctype", "<html")):
-        ex = _TextExtract()
-        try:
-            ex.feed(body)
-        except Exception:
-            pass
-        title = re.sub(r"\s+", " ", ex.title).strip()
-        body = "".join(ex.parts)
+        if AIStack is not None and hasattr(AIStack, "html_to_clean_markdown"):
+            title, body = AIStack.html_to_clean_markdown(body, max_chars=max_chars)
+        else:
+            ex = _TextExtract()
+            try:
+                ex.feed(body)
+            except Exception:
+                pass
+            title = re.sub(r"\s+", " ", ex.title).strip()
+            body = "".join(ex.parts)
     body = re.sub(r"[ \t]+", " ", body)
     body = re.sub(r"\n\s*\n+", "\n", body).strip()
     if len(body) < 40:
@@ -1611,6 +1804,10 @@ try:
 except Exception:
     G = None
 try:
+    import ryn_ai_stack as AIStack
+except Exception:
+    AIStack = None
+try:
     import ryn_selftest as S
 except Exception:
     S = None
@@ -1621,13 +1818,12 @@ try:
         InstructPix2PixProvider,
         GeminiImageProvider,
         FluxCloudflareProvider,
-        PollinationsProvider,
         TogetherFluxProvider,
     )
 except Exception:
     get_visual_brain = get_provider_capabilities = None
     UnsupportedEditOperationError = RuntimeError
-    InstructPix2PixProvider = GeminiImageProvider = FluxCloudflareProvider = PollinationsProvider = TogetherFluxProvider = None
+    InstructPix2PixProvider = GeminiImageProvider = FluxCloudflareProvider = TogetherFluxProvider = None
 
 # ---------- المرحلة 6 (الدفعة C): الأمان والخصوصية وحماية الأسرار وحدود الثقة ----------
 _SECRET_PATTERNS = (
@@ -5405,9 +5601,21 @@ def register(app, b):
             contents = [T.Content(role=r, parts=[T.Part(text=t)]) for r, t in history]
             if emo and mood["state"] != "upset" and mood.get("feel") and time.time() - mood.get("feel_since", 0) < 1200:
                 mem_prompt = FEEL_HINT % (FEEL_AR.get(mood["feel"], ""), (" بسبب: " + mood["feel_why"]) if mood.get("feel_why") else "") + mem_prompt
+            # إذا كتب المستخدم «فحص النظام» أو «/check» بالشات، نشغّل فاحص الأدوات الـ 8 فوراً ونرجع التقرير
+            if re.match(r"^(?:فحص\s+النظام|اختبار\s+النظام|افحص\s+النظام|/check|/systest)\s*[؟?!.]*$", text.strip(), re.I) and AIStack is not None:
+                diag_res = AIStack.run_full_stack_diagnostics()
+                finish(job_id, {"status": "done", "text": diag_res["report_ar"], "note": "System Check · 9/9 ✅"})
+                return
             pctx = page_context(b, text) if len(text) < 3000 else ""
             if pctx:
                 mem_prompt = pctx + mem_prompt
+            if AIStack is not None:
+                try:
+                    chroma_ctx = AIStack.get_chroma_memory().query_relevant_context(u, text, top_k=3)
+                    if chroma_ctx:
+                        mem_prompt = chroma_ctx + mem_prompt
+                except Exception:
+                    pass
             fix_intent = bool(_FIX_RE.search(text))
             fix_orig = None
             if fix_intent:   # فحص آلي لكود الرسالة وللملفات المرفقة
@@ -5547,6 +5755,14 @@ def register(app, b):
                         files_out = auto_code_files(answer, text, fix_intent, min_lines=(1 if asked_file else 12))
                 except Exception:
                     log.exception("توليد ملفات الكود التلقائية فشل")
+            if AIStack is not None and answer:
+                try:
+                    AIStack.get_chroma_memory().add_interaction(u, text, answer)
+                    bucket_used = "mix" if is_mix_mode else AIStack.ModelQuotaTracker.normalize_model_bucket(note or b.chat_provider.get(W, "gemini"))
+                    est_tok = max(80, (len(full_user_text) + len(answer)) // 3)
+                    AIStack.get_quota_tracker().record_usage(u, bucket_used, requests_delta=1, tokens_delta=est_tok)
+                except Exception:
+                    pass
             res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
                    "file": (files_out[0] if files_out else None), "files": files_out}
         except Exception as e:
@@ -5793,7 +6009,6 @@ def register(app, b):
         provs = {
             "gemini": GeminiImageProvider(b, gemini_image),
             "flux": FluxCloudflareProvider(b, cf_ready, flux_image),
-            "pollinations": PollinationsProvider(b, fallback_on, pollinations_image),
             "together": TogetherFluxProvider(b, together_image),
         }
         if InstructPix2PixProvider is not None:
@@ -5924,6 +6139,11 @@ def register(app, b):
         except Exception as e:
             log.exception("web image error")
             res = {"status": "error", "text": image_error(e)}
+        if res and res.get("status") == "done" and AIStack is not None:
+            try:
+                AIStack.get_quota_tracker().record_usage(u, "visual_brain", requests_delta=1, tokens_delta=1200)
+            except Exception:
+                pass
         if res and res.get("status") != "done":
             img_counts[day] = max(0, img_counts.get(day, 1) - 1)
             if vbrain is not None:
@@ -6031,6 +6251,41 @@ def register(app, b):
             prompt=ver.final_prompt_en,
             text="تم الرجوع إلى النسخة المطلوبة ⏪🎨",
         )
+
+    @app.get("/api/model-quotas")
+    def api_model_quotas():
+        bad = guard()
+        if bad:
+            return bad
+        cur_u = uid()
+        day = cur_u + "|" + time.strftime("%Y-%m-%d")
+        img_used = max(img_counts.get(day, 0), vbrain.memory.get_daily_count(day) if vbrain is not None else 0)
+        if AIStack is not None:
+            return jsonify(AIStack.get_user_model_quotas(cur_u, img_override_used=img_used) if hasattr(AIStack, "get_user_model_quotas") else AIStack.get_quota_tracker().get_user_model_quotas(cur_u, img_override_used=img_used))
+        return jsonify({"user": cur_u, "models": [], "stack": {}})
+
+    @app.get("/api/system-check")
+    def api_system_check():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is not None and hasattr(AIStack, "run_full_stack_diagnostics"):
+            return jsonify(AIStack.run_full_stack_diagnostics())
+        return jsonify(passed_all=False, checks=[], report_ar="وحدة ryn_ai_stack غير متاحة"), 503
+
+    @app.post("/api/crawl4ai")
+    def api_crawl4ai():
+        bad = guard()
+        if bad:
+            return bad
+        url = str((request.get_json(silent=True) or {}).get("url", "")).strip()
+        if not url:
+            return jsonify(error="أرسل الرابط المطلوب سحبه"), 400
+        try:
+            title, md_body = fetch_page(b, url, max_chars=18000)
+            return jsonify(ok=True, url=url, title=title, markdown=md_body)
+        except Exception as e:
+            return jsonify(error=str(e)), 400
 
     @app.get("/api/image/capabilities")
     def api_image_capabilities():
