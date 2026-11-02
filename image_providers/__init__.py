@@ -4,7 +4,6 @@ from .base import BaseImageProvider, ProviderUnavailableError
 from .instruct_pix2pix import InstructPix2PixProvider
 from .gemini_image import GeminiImageProvider
 from .flux import FluxCloudflareProvider
-from .pollinations import PollinationsProvider
 from .together import TogetherFluxProvider
 
 __all__ = [
@@ -13,6 +12,5 @@ __all__ = [
     "InstructPix2PixProvider",
     "GeminiImageProvider",
     "FluxCloudflareProvider",
-    "PollinationsProvider",
     "TogetherFluxProvider",
 ]
