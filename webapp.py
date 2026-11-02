@@ -1630,6 +1630,9 @@ if($('#ghFileList'))$('#ghFileList').addEventListener('click',e=>{
 if($('#ghSaveBtn'))$('#ghSaveBtn').onclick=saveGhFile;
 if($('#ghAttachBtn'))$('#ghAttachBtn').onclick=attachGhFileToChat;
 
+/* إخفاء أزرار GitHub تلقائياً لأي حساب غير المالك + تفعيل الاعتماد المباشر من قلب المحادثة */
+/* كل مستخدم خارج WEB_PASSWORD يدخل التوكن والمستودع الخاصين به بشكل مستقل */
+
 /* زر «🐙 رفع لـ GitHub» داخل بلوكات الكود في الشات */
 msgs.addEventListener('click',e=>{
   const gp=e.target.closest('.gh-push');
@@ -5843,10 +5846,22 @@ def register(app, b):
                 diag_res = AIStack.run_full_stack_diagnostics()
                 finish(job_id, {"status": "done", "text": diag_res["report_ar"], "note": "System Check · 10/10 ✅"})
                 return
+            if AIStack is not None:
+                gh_direct_reply = AIStack.get_github_manager().handle_direct_chat_command(u, text)
+                if gh_direct_reply:
+                    finish(job_id, {"status": "done", "text": gh_direct_reply, "note": "GitHub Agent 🐙"})
+                    return
             pctx = page_context(b, text) if len(text) < 3000 else ""
             if pctx:
                 mem_prompt = pctx + mem_prompt
             if AIStack is not None:
+                try:
+                    gh_ctx = AIStack.get_github_manager().build_chat_github_context(u, text, history)
+                    if gh_ctx:
+                        set_progress(job_id, "🐙 عم اقرأ ملفات مستودع GitHub وأجهز النقاش/التعديل...")
+                        mem_prompt = gh_ctx + mem_prompt
+                except Exception as _ghe:
+                    log.warning("GitHub chat context warning: %s", str(_ghe)[:120])
                 try:
                     chroma_ctx = AIStack.get_chroma_memory().query_relevant_context(u, text, top_k=3)
                     if chroma_ctx:
@@ -5992,7 +6007,12 @@ def register(app, b):
                         files_out = auto_code_files(answer, text, fix_intent, min_lines=(1 if asked_file else 12))
                 except Exception:
                     log.exception("توليد ملفات الكود التلقائية فشل")
+            gh_pending_flag = False
             if AIStack is not None and answer:
+                try:
+                    answer, gh_pending_flag = AIStack.get_github_manager().apply_chat_github_actions(u, text, answer)
+                except Exception as _gh_act_e:
+                    log.warning("GitHub chat action error: %s", str(_gh_act_e)[:120])
                 try:
                     AIStack.get_chroma_memory().add_interaction(u, text, answer)
                     bucket_used = "mix" if is_mix_mode else AIStack.ModelQuotaTracker.normalize_model_bucket(note or b.chat_provider.get(W, "gemini"))
@@ -6001,7 +6021,7 @@ def register(app, b):
                 except Exception:
                     pass
             res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
-                   "file": (files_out[0] if files_out else None), "files": files_out}
+                   "file": (files_out[0] if files_out else None), "files": files_out, "gh_pending": gh_pending_flag}
         except Exception as e:
             log.exception("web chat error")
             msg = b.friendly_error(e)
@@ -6641,6 +6661,21 @@ def register(app, b):
                 branch_override=branch,
             )
             return jsonify(**res)
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 400
+
+    @app.post("/api/github/approve-pending")
+    def api_github_approve_pending():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        try:
+            res = AIStack.get_github_manager().approve_pending_edit(uid())
+            return jsonify(**res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
         except Exception as e:
             return jsonify(error=redact_secrets(str(e))), 400
 

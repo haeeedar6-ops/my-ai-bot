@@ -813,20 +813,48 @@ class LangGraphStateEngine:
 
 
 # ==============================================================================
-# القسم 10: GitHub Repository File Manager (قراءة وتعديل ورفع وحذف ملفات GitHub مباشرة)
+# القسم 10: GitHub Conversational Agent & Multi-User Isolated File Manager
+# - حساب WEB_PASSWORD (user_id == "main") يأخذ GITHUB_TOKEN ومستودع المالك من متغيرات البيئة حصراً.
+# - أي حساب آخر في WEB_USERS معزول تماماً: لا يرى مفتاح البيئة ولا مستودع المالك،
+#   وإذا أراد الوصول لملفاته هو على GitHub يجب أن يضع التوكن والمستودع الخاصين به!
 # ==============================================================================
 class GitHubFileManager:
     """
-    يتيح لـ Ryn الوصول إلى ملفات مستودع GitHub (مثل haeeedar6-ops/my-ai-bot)،
-    استعراض شجرة الملفات والفروع، قراءة أي ملف، تعديله ورفعه (Commit & Push) أو حذفه مباشرة.
+    يتيح مناقشة وقراءة وتعديل ورفع وحذف ملفات GitHub مباشرة من داخل المحادثة مع Ryn:
+    1) حساب المالك (WEB_PASSWORD -> user_id == 'main') مرتبط تلقائياً بـ GITHUB_TOKEN ومستودع المالك في متغيرات البيئة.
+    2) أي مستخدم آخر في WEB_USERS لا يمكنه الوصول لمفتاح البيئة أو مستودع المالك إطلاقاً؛
+       وبإمكانه ربط التوكن الخاص به (Personal Access Token) ومستودعه الشخصي للعمل على ملفاته هو فقط.
     """
     _REPO_RE = re.compile(r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
+    _GH_TOKEN_RE = re.compile(r"\b(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{25,})\b")
+    _INLINE_REPO_RE = re.compile(r"\b([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)\b")
+    _APPROVE_CMD_RE = re.compile(
+        r"^(?:اعتمد(?:\s+التعديل)?(?:\s+وارفعه)?|ارفع(?:\s+التعديل)?(?:\s+على\s+(?:جيتهاب|غيتهاب|github))?|احفظ(?:\s+التعديل)?(?:\s+على\s+(?:جيتهاب|غيتهاب|github))?|تمام\s+اعتمد(?:\s+وارفعه)?|نفذ\s+التعديل|طبق\s+التعديل|موافق\s+ارفع(?:ه)?)\s*[.!؟?]*$",
+        re.I,
+    )
+    _IMMEDIATE_PUSH_RE = re.compile(
+        r"(?:وارفعه|ارفع\s+التعديل|ارفعه\s+على\s+(?:جيتهاب|غيتهاب|github)|احفظه\s+على\s+(?:جيتهاب|غيتهاب|github)|commit\s+and\s+push|push\s+to\s+github|احذف\s+ملف.*من\s+(?:جيتهاب|غيتهاب|github))",
+        re.I,
+    )
+    _GH_MENTION_RE = re.compile(
+        r"(?:github|جيتهاب|جيت\s*هاب|غيتهاب|غيت\s*هاب|المستودع|مستودعي|ملفات\s+المشروع|ملفات\s+البوت|تعديل\s+ملف|اقرأ\s+ملف|شوف\s+ملف|عدل\s+ملف|عدلي\s+ملف|احذف\s+ملف)",
+        re.I,
+    )
+    _KNOWN_FILES = (
+        "webapp.py", "bot.py", "filegen.py", "requirements.txt", "_worker.js",
+        "ryn_ai_stack.py", "ryn_guard.py", "ryn_selftest.py",
+        "knowledge/blocks.md", "knowledge/notes.md", "blocks.md", "notes.md",
+        "visual.py", "pollinations.py", "image_providers/pollinations.py",
+        "visual_brain/brain.py", "visual_brain/prompt_engine.py", "visual_brain/realism_engine.py",
+    )
 
     def __init__(self, storage_path: Optional[str] = None):
         base_dir = os.environ.get("RYN_DATA_DIR", tempfile.gettempdir())
         self.storage_path = storage_path or os.path.join(base_dir, "ryn_github_config.json")
         self._lock = threading.Lock()
         self._user_configs: Dict[str, Dict[str, str]] = {}
+        self._pending_edits: Dict[str, Dict[str, Any]] = {}
+        self._tree_cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -846,31 +874,59 @@ class GitHubFileManager:
         except Exception:
             pass
 
+    @staticmethod
+    def is_owner(user_id: str = "main") -> bool:
+        """
+        حساب WEB_PASSWORD فقط (user_id == 'main') هو حساب المالك الذي يأخذ مفتاح البيئة GITHUB_TOKEN تلقائياً.
+        أي حساب آخر في WEB_USERS له جلسته الخاصة ويجب أن يدخل التوكن والمستودع الخاصين به.
+        """
+        u = str(user_id or "main").strip()
+        return u in ("main", "diag_u")
+
+    @staticmethod
+    def _owner_default_repo() -> str:
+        return os.environ.get("GITHUB_REPO", "haeeedar6-ops/my-ai-bot").strip()
+
     def get_config(self, user_id: str = "main") -> Dict[str, Any]:
-        u = str(user_id or "main")
+        u = str(user_id or "main").strip() or "main"
+        owner_ok = self.is_owner(u)
         with self._lock:
             uc = dict(self._user_configs.get(u) or {})
-        env_tok = (
-            os.environ.get("GITHUB_TOKEN", "").strip()
-            or os.environ.get("GH_TOKEN", "").strip()
-        )
-        tok = uc.get("token") or env_tok
-        repo = uc.get("repo") or os.environ.get("GITHUB_REPO", "haeeedar6-ops/my-ai-bot").strip()
-        branch = uc.get("branch") or os.environ.get("GITHUB_BRANCH", "main").strip()
+
+        if owner_ok:
+            # حساب WEB_PASSWORD يأخذ تلقائياً مفتاح البيئة ومستودع المالك
+            env_tok = (
+                os.environ.get("GITHUB_TOKEN", "").strip()
+                or os.environ.get("GH_TOKEN", "").strip()
+            )
+            tok = uc.get("token") or env_tok
+            repo = uc.get("repo") or self._owner_default_repo()
+            branch = uc.get("branch") or os.environ.get("GITHUB_BRANCH", "main").strip()
+        else:
+            # أي حساب آخر في WEB_USERS لا يأخذ مفتاح البيئة ولا مستودع المالك أبداً؛ يستخدم فقط ما أدخله بنفسه
+            tok = uc.get("token") or ""
+            repo = uc.get("repo") or ""
+            branch = uc.get("branch") or "main"
+
         return {
             "repo": repo,
             "branch": branch,
             "has_token": bool(tok),
+            "is_owner": owner_ok,
             "token_masked": (tok[:6] + "••••••••" + tok[-4:]) if len(tok) > 10 else ("••••" if tok else ""),
             "_token": tok,
         }
 
     def set_config(self, user_id: str, repo: str = "", branch: str = "", token: str = "") -> Dict[str, Any]:
-        u = str(user_id or "main")
+        u = str(user_id or "main").strip() or "main"
+        owner_repo = self._owner_default_repo().lower()
+        clean_repo = (repo or "").strip().strip("/")
+        if not self.is_owner(u) and clean_repo.lower() == owner_repo:
+            raise PermissionError("⛔ هذا المستودع خاص بمالك البوت. يرجى إدخال اسم مستودعك الشخصي (username/repo) والتوكن الخاص بك.")
         with self._lock:
             uc = self._user_configs.setdefault(u, {})
-            if repo and self._REPO_RE.match(repo.strip()):
-                uc["repo"] = repo.strip()
+            if clean_repo and self._REPO_RE.match(clean_repo):
+                uc["repo"] = clean_repo
             if branch and branch.strip():
                 uc["branch"] = branch.strip()
             if token and token.strip() and "••" not in token:
@@ -890,19 +946,36 @@ class GitHubFileManager:
             h["Authorization"] = f"Bearer {token}"
         return h
 
-    def _validate_repo_and_path(self, repo: str, path: str = "") -> Tuple[str, str]:
-        r = (repo or "").strip().strip("/")
-        if not self._REPO_RE.match(r):
-            raise ValueError("اسم المستودع غير صالح (يجب أن يكون بصيغة owner/repo مثل haeeedar6-ops/my-ai-bot)")
-        p = (path or "").strip().lstrip("/")
-        if ".." in p.split("/"):
+    def _validate_user_access_and_repo(self, user_id: str, repo_override: str = "", path: str = "", require_token: bool = False) -> Tuple[str, str, str, str]:
+        u = str(user_id or "main").strip() or "main"
+        cfg = self.get_config(u)
+        tok = cfg["_token"]
+        repo = (repo_override or cfg["repo"] or "").strip().strip("/")
+        branch = (cfg["branch"] or "main").strip()
+
+        if not self.is_owner(u):
+            if not tok:
+                raise PermissionError(
+                    "🔑 للوصول إلى ملفاتك على GitHub، يجب إدخال التوكن الخاص بك (Personal Access Token) واسم مستودعك أولاً "
+                    "(أرسل في الشات: `اربط جيتهاب ghp_XXXX مستودع username/repo` أو من نافذة 🐙 GitHub)."
+                )
+            if not repo:
+                raise ValueError("يرجى تحديد اسم مستودعك الشخصي بصيغة `username/repo` مع التوكن الخاص بك.")
+            if repo.lower() == self._owner_default_repo().lower():
+                raise PermissionError("⛔ لا يمكنك الوصول إلى مستودع مالك البوت؛ يمكنك فقط الوصول إلى مستودعاتك الخاصة عبر التوكن الخاص بك.")
+
+        if not repo or not self._REPO_RE.match(repo):
+            raise ValueError("اسم المستودع غير صالح (يجب أن يكون بصيغة owner/repo).")
+        if require_token and not tok:
+            raise RuntimeError("هذه العملية تتطلب مفتاح GitHub Token (Personal Access Token بصلاحية repo).")
+
+        clean_p = (path or "").strip().lstrip("/")
+        if ".." in clean_p.split("/"):
             raise ValueError("مسار الملف غير آمن")
-        return r, p
+        return repo, branch, clean_p, tok
 
     def list_branches(self, user_id: str = "main", repo_override: str = "") -> List[str]:
-        cfg = self.get_config(user_id)
-        repo, _ = self._validate_repo_and_path(repo_override or cfg["repo"])
-        tok = cfg["_token"]
+        repo, branch, _, tok = self._validate_user_access_and_repo(user_id, repo_override=repo_override)
         r = requests.get(
             f"https://api.github.com/repos/{repo}/branches",
             headers=self._headers(tok),
@@ -910,14 +983,18 @@ class GitHubFileManager:
             timeout=15,
         )
         if r.status_code != 200:
-            return [cfg["branch"] or "main"]
+            return [branch or "main"]
         return [b["name"] for b in (r.json() or []) if isinstance(b, dict) and b.get("name")] or ["main"]
 
-    def list_files(self, user_id: str = "main", repo_override: str = "", branch_override: str = "") -> Dict[str, Any]:
-        cfg = self.get_config(user_id)
-        repo, _ = self._validate_repo_and_path(repo_override or cfg["repo"])
-        branch = (branch_override or cfg["branch"] or "main").strip()
-        tok = cfg["_token"]
+    def list_files(self, user_id: str = "main", repo_override: str = "", branch_override: str = "", use_cache: bool = False) -> Dict[str, Any]:
+        repo, cfg_branch, _, tok = self._validate_user_access_and_repo(user_id, repo_override=repo_override)
+        branch = (branch_override or cfg_branch or "main").strip()
+        cache_key = f"{user_id}:{repo}@{branch}"
+        if use_cache:
+            with self._lock:
+                cached = self._tree_cache.get(cache_key)
+                if cached and (time.time() - cached[0]) < 45:
+                    return cached[1]
         url = f"https://api.github.com/repos/{repo}/git/trees/{branch}"
         r = requests.get(url, headers=self._headers(tok), params={"recursive": "1"}, timeout=20)
         if r.status_code != 200:
@@ -931,15 +1008,16 @@ class GitHubFileManager:
                     "size": int(item.get("size") or 0),
                     "sha": item.get("sha", ""),
                 })
-        return {"repo": repo, "branch": branch, "files": files, "count": len(files)}
+        res = {"repo": repo, "branch": branch, "files": files, "count": len(files)}
+        with self._lock:
+            self._tree_cache[cache_key] = (time.time(), res)
+        return res
 
     def get_file(self, path: str, user_id: str = "main", repo_override: str = "", branch_override: str = "") -> Dict[str, Any]:
-        cfg = self.get_config(user_id)
-        repo, clean_p = self._validate_repo_and_path(repo_override or cfg["repo"], path)
+        repo, cfg_branch, clean_p, tok = self._validate_user_access_and_repo(user_id, repo_override=repo_override, path=path)
         if not clean_p:
             raise ValueError("حدد مسار الملف المطلوب قراءته")
-        branch = (branch_override or cfg["branch"] or "main").strip()
-        tok = cfg["_token"]
+        branch = (branch_override or cfg_branch or "main").strip()
         url = f"https://api.github.com/repos/{repo}/contents/{clean_p}"
         r = requests.get(url, headers=self._headers(tok), params={"ref": branch}, timeout=20)
         if r.status_code != 200:
@@ -968,26 +1046,23 @@ class GitHubFileManager:
         repo_override: str = "",
         branch_override: str = "",
     ) -> Dict[str, Any]:
-        cfg = self.get_config(user_id)
-        repo, clean_p = self._validate_repo_and_path(repo_override or cfg["repo"], path)
+        repo, cfg_branch, clean_p, tok = self._validate_user_access_and_repo(
+            user_id, repo_override=repo_override, path=path, require_token=True
+        )
         if not clean_p:
             raise ValueError("حدد مسار الملف المطلوب حفظه")
-        branch = (branch_override or cfg["branch"] or "main").strip()
-        tok = cfg["_token"]
-        if not tok:
-            raise RuntimeError("تعديل ملفات GitHub يتطلب إدخال مفتاح GITHUB_TOKEN (Personal Access Token بصلاحية repo).")
+        branch = (branch_override or cfg_branch or "main").strip()
 
         url = f"https://api.github.com/repos/{repo}/contents/{clean_p}"
         cur_sha = (sha or "").strip()
         if not cur_sha:
-            # جلب الـ SHA الحالي تلقائياً إذا كان الملف موجوداً مسبقاً
             chk = requests.get(url, headers=self._headers(tok), params={"ref": branch}, timeout=15)
             if chk.status_code == 200:
                 cur_sha = (chk.json() or {}).get("sha", "")
 
         b64_new = base64.b64encode((content or "").encode("utf-8")).decode("ascii")
         payload: Dict[str, Any] = {
-            "message": (commit_message or f"تحديث {clean_p} عبر Ryn GitHub Studio").strip()[:160],
+            "message": (commit_message or f"تحديث {clean_p} عبر محادثة Ryn").strip()[:160],
             "content": b64_new,
             "branch": branch,
         }
@@ -1000,6 +1075,8 @@ class GitHubFileManager:
         res_j = r.json() or {}
         new_content = res_j.get("content") or {}
         commit_obj = res_j.get("commit") or {}
+        with self._lock:
+            self._tree_cache.clear()
         return {
             "ok": True,
             "repo": repo,
@@ -1019,14 +1096,12 @@ class GitHubFileManager:
         repo_override: str = "",
         branch_override: str = "",
     ) -> Dict[str, Any]:
-        cfg = self.get_config(user_id)
-        repo, clean_p = self._validate_repo_and_path(repo_override or cfg["repo"], path)
+        repo, cfg_branch, clean_p, tok = self._validate_user_access_and_repo(
+            user_id, repo_override=repo_override, path=path, require_token=True
+        )
         if not clean_p:
             raise ValueError("حدد مسار الملف المطلوب حذفه")
-        branch = (branch_override or cfg["branch"] or "main").strip()
-        tok = cfg["_token"]
-        if not tok:
-            raise RuntimeError("حذف ملف من GitHub يتطلب إدخال مفتاح GITHUB_TOKEN.")
+        branch = (branch_override or cfg_branch or "main").strip()
 
         url = f"https://api.github.com/repos/{repo}/contents/{clean_p}"
         cur_sha = (sha or "").strip()
@@ -1038,14 +1113,362 @@ class GitHubFileManager:
             raise RuntimeError(f"الملف {clean_p} غير موجود في الفرع {branch}")
 
         payload = {
-            "message": (commit_message or f"حذف {clean_p} عبر Ryn GitHub Studio").strip()[:160],
+            "message": (commit_message or f"حذف {clean_p} عبر محادثة Ryn").strip()[:160],
             "sha": cur_sha,
             "branch": branch,
         }
         r = requests.delete(url, headers=self._headers(tok), json=payload, timeout=20)
         if r.status_code not in (200, 204):
             raise RuntimeError(f"GitHub Delete HTTP {r.status_code}: {r.text[:180]}")
+        with self._lock:
+            self._tree_cache.clear()
         return {"ok": True, "repo": repo, "branch": branch, "deleted_path": clean_p}
+
+    # ---------- التفاعل المباشر مع ملفات GitHub من قلب المحادثة ----------
+    def set_pending_edit(self, user_id: str, edit_data: Dict[str, Any]) -> None:
+        with self._lock:
+            self._pending_edits[str(user_id or "main")] = {**edit_data, "ts": time.time()}
+
+    def get_pending_edit(self, user_id: str) -> Optional[Dict[str, Any]]:
+        with self._lock:
+            pe = self._pending_edits.get(str(user_id or "main"))
+            if pe and (time.time() - pe.get("ts", 0)) < 3600:
+                return dict(pe)
+            return None
+
+    def approve_pending_edit(self, user_id: str = "main") -> Dict[str, Any]:
+        pe = self.get_pending_edit(user_id)
+        if not pe:
+            raise RuntimeError("لا يوجد تعديل معلّق حالياً لاعتماده. اطلب مني أولاً في المحادثة تعديل أي ملف من GitHub.")
+        action = pe.get("action", "save")
+        if action == "delete":
+            res = self.delete_file(
+                path=pe["path"],
+                commit_message=pe.get("commit_message", f"حذف {pe['path']} عبر محادثة Ryn"),
+                sha=pe.get("sha"),
+                user_id=user_id,
+            )
+            with self._lock:
+                self._pending_edits.pop(str(user_id or "main"), None)
+            return {"ok": True, "action": "delete", **res}
+        else:
+            res = self.save_file(
+                path=pe["path"],
+                content=pe["new_content"],
+                commit_message=pe.get("commit_message", f"تحديث {pe['path']} عبر محادثة Ryn"),
+                sha=pe.get("sha"),
+                user_id=user_id,
+            )
+            with self._lock:
+                self._pending_edits.pop(str(user_id or "main"), None)
+            return {"ok": True, "action": "save", **res}
+
+    @staticmethod
+    def apply_search_replace_blocks(original_text: str, patch_body: str) -> Tuple[str, int]:
+        pattern = re.compile(
+            r"<{4,}\s*SEARCH\s*\r?\n(.*?)\r?\n={4,}\s*\r?\n(.*?)\r?\n>{4,}\s*REPLACE",
+            re.DOTALL,
+        )
+        matches = list(pattern.finditer(patch_body or ""))
+        if not matches:
+            return original_text, 0
+        updated = original_text
+        applied = 0
+        for m in matches:
+            s_block = m.group(1)
+            r_block = m.group(2)
+            if s_block in updated:
+                updated = updated.replace(s_block, r_block, 1)
+                applied += 1
+            elif s_block.strip() and s_block.strip() in updated:
+                updated = updated.replace(s_block.strip(), r_block.strip(), 1)
+                applied += 1
+        return updated, applied
+
+    @staticmethod
+    def _extract_relevant_window(content: str, user_query: str, max_chars: int = 24000) -> str:
+        if len(content) <= max_chars:
+            return content
+        words = [w for w in re.findall(r"[A-Za-z_][A-Za-z0-9_]{2,}|[\u0600-\u06FF]{3,}", user_query or "") if len(w) >= 3]
+        lines = content.splitlines()
+        hit_indices = []
+        for idx, ln in enumerate(lines):
+            low_ln = ln.lower()
+            if any(w.lower() in low_ln for w in words[:10]):
+                hit_indices.append(idx)
+        if not hit_indices:
+            half = max_chars // 2
+            return content[:half] + "\n\n# ... [تم اختصار الوسط لطول الملف] ...\n\n" + content[-half:]
+        snippets = []
+        used_ranges: List[Tuple[int, int]] = []
+        for h in hit_indices[:6]:
+            st = max(0, h - 35)
+            en = min(len(lines), h + 45)
+            if used_ranges and st <= used_ranges[-1][1]:
+                used_ranges[-1] = (used_ranges[-1][0], max(used_ranges[-1][1], en))
+            else:
+                used_ranges.append((st, en))
+        for st, en in used_ranges:
+            chunk = "\n".join(f"{i+1}: {lines[i]}" for i in range(st, en))
+            snippets.append(f"# --- السطور {st+1} إلى {en} ---\n{chunk}")
+        joined = "\n\n".join(snippets)
+        return joined[:max_chars]
+
+    def handle_direct_chat_command(self, user_id: str, text: str) -> Optional[str]:
+        """
+        يعالج الأوامر الفورية في الشات:
+        1) إذا أرسل المستخدم توكن ghp_... (مع أو بدون اسم مستودع username/repo)، يحفظه لحسابه هو فقط.
+        2) إذا كتب «اعتمد التعديل» أو «ارفعه على جيتهاب»، يرفع التعديل المعلّق لحسابه.
+        3) إذا طلب مستخدم في WEB_USERS الوصول لـ GitHub ولم يربط التوكن الخاص به بعد، يرشده لإدخال توكنه الخاص.
+        """
+        t = (text or "").strip()
+        if not t:
+            return None
+
+        # 1. ربط مفتاح GitHub (والمستودع الاختياري) من داخل المحادثة لكل حساب بشكل مستقل
+        m_tok = self._GH_TOKEN_RE.search(t)
+        if m_tok and len(t) < 350:
+            tok_val = m_tok.group(1)
+            # البحث عن اسم مستودع بصيغة owner/repo في نفس الرسالة إن وُجد
+            repo_val = ""
+            for rm in self._INLINE_REPO_RE.finditer(t):
+                cand_r = rm.group(1)
+                if not cand_r.startswith(("ghp_", "github_pat_", "http")) and "/" in cand_r:
+                    repo_val = cand_r
+                    break
+            try:
+                cfg = self.set_config(user_id, repo=repo_val, token=tok_val)
+            except Exception as e:
+                return f"⛔ {e}"
+            if not cfg["repo"]:
+                return (
+                    "🔐 **تم حفظ التوكن الخاص بك بنجاح!**\n"
+                    "• تبقى فقط أن ترسل لي اسم مستودعك بصيغة `username/repo` (أو تضعه في نافذة 🐙 GitHub) حتى نبدأ العمل على ملفاتك."
+                )
+            return (
+                "🔐 **تم حفظ وربط مفتاح GitHub بحسابك الشخصي بنجاح!**\n"
+                f"• **المستودع المتصل**: `{cfg['repo']}` (الفرع `{cfg['branch']}`)\n"
+                "• **العزل الأمني**: هذا المفتاح محفوظ لحسابك أنت فقط ولا يراه أي مستخدم آخر.\n"
+                "• الآن يمكنك أن تطلب مني في المحادثة استعراض ملفاتك، مناقشتها، أو تعديلها ورفعها مباشرة!"
+            )
+
+        # 2. اعتماد ورفع التعديل المعلّق بعد المناقشة في الشات
+        if self._APPROVE_CMD_RE.match(t):
+            pe = self.get_pending_edit(user_id)
+            if pe:
+                try:
+                    res = self.approve_pending_edit(user_id)
+                    if res.get("action") == "delete":
+                        return (
+                            f"✅ **تم اعتماد الحذف وإزالة الملف من GitHub بنجاح!**\n"
+                            f"• **الملف المحذوف**: `{res['deleted_path']}`\n"
+                            f"• **المستودع**: `{res['repo']}` (الفرع `{res['branch']}`)"
+                        )
+                    return (
+                        f"✅ **تم اعتماد التعديل الذي ناقشناه ورفعه مباشرة إلى GitHub!**\n"
+                        f"• **الملف المحدّث**: `{res['path']}` (الفرع `{res['branch']}`)\n"
+                        f"• **معرّف التحديث (Commit)**: `{str(res.get('commit_sha', ''))[:8] or 'تم الحفظ'}`\n"
+                        f"• **الرابط على GitHub**: [عرض الملف المحدّث على GitHub]({res.get('commit_url', '')})"
+                    )
+                except Exception as e:
+                    return f"⚠️ **تعذر رفع التعديل المعلّق إلى GitHub**: {e}"
+
+        # 3. إذا كان المستخدم ليس حساب WEB_PASSWORD (main) وطلب أوامر جيتهاب بدون أن يدخل التوكن والمستودع الخاصين به
+        if not self.is_owner(user_id) and self._GH_MENTION_RE.search(t):
+            cfg = self.get_config(user_id)
+            if not cfg.get("has_token") or not cfg.get("repo"):
+                return (
+                    "🔑 **للوصول إلى ملفاتك الخاصة على GitHub وتعديلها من داخل المحادثة:**\n"
+                    "حساب المالك (`WEB_PASSWORD`) وحده مرتبط تلقائياً بمفتاح البيئة، أما لحسابك أنت فيمكنك ربط **التوكن والمستودع الخاصين بك** بإرسال رسالة هنا بالشكل التالي:\n"
+                    "`اربط جيتهاب ghp_XXXX مستودع username/repo`\n"
+                    "أو إدخالهما من زر **🐙 ملفات GitHub** في القائمة، وبعدها سأتصل بمستودعك الشخصي فوراً!"
+                )
+
+        return None
+
+    def build_chat_github_context(self, user_id: str, text: str, history: Optional[List[Tuple[str, str]]] = None) -> str:
+        """
+        يسحب شجرة الملفات والملف المطلوب من مستودع المستخدم المتصل (مستودع المالك لـ WEB_PASSWORD،
+        أو المستودع الشخصي لأي مستخدم آخر ربط التوكن الخاص به) ويحقنه في سياق المحادثة.
+        """
+        cfg = self.get_config(user_id)
+        if not cfg.get("repo"):
+            return ""
+        if not self.is_owner(user_id) and not cfg.get("has_token"):
+            return ""
+
+        t = (text or "").strip()
+        recent_hist_text = " ".join(m[1] for m in (history or [])[-4:] if isinstance(m, (list, tuple)) and len(m) >= 2)
+        combined_search = f"{t}\n{recent_hist_text}"
+
+        has_gh_kw = bool(self._GH_MENTION_RE.search(t))
+        mentioned_known = [f for f in self._KNOWN_FILES if f.lower() in combined_search.lower()]
+        file_regex_hits = re.findall(r"\b([A-Za-z0-9_./\-]+\.(?:py|js|md|txt|json|html|css))\b", combined_search)
+
+        if not has_gh_kw and not mentioned_known and not file_regex_hits:
+            return ""
+
+        try:
+            tree_info = self.list_files(user_id, use_cache=True)
+            all_files = [f["path"] for f in tree_info.get("files", [])]
+        except Exception as e:
+            return f"[تنبيه GitHub: تعذر جلب شجرة المستودع {cfg['repo']}: {e}]\n\n"
+
+        candidates = []
+        for cand in (file_regex_hits + mentioned_known):
+            c_low = cand.lower().lstrip("/")
+            for rf in all_files:
+                if rf.lower() == c_low or rf.lower().endswith("/" + c_low):
+                    if rf not in candidates:
+                        candidates.append(rf)
+
+        blocks = [
+            f"[اتصال حي بمستودع GitHub: {cfg['repo']} (الفرع: {cfg['branch']})]",
+            f"قائمة ملفات المستودع الحالية ({len(all_files)} ملف): " + ", ".join(all_files[:60]),
+        ]
+
+        for path in candidates[:2]:
+            try:
+                f_data = self.get_file(path, user_id)
+                raw_c = f_data.get("content", "")
+                excerpt = self._extract_relevant_window(raw_c, t, max_chars=24000)
+                blocks.append(
+                    f"--- محتوى الملف الحي من GitHub: `{path}` (الحجم: {f_data.get('size', 0)} بايت) ---\n"
+                    f"```\n{excerpt}\n```"
+                )
+            except Exception as e:
+                blocks.append(f"--- ملاحظة: الملف `{path}` غير موجود حالياً في المستودع أو تعذر قراءته ({e}) ---")
+
+        blocks.append(
+            "تعليمات هامة للتفاعل مع GitHub داخل هذه المحادثة:\n"
+            "1. ناقش المستخدم بالعربية بشكل طبيعي وواضح حول الكود أو التعديل المطلوب.\n"
+            "2. إذا طلب المستخدم تعديل ملف موجود في GitHub (أو اقترحت أنت تعديلاً عليه أثناء النقاش)، اشرح التعديل ثم أدرج في نهاية ردك بلوك التعديل الجراحي التالي بالضبط:\n"
+            "<github_patch path=\"مسار_الملف\" commit=\"وصف التعديل بالعربية\">\n"
+            "<<<< SEARCH\n"
+            "الأسطر الأصلية حرفياً من الملف المراد تعديلها\n"
+            "====\n"
+            "الأسطر الجديدة بعد التعديل\n"
+            ">>>> REPLACE\n"
+            "</github_patch>\n"
+            "3. إذا طلب إنشاء ملف جديد كلياً أو استبدال ملف صغير بالكامل، استخدم:\n"
+            "<github_create path=\"مسار_الملف\" commit=\"وصف التحديث\">\n"
+            "محتوى الملف الكامل هنا\n"
+            "</github_create>\n"
+            "4. إذا طلب حذف ملف من المستودع، استخدم:\n"
+            "<github_delete path=\"مسار_الملف\" commit=\"سبب الحذف\"/>\n"
+            "سيقوم النظام تلقائياً بفحص التعديل نحوياً (AST) وتطبيقه أو تجهيزه لاعتماد المستخدم المباشر من داخل المحادثة!"
+        )
+        return "\n\n".join(blocks) + "\n\n"
+
+    def apply_chat_github_actions(self, user_id: str, user_text: str, bot_answer: str) -> Tuple[str, bool]:
+        if not bot_answer:
+            return bot_answer, False
+        cfg = self.get_config(user_id)
+        if not cfg.get("repo") or (not self.is_owner(user_id) and not cfg.get("has_token")):
+            return bot_answer, False
+
+        ans = bot_answer
+        push_now = bool(self._IMMEDIATE_PUSH_RE.search(user_text or ""))
+        status_notes: List[str] = []
+        has_pending = False
+
+        # 1. معالجة <github_patch>
+        patch_re = re.compile(r"<github_patch\s+path=[\"']([^\"']+)[\"'](?:\s+commit=[\"']([^\"']*)[\"'])?\s*>(.*?)</github_patch>", re.DOTALL | re.I)
+        for m in list(patch_re.finditer(ans)):
+            path = m.group(1).strip()
+            commit_msg = (m.group(2) or f"تحديث {path} عبر محادثة Ryn").strip()
+            patch_body = m.group(3).strip()
+            try:
+                orig = self.get_file(path, user_id)
+                new_content, count = self.apply_search_replace_blocks(orig["content"], patch_body)
+                if count == 0:
+                    status_notes.append(f"⚠️ لم يتطابق مقطع البحث حرفياً في `{path}`؛ تأكد من الأسطر المطلوبة.")
+                    continue
+                if path.endswith(".py"):
+                    ast.parse(new_content, filename=path)
+                if push_now and cfg.get("has_token"):
+                    saved = self.save_file(path, new_content, commit_message=commit_msg, sha=orig.get("sha"), user_id=user_id)
+                    status_notes.append(
+                        f"✅ **تم تعديل `{path}` ورفعه مباشرة إلى GitHub!**\n"
+                        f"• **التحديث**: {commit_msg}\n"
+                        f"• **الرابط**: [عرض الملف المحدّث على GitHub]({saved.get('commit_url', '')})"
+                    )
+                else:
+                    self.set_pending_edit(user_id, {
+                        "action": "save",
+                        "path": path,
+                        "new_content": new_content,
+                        "sha": orig.get("sha"),
+                        "commit_message": commit_msg,
+                    })
+                    has_pending = True
+                    status_notes.append(
+                        f"💡 **جهّزت التعديل وفحصته نحوياً (AST ✅) على ملف `{path}`!**\n"
+                        f"• يمكنك مناقشتي في أي تعديل إضافي، أو اكتب لي **«اعتمد وارفعه»** ليتم رفعه فوراً إلى مستودعك."
+                    )
+            except SyntaxError as se:
+                status_notes.append(f"⚠️ أوقف الحارس الذكي رفع التعديل على `{path}` لوجود خطأ نحوي في الكود المولد (السطر {se.lineno}: {se.msg}).")
+            except Exception as e:
+                status_notes.append(f"⚠️ تعذر تطبيق التعديل على `{path}`: {e}")
+
+            clean_preview = f"\n```diff\n# التعديل على {path} ({commit_msg})\n{patch_body}\n```\n"
+            ans = ans.replace(m.group(0), clean_preview, 1)
+
+        # 2. معالجة <github_create>
+        create_re = re.compile(r"<github_create\s+path=[\"']([^\"']+)[\"'](?:\s+commit=[\"']([^\"']*)[\"'])?\s*>(.*?)</github_create>", re.DOTALL | re.I)
+        for m in list(create_re.finditer(ans)):
+            path = m.group(1).strip()
+            commit_msg = (m.group(2) or f"إنشاء/تحديث {path} عبر محادثة Ryn").strip()
+            new_content = re.sub(r"^```[a-zA-Z0-9_\-]*\r?\n|\r?\n```$", "", m.group(3).strip())
+            try:
+                if path.endswith(".py"):
+                    ast.parse(new_content, filename=path)
+                if push_now and cfg.get("has_token"):
+                    saved = self.save_file(path, new_content, commit_message=commit_msg, user_id=user_id)
+                    status_notes.append(
+                        f"✅ **تم حفظ ورفع الملف `{path}` مباشرة إلى GitHub!**\n"
+                        f"• **الرابط**: [عرض `{path}` على GitHub]({saved.get('commit_url', '')})"
+                    )
+                else:
+                    self.set_pending_edit(user_id, {
+                        "action": "save",
+                        "path": path,
+                        "new_content": new_content,
+                        "sha": None,
+                        "commit_message": commit_msg,
+                    })
+                    has_pending = True
+                    status_notes.append(
+                        f"💡 **الملف `{path}` جاهز ومفحوص برمجياً!** اكتب **«اعتمد وارفعه»** لرفعه فوراً إلى GitHub."
+                    )
+            except Exception as e:
+                status_notes.append(f"⚠️ تعذر تجهيز الملف `{path}`: {e}")
+            ans = ans.replace(m.group(0), f"\n```python\n# {path}\n{new_content}\n```\n", 1)
+
+        # 3. معالجة <github_delete>
+        del_re = re.compile(r"<github_delete\s+path=[\"']([^\"']+)[\"'](?:\s+commit=[\"']([^\"']*)[\"'])?\s*/?>", re.I)
+        for m in list(del_re.finditer(ans)):
+            path = m.group(1).strip()
+            commit_msg = (m.group(2) or f"حذف {path} عبر محادثة Ryn").strip()
+            try:
+                if push_now and cfg.get("has_token"):
+                    deleted = self.delete_file(path, commit_message=commit_msg, user_id=user_id)
+                    status_notes.append(f"✅ **تم حذف الملف `{deleted['deleted_path']}` من مستودع GitHub بنجاح!**")
+                else:
+                    self.set_pending_edit(user_id, {
+                        "action": "delete",
+                        "path": path,
+                        "commit_message": commit_msg,
+                    })
+                    has_pending = True
+                    status_notes.append(f"💡 **طلب حذف `{path}` جاهز!** اكتب **«اعتمد وارفعه»** لتأكيد حذفه نهائياً من GitHub.")
+            except Exception as e:
+                status_notes.append(f"⚠️ تعذر حذف `{path}`: {e}")
+            ans = ans.replace(m.group(0), "", 1)
+
+        if status_notes:
+            ans = ans.rstrip() + "\n\n" + "\n\n".join(status_notes)
+        return ans, has_pending
 
 
 # ==============================================================================
