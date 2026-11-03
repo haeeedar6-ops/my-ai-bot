@@ -1046,18 +1046,148 @@ async function api(path,opt={}){
   return r;
 }
 
-/* ===== الإرسال والإلغاء ===== */
-let curJob=null,aborted=false;
+/* ===== الإرسال والإلغاء + العمل المستمر بالخلفية بدون انقطاع (Background Execution & Auto-Resume) ===== */
+let curJob=null,aborted=false,wakeLockObj=null,wakePollResolver=null;
+const ACTIVE_JOB_LS='ryn_active_job_v1';
 const SEND_ICON=sendBtn.innerHTML;
 const STOP_ICON='<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>';
 function setSendMode(b){sendBtn.innerHTML=b?STOP_ICON:SEND_ICON;sendBtn.classList.toggle('stop',b);sendBtn.title=b?'إلغاء':'إرسال';sendBtn.setAttribute('aria-label',b?'إلغاء':'إرسال')}
 function shrink(src,max){return new Promise(res=>{const im=new Image();im.onload=()=>{const sc=Math.min(1,max/Math.max(im.width,im.height));
   const cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);
   cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);res(cv.toDataURL('image/jpeg',0.82))};im.onerror=()=>res(src);im.src=src})}
+async function acquireWakeLock(){
+  try{if(navigator.wakeLock&&!wakeLockObj&&!document.hidden)wakeLockObj=await navigator.wakeLock.request('screen')}catch(e){}
+}
+function releaseWakeLock(){
+  try{if(wakeLockObj){wakeLockObj.release().catch(()=>{});wakeLockObj=null}}catch(e){}
+}
+function saveActiveJob(jobId,chatId,isImg,text){
+  try{localStorage.setItem(ACTIVE_JOB_LS,JSON.stringify({job:jobId,chatId:chatId||store.cur,isImg:!!isImg,text:String(text||'').slice(0,200),ts:Date.now()}))}catch(e){}
+}
+function clearActiveJob(){
+  try{localStorage.removeItem(ACTIVE_JOB_LS)}catch(e){}
+}
+function getActiveJob(){
+  try{const d=JSON.parse(localStorage.getItem(ACTIVE_JOB_LS)||'null');if(d&&d.job&&(Date.now()-(d.ts||0)<3600000))return d}catch(e){}
+  return null;
+}
+function waitPollTick(ms){
+  return new Promise(res=>{
+    let timer=setTimeout(()=>{wakePollResolver=null;res()},ms);
+    wakePollResolver=()=>{clearTimeout(timer);wakePollResolver=null;res()};
+  });
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){
+    if(busy)acquireWakeLock();
+    if(wakePollResolver)wakePollResolver();
+    else if(!busy)resumeBackgroundJob();
+  }
+});
+window.addEventListener('online',()=>{
+  if(wakePollResolver)wakePollResolver();
+  else if(!busy)resumeBackgroundJob();
+});
 function cancelRequest(){
   if(!busy||aborted)return;
-  aborted=true;setBot('idle');say('عم ألغي...');
+  aborted=true;clearActiveJob();releaseWakeLock();
+  if(wakePollResolver)wakePollResolver();
+  setBot('idle');say('عم ألغي...');
   if(curJob)api('/api/cancel/'+curJob,{method:'POST'}).catch(()=>{});
+}
+async function applyCompletedJobPayload(j,targetChatId){
+  const chatObj=(targetChatId&&store.chats.find(c=>c.id===targetChatId))||curChat();
+  const ms=chatObj?chatObj.msgs:M();
+  moodFromNote(j.note);
+  if(j.image){
+    const img=await shrink(j.image,720);
+    ms.push({role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img});
+  }else{
+    const full=j.text||'(رد فاضي)';
+    if(Array.isArray(j.memories)&&j.memories.length){
+      let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});
+      if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك');
+    }
+    const dfs=(j.files&&j.files.length?j.files:(j.file?[j.file]:[])).map(f=>({name:f.name,url:'/api/download/'+f.id,ext:f.ext,size:f.size,auto:!!f.auto}));
+    if(dfs.length)say(dfs.some(f=>f.auto)?'نزّلتلك الكود بملف 💾':'جهزتلك ملف التحميل 💾');
+    ms.push({role:'model',text:full,note:j.note,reveal:(!document.hidden&&full.length<6000&&!dfs.length),dfiles:dfs});
+    if(autoDl)dfs.filter(f=>f.auto).forEach((f,i)=>setTimeout(()=>autoDownload(f),500+800*i));
+  }
+}
+async function pollJobUntilDone(jobId,targetChatId){
+  curJob=jobId;
+  let done=false,ok=true,lastProg='',netErrors=0;
+  for(let i=0;i<900&&!done&&!aborted;i++){
+    await waitPollTick(document.hidden?2500:(i<4?1000:1800));
+    if(aborted)break;
+    let r=null,j=null;
+    try{
+      r=await api('/api/job/'+jobId);
+      j=await r.json();
+      netErrors=0;
+    }catch(pollErr){
+      if(pollErr&&pollErr.message==='auth')throw pollErr;
+      netErrors++;
+      /* إذا طلع المستخدم من المتصفح أو راح الإنترنت مؤقتاً، ننتظر بصبر بالخلفية بدون إظهار خطأ اتصال */
+      if(document.hidden||!navigator.onLine||netErrors<45){
+        if(!document.hidden&&netErrors===3)say('🔄 عم استنى الشبكة، طلبك لسا شغّال بالخلفية...');
+        continue;
+      }
+      throw pollErr;
+    }
+    if(aborted)break;
+    if(r&&r.status===404){
+      clearActiveJob();
+      M().push({role:'model',text:j.text||'انتهت صلاحية الطلب، جرّب تاني.',err:true});
+      ok=false;done=true;break;
+    }
+    if(j.status==='running'){
+      if(j.progress&&j.progress!==lastProg){lastProg=j.progress;say(j.progress)}
+      continue;
+    }
+    clearActiveJob();
+    if(j.status==='done'){
+      await applyCompletedJobPayload(j,targetChatId);
+      done=true;
+    }else{
+      const chatObj=(targetChatId&&store.chats.find(c=>c.id===targetChatId))||curChat();
+      (chatObj?chatObj.msgs:M()).push({role:'model',text:j.text||'صار خطأ',err:true});
+      ok=false;done=true;
+    }
+  }
+  if(!done&&!aborted){
+    clearActiveJob();
+    M().push({role:'model',text:'⏳ تأخر الرد كتير، جرّب تاني.',err:true});
+    ok=false;
+  }
+  return ok;
+}
+async function resumeBackgroundJob(){
+  if(busy)return;
+  let saved=getActiveJob();
+  if(!saved){
+    try{
+      const r=await api('/api/job/latest');
+      if(r.ok){
+        const d=await r.json();
+        if(d&&d.job&&d.status==='running'){saved={job:d.job,chatId:store.cur,isImg:false,ts:Date.now()};saveActiveJob(d.job,store.cur,false,'')}
+      }
+    }catch(e){}
+  }
+  if(!saved||!saved.job)return;
+  if(saved.chatId&&store.chats.some(c=>c.id===saved.chatId))store.cur=saved.chatId;
+  busy=true;aborted=false;curJob=saved.job;setSendMode(true);setBot('thinking');
+  say('🔄 عم أكمل طلبك اللي كان شغّال بالخلفية...');render();
+  acquireWakeLock();
+  let ok=true;
+  try{
+    ok=await pollJobUntilDone(saved.job,saved.chatId);
+  }catch(e){
+    clearActiveJob();ok=false;
+  }
+  releaseWakeLock();
+  busy=false;curJob=null;setSendMode(false);touch();render();saveStore();
+  if(ok){sfx.receive();setBot('happy',1400)}else{setBot('idle')}
 }
 async function send(){
   const text=inp.value.trim();
@@ -1066,35 +1196,43 @@ async function send(){
   const isImg=current==='img:flux';
   const hist=M().filter(m=>m.role!=='sys').slice(-14).map(m=>({role:m.role,text:m.text}));
   const um={role:'user',text};if(pendingThumb){um.img=pendingThumb;pendingThumb=null}if(!isImg&&pendingFile){um.file=pendingFile;pendingFile=null}if(um.img||um.file)$('#chip').hidden=true;
+  const targetChatId=store.cur;
   M().push(um);touch();busy=true;aborted=false;curJob=null;setSendMode(true);
-  sfx.send();setBot('thinking');
+  sfx.send();setBot('thinking');acquireWakeLock();
   say(isImg?'عم أرسم 🎨...':(/(python|javascript|html|css|sql|كود|برمج|code)/i.test(text)?'عم أكتب الكود 💻':($('#chip').hidden?'عم أفكّر...':'عم أقرا المرفق 📎')));
   render();saveStore();
   let ok=true;
   try{
-    const r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem,emo:emo})});
-    const d=await r.json();
-    if(!r.ok){if(!aborted){M().push({role:'model',text:d.error||'صار خطأ',err:true});ok=false}}
-    else{
-      curJob=d.job;
-      if(aborted)api('/api/cancel/'+curJob,{method:'POST'}).catch(()=>{});
-      let done=false,lastProg='';
-      for(let i=0;i<330&&!done&&!aborted;i++){
-        await sleep(i<4?1000:2000);
-        if(aborted)break;
-        const j=await (await api('/api/job/'+d.job)).json();
-        if(aborted)break;
-        if(j.status==='running'&&j.progress&&j.progress!==lastProg){lastProg=j.progress;say(j.progress)}
-        if(j.status==='done'){moodFromNote(j.note);
-          if(j.image){const img=await shrink(j.image,720);M().push({role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img})}
-          else{const full=j.text||'(رد فاضي)';if(Array.isArray(j.memories)&&j.memories.length){let added=0;j.memories.forEach(x=>{if(addMemFact(x))added++});if(added)toast('🧠 انحفظت معلومة جديدة بذاكرة جهازك')}const dfs=(j.files&&j.files.length?j.files:(j.file?[j.file]:[])).map(f=>({name:f.name,url:'/api/download/'+f.id,ext:f.ext,size:f.size,auto:!!f.auto}));if(dfs.length)say(dfs.some(f=>f.auto)?'نزّلتلك الكود بملف 💾':'جهزتلك ملف التحميل 💾');M().push({role:'model',text:full,note:j.note,reveal:full.length<6000&&!dfs.length,dfiles:dfs});if(autoDl)dfs.filter(f=>f.auto).forEach((f,i)=>setTimeout(()=>autoDownload(f),500+800*i))}
-          done=true}
-        else if(j.status!=='running'){M().push({role:'model',text:j.text||'صار خطأ',err:true});ok=false;done=true}
+    let r=null,d=null;
+    for(let postTry=0;postTry<3&&!aborted;postTry++){
+      try{
+        r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem,emo:emo})});
+        d=await r.json();
+        break;
+      }catch(postErr){
+        if(postErr&&postErr.message==='auth')throw postErr;
+        /* لو طلع المستخدم من المتصفح لحظة إرسال الطلب، نتفقد إن كان السيرفر استلمه وبدأ به بالخلفية */
+        await waitPollTick(1500);
+        try{
+          const lr=await api('/api/job/latest');
+          if(lr.ok){const ld=await lr.json();if(ld&&ld.job){r=lr;d={job:ld.job};break}}
+        }catch(e2){}
+        if(postTry===2)throw postErr;
       }
-      if(!done&&!aborted){M().push({role:'model',text:'⏳ تأخر الرد كتير، جرّب تاني.',err:true});ok=false}
     }
-  }catch(e){if(e.message!=='auth'&&!aborted){M().push({role:'model',text:'ما قدرت أوصل للسيرفر، جرّب تاني.',err:true});ok=false}}
+    if(!r||!r.ok){
+      if(!aborted){M().push({role:'model',text:(d&&d.error)||'صار خطأ',err:true});ok=false}
+    }else if(d&&d.job){
+      saveActiveJob(d.job,targetChatId,isImg,text);
+      if(aborted)api('/api/cancel/'+d.job,{method:'POST'}).catch(()=>{});
+      else ok=await pollJobUntilDone(d.job,targetChatId);
+    }
+  }catch(e){
+    if(e.message!=='auth'&&!aborted){M().push({role:'model',text:'ما قدرت أوصل للسيرفر، تأكد من الإنترنت وجرّب تاني.',err:true});ok=false}
+  }
+  releaseWakeLock();
   if(aborted){ /* رجّع الرسالة للتعديل */
+    clearActiveJob();
     const ms=M(),i=ms.indexOf(um);if(i>=0)ms.splice(i,1);
     inp.value=text;grow();if(um.img&&!$('#chip').hidden)pendingThumb=um.img;if(um.file&&!$('#chip').hidden)pendingFile=um.file;
     aborted=false;busy=false;curJob=null;setSendMode(false);touch();render();saveStore();
@@ -1441,7 +1579,7 @@ async function login(){
   try{
     const r=await fetch('/api/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'astra'},body:JSON.stringify({password:$('#pw').value})});
     const d=await r.json();
-    if(r.ok){$('#pw').value='';$('#login').hidden=true;loadModels();render();say('أهلاً فيك! 👋 كيف بقدر ساعدك؟')}
+    if(r.ok){$('#pw').value='';$('#login').hidden=true;loadModels();render();say('أهلاً فيك! 👋 كيف بقدر ساعدك؟');resumeBackgroundJob()}
     else{$('#lerr').textContent=d.error||'غلط'}
   }catch(e){$('#lerr').textContent='ما في اتصال'}
 }
@@ -1451,7 +1589,7 @@ $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 (async()=>{
   loadMem();loadStore();render();drawDrawer();
   try{const d=await (await fetch('/api/me',{credentials:'same-origin'})).json();
-    if(d.ok){loadModels();say('أهلاً فيك! 👋 كيف بقدر ساعدك؟')}else{showLogin()}}catch(e){showLogin()}
+    if(d.ok){loadModels();say('أهلاً فيك! 👋 كيف بقدر ساعدك؟');resumeBackgroundJob()}else{showLogin()}}catch(e){showLogin()}
   if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 })();
 </script>
@@ -4415,6 +4553,9 @@ def img_models():
     """سلسلة موديلات رسم Gemini بالترتيب (الأقوى أول، قابل للتخصيص بـ GEMINI_IMAGE_MODEL)."""
     seen = []
     for m in [os.environ.get("GEMINI_IMAGE_MODEL", "").strip(),
+              "gemini-3.1-flash-image",
+              "gemini-3.1-flash-lite-image",
+              "gemini-3-pro-image",
               "gemini-3.1-flash-image-preview",
               "gemini-2.5-flash-image",
               "gemini-3-pro-image-preview"]:
@@ -4722,13 +4863,17 @@ def describe(mid, ready=True, model=""):
         return "تلقائي ذكي · دردشة شاملة وصور وملفات وGitHub"
     if mid.startswith("gemini:"):
         gm = mid[7:].lower()
+        if "4-argon" in gm or "argon" in gm:
+            return "بمفتاح Gemini على Render · الجيل الرابع للاستنتاج وسياق 1M"
+        if "3.8" in gm:
+            return "بمفتاح Gemini على Render · الأحدث للهندسة البرمجية والمشاريع"
+        if "3.6" in gm:
+            return "بمفتاح Gemini على Render · سريع ومتوازن للمهام والوسائط"
         if "pro" in gm:
-            return "Google مجاني · تفكير عميق وهندسة مشاريع معقدة"
+            return "بمفتاح Gemini على Render · تفكير عميق وهندسة مشاريع معقدة"
         if "lite" in gm:
-            return "Google مجاني · خفيف وفائق السرعة بحصة يومية عالية"
-        if "2.0" in gm:
-            return "Google مجاني · سرعة عالية ودعم وسائط متعددة"
-        return "Google مجاني · متوازن للبرمجة والتحليل"
+            return "بمفتاح Gemini على Render · خفيف وفائق السرعة بحصة يومية عالية"
+        return "بمفتاح Gemini على Render · متوازن للبرمجة والتحليل"
     if mid == "codestral":
         return "Mistral مجاني · متخصص بكتابة وتصحيح الكود"
     if mid.startswith("groq:"):
@@ -5546,10 +5691,14 @@ def register(app, b):
             {"id": "img:flux", "label": "RYN Visual Brain 🎨", "desc": describe("img:flux", ready=image_ready())},
             {"id": "mix", "label": "Ryn mix 🧩 (العقل الهجين)", "desc": describe("mix")},
             {"id": "gemini", "label": "Gemini Auto ⚡", "desc": describe("gemini")},
+            {"id": "gemini:gemini-3.8-flash", "label": "Gemini 3.8 Flash", "desc": describe("gemini:gemini-3.8-flash")},
+            {"id": "gemini:gemini-4-argon", "label": "Gemini 4 Argon", "desc": describe("gemini:gemini-4-argon")},
+            {"id": "gemini:gemini-3.6-flash", "label": "Gemini 3.6 Flash", "desc": describe("gemini:gemini-3.6-flash")},
+            {"id": "gemini:gemini-3.5-flash", "label": "Gemini 3.5 Flash", "desc": describe("gemini:gemini-3.5-flash")},
+            {"id": "gemini:gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite", "desc": describe("gemini:gemini-3.5-flash-lite")},
+            {"id": "gemini:gemini-3.1-flash-lite", "label": "Gemini 3.1 Flash-Lite", "desc": describe("gemini:gemini-3.1-flash-lite")},
             {"id": "gemini:gemini-2.5-pro", "label": "Gemini 2.5 Pro", "desc": describe("gemini:gemini-2.5-pro")},
             {"id": "gemini:gemini-2.5-flash", "label": "Gemini 2.5 Flash", "desc": describe("gemini:gemini-2.5-flash")},
-            {"id": "gemini:gemini-2.0-flash", "label": "Gemini 2.0 Flash", "desc": describe("gemini:gemini-2.0-flash")},
-            {"id": "gemini:gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash-Lite", "desc": describe("gemini:gemini-2.5-flash-lite")},
         ]
         seen_ids = {o["id"] for o in opts}
 
@@ -5562,6 +5711,8 @@ def register(app, b):
         gid = groq_ids()
         groq_curated = (
             ("openai/gpt-oss-120b", "GPT-OSS 120B (Groq)"),
+            ("qwen/qwen3.8-27b", "Qwen 3.8 27B (Groq)"),
+            ("qwen/qwen3.6-27b", "Qwen 3.6 27B (Groq)"),
             ("openai/gpt-oss-20b", "GPT-OSS 20B (Groq)"),
             ("qwen/qwen3-32b", "Qwen3 32B (Groq)"),
             ("moonshotai/kimi-k2-instruct", "Kimi K2 (Groq)"),
@@ -6013,16 +6164,35 @@ def register(app, b):
         else:
             md().update(state="normal", reason="", since=0.0)
         now = time.time()
+        cur_u = uid()
         with jlock:
-            for k in [k for k, v in jobs.items() if now - v["ts"] > 900]:
+            for k in [k for k, v in jobs.items() if now - v["ts"] > 3600]:
                 jobs.pop(k, None)
-            if sum(1 for v in jobs.values() if v["status"] == "running" and v.get("uid") == uid()) >= 2:
-                return jsonify(error="في طلبين شغّالين، استنى لحظة"), 429
+            running_for_u = [k for k, v in jobs.items() if v["status"] == "running" and v.get("uid") == cur_u]
+            if len(running_for_u) >= 3:
+                return jsonify(error="في عدة طلبات شغّالة بالخلفية، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
-            jobs[job_id] = {"status": "running", "ts": now, "uid": uid()}
-        threading.Thread(target=run_job, args=(job_id, text[:400000], clean_history(data.get("history")), mem_prompt, emo_on, uid()),
+            jobs[job_id] = {"status": "running", "ts": now, "uid": cur_u, "prompt": text[:160]}
+        threading.Thread(target=run_job, args=(job_id, text[:400000], clean_history(data.get("history")), mem_prompt, emo_on, cur_u),
                          daemon=True).start()
         return jsonify(job=job_id)
+
+    @app.get("/api/job/latest")
+    def api_job_latest():
+        bad = guard()
+        if bad:
+            return bad
+        cur_u = uid()
+        now = time.time()
+        with jlock:
+            user_jobs = [(k, v) for k, v in jobs.items() if v.get("uid") == cur_u and (now - v.get("ts", 0)) < 1800]
+            if not user_jobs:
+                return jsonify(job=None, status="none")
+            user_jobs.sort(key=lambda item: item[1].get("ts", 0), reverse=True)
+            latest_id, latest_val = user_jobs[0]
+            if latest_val.get("status") == "running" and not latest_val.get("delivered"):
+                return jsonify(job=latest_id, status=latest_val.get("status", "running"), progress=latest_val.get("progress", ""))
+            return jsonify(job=None, status="none")
 
     @app.get("/api/job/<job_id>")
     def api_job(job_id):
@@ -6033,7 +6203,9 @@ def register(app, b):
             j = jobs.get(job_id)
             if not j or j.get("uid") != uid():
                 return jsonify(status="error", text="انتهت صلاحية الطلب، جرّب تاني."), 404
-            return jsonify({k: v for k, v in j.items() if k not in ("ts", "uid")})
+            if j.get("status") == "done":
+                j["delivered"] = True
+            return jsonify({k: v for k, v in j.items() if k not in ("ts", "uid", "delivered")})
 
     # ---------- الملفات ----------
     @app.post("/api/upload")
