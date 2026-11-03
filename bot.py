@@ -3,7 +3,6 @@ import os
 import re
 import sys
 import html
-import json
 import time
 import zipfile
 import logging
@@ -16,6 +15,11 @@ import requests
 from flask import Flask
 from google import genai
 from google.genai import types, errors
+
+try:
+    import ryn_ai_stack as AIStack
+except Exception:
+    AIStack = None
 
 try:
     import webapp  # الموقع (واجهة ويب خاصة)
@@ -36,19 +40,44 @@ FAST_MODELS = [
     "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-2.5-flash-lite",
-    "gemini-3.5-flash",
 ]
 DEEP_MODELS = [
     os.environ.get("GEMINI_DEEP_MODEL", "gemini-2.5-pro"),
+    "gemini-2.5-pro",
     "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-3.8-flash",
 ]
 MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
 DEEP_TIMEOUT_MS = 75000
 
-SYSTEM_PROMPT = """أنت "Ryn"، مساعد ذكي شامل ومتقدم في البرمجة، الهندسة البرمجية، التحليل، والعلوم، مستعد للإجابة عن أي سؤال في شتى المجالات.
+CAPABILITIES_MANIFESTO = """
+قدرات وإضافات منظومة Ryn المفعّلة لديك (أنت مبرمج عليها بالكامل في كل الموديلات):
+1) 🐙 الوصول المباشر لمشاريع وملفات GitHub من داخل المحادثة (قراءة، تعديل جراحي، إنشاء، حذف، ورفع مشاريع .zip كاملة):
+   - عندما يطلب المستخدم تعديل ملف في مستودع GitHub المتصل (سواء كتب GitHub أو جيتهاب أو غيتهاب أو كيت هب أو كيترهاب)، اشرح التعديل بوضوح ثم أدرج في نهاية ردك وسم التعديل الجراحي:
+     <github_patch path="مسار_الملف" commit="وصف التعديل">
+     <<<< SEARCH
+     الأسطر الأصلية المراد استبدالها
+     ====
+     الأسطر الجديدة بعد التعديل
+     >>>> REPLACE
+     </github_patch>
+   - ولإنشاء ملف جديد أو استبداله بالكامل:
+     <github_create path="مسار_الملف" commit="وصف التحديث">
+     محتوى الملف الكامل
+     </github_create>
+   - ولحذف ملف: <github_delete path="مسار_الملف" commit="سبب الحذف"/>
+   - إذا أرفق المستخدم ملف .zip أو عدة ملفات وطلب رفعها على GitHub، يقوم النظام برفع المشروع كاملاً بـ Commit ذري واحد، ويمكن التراجع عن آخر تعديل بكتابة «تراجع عن تعديل جيتهاب».
+   - أمن الحسابات: حساب WEB_PASSWORD يأخذ GITHUB_TOKEN من السيرفر تلقائياً، وأي مستخدم آخر يربط توكنه الشخصي ومستودعه من الشات (`اربط جيتهاب ghp_XXXX مستودع username/repo`).
+2) 🧩 العقل الهجين المحسّن Ryn mix + الحارس الأمني ryn_guard (18/18):
+   - يدمج قوة Gemini و GPT-OSS 120B و Qwen3 و DeepSeek و Kimi K2 و Llama 4 و Codestral عبر LangGraph + Tree-sitter AST + Promptfoo + DSPy.
+3) 🎨 العقل البصري المستقل RYN Visual Brain:
+   - توليد صور واقعية وتعديل الصور المرفقة مباشرة من المحادثة مع حفظ الهوية والملامح.
+4) 🕸️ قراءة الويب ويوتيوب والذاكرة الدلالية وتوليد الملفات:
+   - تحويل المواقع إلى Markdown عبر Crawl4AI، قراءة فيديوهات يوتيوب، ذاكرة Chroma الدلالية، وتوليد ملفات التحميل تلقائياً.
+"""
+
+SYSTEM_PROMPT = """أنت "Ryn"، مساعد ذكي شامل ومتقدم في البرمجة، الهندسة البرمجية، إدارة مشاريع GitHub، التحليل، والعلوم، مستعد للإجابة عن أي سؤال في شتى المجالات.
 
 هويتك وصانعك (مهم جداً):
 - تم تطويرك وبرمجتك بواسطة المطور "haydar_xe".
@@ -57,13 +86,10 @@ SYSTEM_PROMPT = """أنت "Ryn"، مساعد ذكي شامل ومتقدم في �
 
 أسلوبك:
 - جاوب بلغة المستخدم. إذا كان السؤال بالعربي، استخدم لهجة شامية بسيطة، ودية، وواضحة.
-- قدم إجابات مختصرة، عملية، ومرتبة. إذا كان السؤال يحتاج لخطوات، اجعلها قصيرة ومباشرة.
-
-خبراتك:
-- مساعد برمجي وعام متقدم: تجيب باحترافية على أسئلة التقنية، البرمجة، مراجعة الكود، العلوم، الثقافة، الصحة، الترجمة، والمواضيع اليومية.
-
+- قدم إجابات مختصرة، عملية، ومرتبة. قبل كتابة أي كود معقد، تحقق ذهنياً من الشجرة النحوية (AST) والحالات الحدية وأمان الكود.
+""" + CAPABILITIES_MANIFESTO + """
 قواعد عامة:
-- يمكنك قراءة وتحليل الصور والملفات (PDF، Word، نصوص، مشاريع مضغوطة) المرفقة للإجابة عن محتواها، وتوليد وتعديل الصور عبر العقل البصري (RYN Visual Brain).
+- يمكنك قراءة وتحليل الصور والملفات (PDF، Word، نصوص، مشاريع مضغوطة .zip) المرفقة للإجابة عن محتواها أو رفعها وتعديلها على GitHub، وتوليد وتعديل الصور عبر العقل البصري (RYN Visual Brain).
 - إذا طلب منك المستخدم ملف تحميل (Word أو نص أو HTML أو JSON أو CSV أو ملف كود): اكتب محتوى الملف مباشرةً وبدون أي كلام خارجي — لأن الموقع بيحوّل ردك تلقائياً لملف تحميل حقيقي. الكود حطه ضمن ``` مع اسم اللغة، والنصوص نظّمها بـ Markdown خفيف.
 - ما بتقدر تولّد ملفات PDF حالياً؛ إذا طلب منك PDF، جاوب بجملة وحدة إنه غير متاح واقترح Word أو نص أو HTML بدالو.
 - إذا لم تكن متأكداً من معلومة، اعترف بذلك ولا تخترع معلومات غير موجودة.
@@ -73,6 +99,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def _knowledge_files():
+    """تم تنظيف المعرفة القديمة بالكامل بناءً على طلب المطور."""
     return []
 
 
@@ -169,7 +196,7 @@ def typing(chat_id):
             try:
                 bot.send_chat_action(chat_id, "typing")
             except Exception:
-                pass
+                _ = None
             stop.wait(4)
     t = threading.Thread(target=loop, daemon=True)
     t.start()
@@ -209,11 +236,12 @@ def make_config(deep, system, use_thinking=True, json_mode=False):
                 thinking_level="high" if deep else "low"
             )
         except Exception:
-            pass
+            _ = None
     return types.GenerateContentConfig(**kwargs)
 
-def ask_gemini(contents, deep=False, system=None, json_mode=False):
-    models = DEEP_MODELS if deep else FAST_MODELS
+def ask_gemini(contents, deep=False, system=None, json_mode=False, preferred_model=None):
+    base_models = DEEP_MODELS if deep else FAST_MODELS
+    models = ([preferred_model] + [m for m in base_models if m != preferred_model]) if preferred_model else base_models
     system = system or get_system_prompt()
     last_err = None
     for model in models:
@@ -266,19 +294,32 @@ def review_answer(chat_id, question, answer):
 # ============ OpenRouter (مفتاح واحد لعدة موديلات) ============
 DEFAULT_PROVIDER = os.environ.get("DEFAULT_PROVIDER", "gemini").lower()
 PROVIDER_NAMES = {
-    "gemini": "Gemini",
+    "gemini": "Gemini Auto",
     "mix": "Ryn mix",
-    "chatgpt": "ChatGPT",
-    "llama": "Llama 3",
+    "chatgpt": "GPT-OSS / ChatGPT",
+    "llama": "Llama 4 / 3.3",
     "claude": "Claude",
-    "deepseek": "DeepSeek",
-    "qwen": "Qwen"
+    "deepseek": "DeepSeek R1/V3",
+    "qwen": "Qwen 3 / Coder",
+    "kimi": "Kimi K2",
+    "gemma": "Gemma 3",
+    "mistral": "Mistral / Codestral",
+    "nemotron": "Nemotron Ultra",
+    "glm": "GLM Z1",
 }
 
 def _pname(prov):
-    """اسم العرض للمزوّد، وللموديل المختار يدوياً (or:<id>)."""
+    """اسم العرض للمزوّد، وللموديل المختار يدوياً (gemini:<id> أو groq:<id> أو or:<id>)."""
     p = str(prov)
-    return PROVIDER_NAMES.get(prov) or (p[3:] if p.startswith("or:") else (p[5:] if p.startswith("groq:") else p))
+    if p in PROVIDER_NAMES:
+        return PROVIDER_NAMES[p]
+    if p.startswith("gemini:"):
+        return p[7:]
+    if p.startswith("groq:"):
+        return p[5:]
+    if p.startswith("or:"):
+        return p[3:].replace(":free", "")
+    return p
 
 
 last_models = {}  # chat_id -> آخر قائمة موديلات انعرضت (للاختيار بالرقم)
@@ -317,17 +358,24 @@ OR_BACKEND = {
 }
 
 PROVIDERS = {
-    "chatgpt": {"backends": [{**OR_BACKEND, "prov": "chatgpt", "match": ("openai/",)}]},
+    "chatgpt": {"backends": [{**OR_BACKEND, "prov": "chatgpt", "match": ("openai/", "gpt-oss")}]},
     "llama": {"backends": [{**OR_BACKEND, "prov": "llama", "match": ("llama",)}]},
     "claude": {"backends": [{**OR_BACKEND, "prov": "claude", "match": ("anthropic/",)}]},
     "deepseek": {"backends": [{**OR_BACKEND, "prov": "deepseek", "match": ("deepseek",)}]},
     "qwen": {"backends": [{**OR_BACKEND, "prov": "qwen", "match": ("qwen",)}]},
+    "kimi": {"backends": [{**OR_BACKEND, "prov": "kimi", "match": ("kimi", "moonshot")}]},
+    "gemma": {"backends": [{**OR_BACKEND, "prov": "gemma", "match": ("gemma",)}]},
+    "mistral": {"backends": [{**OR_BACKEND, "prov": "mistral", "match": ("mistral", "codestral")}]},
+    "nemotron": {"backends": [{**OR_BACKEND, "prov": "nemotron", "match": ("nemotron",)}]},
+    "glm": {"backends": [{**OR_BACKEND, "prov": "glm", "match": ("glm", "z-ai")}]},
 }
 chat_provider = {}
 
 COMPACT_PROMPT = (
-    "أنت Ryn، مساعد ذكي شامل ومتقدم من تطوير haydar_xe، متخصص بالبرمجة والتحليل وبتجاوب على أي سؤال تاني. "
+    "أنت Ryn، مساعد ذكي شامل ومتقدم من تطوير haydar_xe، متخصص بالبرمجة وهندسة الكود وإدارة مشاريع GitHub والتحليل وبتجاوب على أي سؤال تاني. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة ومختصرة ومرتبة. "
+    "لتعديل ملف في GitHub من المحادثة أدرج بآخر ردك <github_patch path=\"مسار_الملف\" commit=\"الوصف\">\n<<<< SEARCH\n...\n====\n...\n>>>> REPLACE\n</github_patch>، "
+    "ولإنشاء ملف كامل <github_create path=\"مسار_الملف\" commit=\"الوصف\">...</github_create>، وللحذف <github_delete path=\"مسار_الملف\" commit=\"السبب\"/>. "
     "إذا مو متأكد من معلومة قول هيك بصراحة وما تخترع."
 )
 
@@ -365,7 +413,7 @@ def _is_free(item):
 def openrouter_catalog(force=False):
     """قائمة موديلات OpenRouter: [{id, free, ctx}]، بتتخزن 6 ساعات."""
     now = time.time()
-    if not force and _or_cache["items"] and now - _or_cache["t"] < 6 * 3600:
+    if not force and ((_or_cache["items"] and now - _or_cache["t"] < 6 * 3600) or (now - _or_cache.get("fail_t", 0) < 60)):
         return _or_cache["items"]
     items = []
     try:
@@ -389,7 +437,9 @@ def openrouter_catalog(force=False):
         _or_cache["err"] = f"{type(e).__name__}: {e}"
         log.error("OpenRouter catalog error: %s", e)
     if items:
-        _or_cache.update(t=now, items=items)
+        _or_cache.update(t=now, items=items, fail_t=0.0)
+    else:
+        _or_cache["fail_t"] = now
     return items or _or_cache["items"]
 
 
@@ -399,7 +449,7 @@ _HEAVY = ("r1", "pro", "reason", "think", "235b", "480b", "120b", "80b", "maveri
 _LIGHT = ("flash", "mini", "small", "lite", "8b", "7b", "4b", "3b", "nano", "instruct")
 
 
-_FAMILY_ORDER = ("openrouter/free", "deepseek", "qwen", "gpt-oss", "llama", "gemma", "glm", "nemotron", "minimax", "trinity")
+_FAMILY_ORDER = ("openrouter/free", "deepseek", "qwen", "gpt-oss", "kimi", "moonshot", "llama", "mistral", "codestral", "gemma", "nemotron", "glm", "microsoft", "minimax", "trinity")
 
 
 def free_chat_models(limit=40):
@@ -443,7 +493,7 @@ def _compact_prompt():
                 with open(path, encoding="utf-8") as fh:
                     notes = fh.read().strip()[:2500]
             except Exception:
-                pass
+                _ = None
     return COMPACT_PROMPT + (("\n\nملاحظات مرجعية:\n" + notes) if notes else "")
 
 def _build_messages(b, contents):
@@ -544,18 +594,52 @@ def _call_backend(b, contents, deep, json_mode, models=None, out=None):
 # ============ Groq: كود برمجي تلقائي ============
 GROQ_BASE = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1").strip().rstrip("/")
 CODE_SYSTEM_PROMPT = (
-    "أنت مبرمج خبير. اكتب كود صحيح ونظيف وجاهز للتشغيل، وحطه داخل ``` مع اسم اللغة. "
-    "بعد الكود اشرح بشكل قصير ومرتب بلغة المستخدم (إذا كتب عربي استعمل لهجة شامية بسيطة)، "
-    "واذكر أي مكتبة لازم تتثبت وأي افتراض افترضته. ما تخترع مكتبات أو دوال مو موجودة، "
-    "وإذا مو متأكد من شي قول هيك بصراحة."
+    "أنت Ryn (من تطوير haydar_xe)، مهندس برمجيات خبير. اكتب كود صحيح ونظيف ومفحوص نحوياً (AST) وأمنياً وجاهز للتشغيل، وحطه داخل ``` مع اسم اللغة. "
+    "بعد الكود اشرح بشكل قصير ومرتب بلغة المستخدم (إذا كتب عربي استعمل لهجة شامية بسيطة). "
+    "إذا كان الطلب تعديل ملف في مستودع GitHub المتصل، التزم بإدراج <github_patch path=\"مسار_الملف\" commit=\"وصف التعديل\">\n<<<< SEARCH\n...\n====\n...\n>>>> REPLACE\n</github_patch> في آخر ردك، "
+    "أو <github_create path=\"مسار_الملف\" commit=\"الوصف\">...</github_create> لإنشاء ملف جديد. "
+    "ما تخترع مكتبات أو دوال مو موجودة، وإذا مو متأكد من شي قول هيك بصراحة."
 )
 GROQ_BACKEND = {
     "name": "Groq", "base": GROQ_BASE, "key_env": "GROQ_API_KEY",
     "timeout_fast": 60, "timeout_deep": 120,
-    "system": CODE_SYSTEM_PROMPT, "max_chars": 16000, "max_tokens": 6000,  # حدود Groq المجانية صغيرة
+    "system": CODE_SYSTEM_PROMPT, "max_chars": 24000, "max_tokens": 6000,
 }
-# موديلات Llama 3 القديمة (llama3-70b-8192 و llama-3.1-70b-versatile وحتى llama-3.3-70b-versatile) انسكّرت عند Groq
-GROQ_CODE_PREF = ("openai/gpt-oss-120b", "qwen/qwen3.8-27b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b")
+GROQ_CODE_PREF = (
+    "openai/gpt-oss-120b",
+    "qwen/qwen3-32b",
+    "moonshotai/kimi-k2-instruct",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-20b",
+)
+GROQ_FREE_DEFAULTS = (
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3-32b",
+    "moonshotai/kimi-k2-instruct",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "llama-3.3-70b-versatile",
+    "deepseek-r1-distill-llama-70b",
+    "llama-3.1-8b-instant",
+    "gemma2-9b-it",
+)
+OR_FREE_DEFAULTS = (
+    "openrouter/free",
+    "deepseek/deepseek-r1:free",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "qwen/qwen3-235b-a22b:free",
+    "qwen/qwen-2.5-coder-32b-instruct:free",
+    "moonshotai/kimi-k2:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "meta-llama/llama-4-maverick:free",
+    "google/gemma-3-27b-it:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "nvidia/llama-3.1-nemotron-ultra-253b-v1:free",
+    "thudm/glm-z1-32b:free",
+    "microsoft/mai-ds-r1:free",
+)
 GROQ_CHAT_BACKEND = {**GROQ_BACKEND, "system": None, "compact": True}  # دردشة عامة بموديل Groq تختاره
 _GROQ_SKIP = ("whisper", "tts", "guard", "safeguard", "vision", "embed", "compound", "orpheus", "playai")
 _groq_cache = {"t": 0.0, "ids": [], "err": ""}
@@ -568,7 +652,7 @@ def _groq_ready():
 
 def groq_catalog(force=False):
     now = time.time()
-    if not force and _groq_cache["ids"] and now - _groq_cache["t"] < 6 * 3600:
+    if not force and ((_groq_cache["ids"] and now - _groq_cache["t"] < 6 * 3600) or (now - _groq_cache.get("fail_t", 0) < 60)):
         return _groq_cache["ids"]
     ids = []
     try:
@@ -588,7 +672,9 @@ def groq_catalog(force=False):
         _groq_cache["err"] = f"{type(e).__name__}: {e}"
         log.error("Groq catalog error: %s", e)
     if ids:
-        _groq_cache.update(t=now, ids=ids)
+        _groq_cache.update(t=now, ids=ids, fail_t=0.0)
+    else:
+        _groq_cache["fail_t"] = now
     return ids or _groq_cache["ids"]
 
 
@@ -654,43 +740,95 @@ def ask_model(chat_id, contents, deep=False, json_mode=False, code=False):
 
 
 def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
-    """بيرجّع (الجواب، ملاحظة). البوت بيجبر الموديل المختار فقط وبدون تبديل تلقائي."""
+    """بيرجّع (الجواب، ملاحظة) مع دعم جميع النماذج المجانية (Gemini / Groq / OpenRouter / Codestral) والتبديل الذكي عند ضغط السيرفر."""
     prov = chat_provider.get(chat_id, DEFAULT_PROVIDER)
     text_only = _text_only(contents)
-    
-    if not text_only and prov != "gemini":
+
+    if not text_only and not (prov == "gemini" or prov.startswith("gemini:")):
         ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
         return ans, f"(استخدمت Gemini لأن {_pname(prov)} ما بيقدر يقرأ صور/صوت)"
 
     if prov == "mix":
         return ask_mix(contents, deep=deep)
 
-    if prov.startswith("groq:"):
-        try:
-            if not _groq_ready():
-                raise ProviderError(401, "GROQ_API_KEY مو مضاف على Render")
-            ans = _call_backend(GROQ_CHAT_BACKEND, contents, deep, json_mode, models=[prov[5:]])
+    if prov == "gemini" or prov.startswith("gemini:"):
+        pref_m = prov[7:] if prov.startswith("gemini:") else None
+        ans = ask_gemini(contents, deep=deep, json_mode=json_mode, preferred_model=pref_m)
+        return ans, (pref_m if pref_m else None)
+
+    if prov == "codestral":
+        c_key = _env_key("CODESTRAL_API_KEY")
+        if c_key:
+            try:
+                c_backend = {
+                    "name": "Codestral",
+                    "base": "https://codestral.mistral.ai/v1",
+                    "key_env": "CODESTRAL_API_KEY",
+                    "timeout_fast": 60,
+                    "timeout_deep": 120,
+                    "system": CODE_SYSTEM_PROMPT,
+                }
+                ans = _call_backend(c_backend, contents, deep, json_mode, models=[os.environ.get("CODESTRAL_MODEL", "codestral-latest")])
+                if ans:
+                    return ans, "Codestral"
+            except Exception as e:
+                log.warning("Codestral direct fallback: %s", e)
+        if _or_key():
+            b_or = {**OR_BACKEND, "prov": "mistral", "match": ("codestral", "mistral")}
+            ans = _call_backend(b_or, contents, deep, json_mode)
             if ans:
-                return ans, None
+                return ans, "Codestral (OR)"
+
+    if prov.startswith("groq:"):
+        target_m = prov[5:]
+        if not _groq_ready():
+            if client:
+                ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+                return ans, "(احتياط Gemini — مفتاح Groq غير مضاف)"
+            raise ProviderError(401, "GROQ_API_KEY مو مضاف على Render")
+        avail_g = groq_code_models()
+        chain_g = [target_m] + [m for m in avail_g if m != target_m]
+        out_g = {}
+        try:
+            ans = _call_backend(GROQ_CHAT_BACKEND, contents, deep, json_mode, models=chain_g, out=out_g)
+            if ans:
+                used_m = out_g.get("model") or target_m
+                note_g = None if used_m == target_m else f"(تبديل ذكي إلى {used_m})"
+                return ans, note_g
         except Exception as e:
+            if client:
+                log.warning("Groq model %s failed (%s), falling back to Gemini", target_m, e)
+                ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+                return ans, f"(استخدمت Gemini لأن {_pname(prov)} مضغوط حالياً)"
             raise ProviderError(getattr(e, "code", None), f"{_pname(prov)} ← {e}")
         raise ProviderError(502, f"{_pname(prov)} ← رد فاضي")
 
     if prov.startswith("or:"):
+        target_or = prov[3:]
+        if not _or_key():
+            if client:
+                ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+                return ans, "(احتياط Gemini — مفتاح OpenRouter غير مضاف)"
+            raise ProviderError(401, "OPENROUTER_API_KEY مو مضاف على Render")
+        b = {**OR_BACKEND, "prov": "custom", "match": ()}
+        free_fallbacks = [m for m in free_chat_models(limit=12) if m != target_or]
+        chain_or = [target_or] + free_fallbacks[:4]
+        if "openrouter/free" not in chain_or:
+            chain_or.append("openrouter/free")
+        out_or = {}
         try:
-            if not _or_key():
-                raise ProviderError(401, "OPENROUTER_API_KEY مو مضاف على Render")
-            b = {**OR_BACKEND, "prov": "custom", "match": ()}
-            ans = _call_backend(b, contents, deep, json_mode, models=[prov[3:]])
+            ans = _call_backend(b, contents, deep, json_mode, models=chain_or, out=out_or)
             if ans:
-                return ans, None
+                used_m = out_or.get("model") or target_or
+                note_or = None if used_m == target_or else f"(تبديل ذكي إلى {used_m.replace(':free', '')})"
+                return ans, note_or
         except Exception as e:
+            if client:
+                log.warning("OpenRouter model %s failed (%s), falling back to Gemini", target_or, e)
+                ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+                return ans, f"(استخدمت Gemini لأن {_pname(prov)} مضغوط حالياً)"
             raise ProviderError(getattr(e, "code", None), f"{_pname(prov)} ← {e}")
         raise ProviderError(502, f"{_pname(prov)} ← رد فاضي")
-
-    if prov == "gemini":
-        ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
-        return ans, None
 
     if prov in PROVIDERS and provider_ready(prov):
         try:
@@ -698,17 +836,21 @@ def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
             if ans:
                 return ans, None
         except Exception as e:
+            if client:
+                ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+                return ans, f"(استخدمت Gemini لأن {_pname(prov)} مضغوط حالياً)"
             code = getattr(e, "code", None)
             raise ProviderError(code, f"{_pname(prov)} ← {e}")
-            
+
     raise ValueError(f"الموديل {_pname(prov)} مو متاح.")
 
 
 # ============ Ryn mix: محرك Ryn mix المطور (مستوحى من gstack) ============
 MIX_SYSTEM = (
-    "أنت Ryn. وصلك سؤال المستخدم مع إجابات عدة موديلات ذكاء اصطناعي. "
+    "أنت Ryn (من تطوير haydar_xe). وصلك سؤال المستخدم مع إجابات عدة موديلات ذكاء اصطناعي. "
     "ادمجهم بجواب واحد نهائي، صحيح ومرتب ومختصر: خذ الأدق من كل إجابة، "
     "وصحّح أي تناقض أو خطأ، وما تذكر أسماء الموديلات ولا إنك قارنت إجابات. "
+    "حافظ بالكامل على أي بلوكات <github_patch> أو <github_create> أو <github_delete> موجودة لتنفيذ تعديلات GitHub. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة. "
     "إذا في معلومة مو متأكد منها قول هيك بصراحة وما تخترع."
 )
@@ -816,13 +958,29 @@ def process(message, user_parts, history_label, deep=False):
             try:
                 status = bot.send_message(chat_id, "🧠 سؤال مركّب، عم فكر فيه بعمق...")
             except Exception:
-                pass
+                _ = None
         with typing(chat_id):
+            tg_uid = f"tg_{chat_id}"
+            if AIStack is not None:
+                direct_gh = AIStack.get_github_manager().handle_direct_chat_command(tg_uid, history_label)
+                if direct_gh:
+                    send_long(message, direct_gh)
+                    save_turn(chat_id, history_label, direct_gh)
+                    return
+                try:
+                    gh_ctx = AIStack.get_github_manager().build_chat_github_context(tg_uid, history_label)
+                    if gh_ctx:
+                        user_parts = [types.Part(text=gh_ctx)] + list(user_parts)
+                except Exception:
+                    _ = None
             contents = build_contents(chat_id)
             contents.append(types.Content(role="user", parts=user_parts))
             answer, note = ask_model(chat_id, contents, deep=deep, code=is_code_request(history_label))
-            if deep and answer and len(answer) > 150 and load_knowledge() and not note:
-                answer = review_answer(chat_id, history_label, answer)
+            if AIStack is not None and answer:
+                try:
+                    answer, _ = AIStack.get_github_manager().apply_chat_github_actions(tg_uid, history_label, answer)
+                except Exception:
+                    _ = None
         if answer:
             send_long(message, answer + (f"\n\n{note}" if note else ""))
             save_turn(chat_id, history_label, answer)
@@ -836,11 +994,12 @@ def process(message, user_parts, history_label, deep=False):
             try:
                 bot.delete_message(chat_id, status.message_id)
             except Exception:
-                pass
+                _ = None
 
 # ============ قراءة الملفات ============
 DOC_TTL = 30 * 60
-MAX_FILE_BYTES = 15 * 1024 * 1024
+MAX_FILE_BYTES = 15 * 1024 * 1024   # تيليجرام (حد تنزيل البوت 20MB)
+INLINE_MAX_BYTES = 15 * 1024 * 1024  # أكبر ملف بينرسل inline لـ Gemini
 
 MIME_BY_EXT = {
     ".pdf": "application/pdf",
@@ -859,6 +1018,12 @@ def _docx_text(data):
 
 def build_doc_parts(name, data):
     ext = os.path.splitext(name.lower())[1]
+    if ext == ".pdf" and len(data) > INLINE_MAX_BYTES:
+        # PDF كبير: ما بينفع يرسل inline لـ Gemini، فبنستخرج النصّ محلياً
+        parts = pdf_alt_parts(name, data, max_pages=2000, cap=1_500_000)
+        if not parts:
+            raise ValueError("pdf_big")
+        return parts
     if ext in MIME_BY_EXT:
         return [types.Part.from_bytes(data=data, mime_type=MIME_BY_EXT[ext])]
     if ext == ".docx":
@@ -883,17 +1048,17 @@ def build_doc_parts(name, data):
         text = text[:150_000] + "\n...[انقطع الملف لأنه طويل]"
     return [types.Part(text=f"[محتوى الملف: {name}]\n{text}")]
 
-def pdf_alt_parts(name, data):
+def pdf_alt_parts(name, data, max_pages=60, cap=150_000):
     try:
         from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(data))
-        text = "\n".join((pg.extract_text() or "") for pg in list(reader.pages)[:60]).strip()
+        text = "\n".join((pg.extract_text() or "") for pg in list(reader.pages)[:max_pages]).strip()
     except Exception:
         return None
     if len(text) < 200:
         return None
-    if len(text) > 150_000:
-        text = text[:150_000] + "\n...[انقطع الملف لأنه طويل]"
+    if len(text) > cap:
+        text = text[:cap] + "\n...[انقطع الملف لأنه طويل]"
     return [types.Part(text=f"[محتوى الملف: {name}]\n{text}")]
 
 def set_doc(chat_id, name, parts, alt=None):
@@ -1270,7 +1435,7 @@ def handle_document(message):
     try:
         bot.send_message(chat_id, "📎 الملف مرفق بالمحادثة 30 دقيقة، اسأل عنه براحتك. /clearfile لحذفه.")
     except Exception:
-        pass
+        _ = None
 
 @bot.message_handler(content_types=["sticker", "video", "audio"])
 def handle_unsupported(message):

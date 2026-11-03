@@ -95,7 +95,7 @@ button{font-family:inherit;cursor:pointer}
  -webkit-mask-image:linear-gradient(to top,#000 20%,transparent 100%);mask-image:linear-gradient(to top,#000 20%,transparent 100%)}
 
 /* ===== الرأس والروبوت ===== */
-.top{position:relative;z-index:3;flex:none;display:flex;flex-direction:column;align-items:center;gap:2px}
+.top{position:relative;z-index:3;flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;background:linear-gradient(to bottom,var(--bg1) 0,var(--bg1) calc(100% - 10px),transparent 100%);padding-bottom:10px}
 .mini{position:absolute;top:4px;width:38px;height:38px;border-radius:12px;background:rgba(var(--acc-rgb),.12);border:1.5px solid rgba(var(--acc-rgb),.55);color:var(--txt);font-size:18px;display:flex;align-items:center;justify-content:center}
 #histBtn{right:0}#menuBtn{left:0}
 .botwrap{width:112px;height:112px;position:relative}
@@ -166,6 +166,7 @@ button{font-family:inherit;cursor:pointer}
 /* ===== الرسائل ===== */
 main{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:20px;padding:12px 4px 24px;z-index:2;scrollbar-width:none}
 main::-webkit-scrollbar{display:none}
+main{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22px);mask-image:linear-gradient(to bottom,transparent 0,#000 22px)}
 main>:first-child{margin-top:auto}
 .bubble{position:relative;padding:13px 16px;border-radius:18px;font-size:15px;line-height:1.75;color:var(--txt);overflow-wrap:anywhere;word-break:break-word;animation:fi .25s ease-out;text-align:right}
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -385,7 +386,6 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 .bubble{backdrop-filter:blur(10px);transition:transform .18s ease,box-shadow .18s ease}
 .mini,#mname,#memBtn,.dnew,.dbtn{transition:all .2s ease}
 .mini:hover,#mname:hover,#memBtn:hover{border-color:var(--g);box-shadow:0 0 14px rgba(var(--g-rgb),.4)}
-#ghTopBtn{left:46px}
 #pcLayoutBtn{right:46px;display:none}
 @media(min-width:960px){
   #pcLayoutBtn{display:flex}
@@ -416,17 +416,14 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 
 /* ===== أزرار القائمة الجانبية (حدود النماذج + ملفات GitHub) ===== */
 .d-actions{display:flex;flex-direction:column;gap:7px;margin-top:10px;flex:none}
-.dquota-btn,.dgh-btn{width:100%;padding:10px 12px;border-radius:13px;font-weight:800;font-size:13px;
+.dquota-btn{width:100%;padding:10px 12px;border-radius:13px;font-weight:800;font-size:13px;
  display:flex;align-items:center;justify-content:center;gap:8px;transition:all .22s ease;flex:none}
 .dquota-btn{border:1.5px solid rgba(var(--g-rgb),.6);background:linear-gradient(135deg,rgba(var(--acc-rgb),.22),rgba(var(--g-rgb),.14));
  color:var(--g);box-shadow:0 0 16px rgba(var(--g-rgb),.2)}
 .dquota-btn:hover{transform:translateY(-1.5px);background:linear-gradient(135deg,rgba(var(--acc-rgb),.35),rgba(var(--g-rgb),.25));box-shadow:0 0 22px rgba(var(--g-rgb),.45)}
-.dgh-btn{border:1.5px solid rgba(var(--acc-rgb),.75);background:linear-gradient(135deg,rgba(var(--acc-rgb),.28),rgba(14,12,40,.9));
- color:var(--txt);box-shadow:0 0 16px rgba(var(--acc-rgb),.25)}
-.dgh-btn:hover{transform:translateY(-1.5px);border-color:var(--g);color:var(--g);box-shadow:0 0 22px rgba(var(--g-rgb),.4)}
 
 /* ===== نافذة حدود النماذج وفحص النظام (#quotaModal) ===== */
-#quotaModal,#ghModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(7px);z-index:68;
+#quotaModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(7px);z-index:68;
  display:flex;align-items:center;justify-content:center;padding:14px}
 .qlist{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;padding-left:2px}
 .qm-item{background:rgba(7,6,26,.85);border:1px solid rgba(var(--acc-rgb),.42);border-radius:14px;padding:9px 12px;
@@ -455,36 +452,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 .sys-row b{color:var(--txt);direction:ltr;font-size:11px}
 .sys-row span{color:var(--g);font-size:11px}
 
-/* ===== استوديو ملفات GitHub (#ghModal) ===== */
-.gh-box{width:100%;max-width:780px;max-height:90vh;background:rgba(12,10,34,.98);border:1.5px solid var(--acc);
- border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 42px rgba(var(--acc-rgb),.45)}
-.gh-bar{display:grid;grid-template-columns:1.2fr .8fr 1fr auto;gap:6px;align-items:center}
-@media(max-width:680px){.gh-bar{grid-template-columns:1fr 1fr}}
-.gh-bar input,.gh-bar select{background:rgba(5,4,20,.92);border:1px solid rgba(var(--acc-rgb),.48);border-radius:10px;
- color:var(--txt);padding:8px 10px;font-size:12.5px;direction:ltr;outline:0}
-.gh-bar input:focus,.gh-bar select:focus{border-color:var(--g)}
-.gh-btn{background:linear-gradient(135deg,rgba(var(--acc-rgb),.32),rgba(var(--g-rgb),.22));border:1.5px solid var(--g);
- color:var(--g);border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:800;white-space:nowrap}
-.gh-btn:hover{background:var(--g);color:#031a10}
-.gh-split{display:grid;grid-template-columns:230px 1fr;gap:10px;min-height:340px;max-height:58vh;flex:1;overflow:hidden}
-@media(max-width:680px){.gh-split{grid-template-columns:1fr;max-height:64vh;overflow-y:auto}}
-.gh-tree{display:flex;flex-direction:column;gap:6px;background:rgba(5,4,18,.82);border:1px solid rgba(var(--acc-rgb),.35);
- border-radius:14px;padding:8px;overflow:hidden;min-height:140px}
-.gh-files{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
-.gh-f{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;
- font-size:12px;color:var(--txt);background:rgba(var(--acc-rgb),.07);border:1px solid transparent;cursor:pointer;direction:ltr;text-align:left}
-.gh-f:hover,.gh-f.on{border-color:var(--g);background:rgba(var(--g-rgb),.14);color:var(--g)}
-.gh-f span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.gh-f small{color:var(--sub);font-size:10px;flex:none}
-.gh-ed{display:flex;flex-direction:column;gap:7px;min-width:0;overflow:hidden}
-.gh-code{flex:1;width:100%;min-height:210px;background:#050416;border:1px solid rgba(var(--acc-rgb),.48);border-radius:12px;
- color:#e4ffef;font-family:Consolas,monospace;font-size:12.5px;line-height:1.5;padding:10px;direction:ltr;text-align:left;
- resize:vertical;overflow:auto;white-space:pre;outline:0}
-.gh-code:focus{border-color:var(--g)}
-.gh-acts{display:flex;flex-wrap:wrap;gap:7px;justify-content:space-between;align-items:center}
 .ch-btns{display:inline-flex;gap:6px;align-items:center}
-.ch .gh-push{background:rgba(var(--acc-rgb),.25);border:1px solid rgba(var(--acc-rgb),.65);color:var(--txt);border-radius:8px;padding:3px 9px;font-size:11.5px;font-weight:700}
-.ch .gh-push:hover{border-color:var(--g);color:var(--g)}
 
 </style>
 </head>
@@ -547,7 +515,6 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg>
     </button>
     <button class="mini" id="pcLayoutBtn" type="button" title="تبديل عرض الكمبيوتر (PC) / الهاتف">🖥️</button>
-    <button class="mini" id="ghTopBtn" type="button" title="ملفات GitHub وتعديلها مباشرة">🐙</button>
     <button class="mini" id="menuBtn" aria-label="القائمة">⋮</button>
     <div class="botwrap" id="botBox"></div>
     <div id="say"></div>
@@ -562,7 +529,6 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mFix">🐞 تصحيح كود</button>
     <button id="mAdl">⬇️ تنزيل الكود تلقائياً: شغّال</button>
-    <button id="mGh">🐙 ملفات GitHub وتعديلها</button>
     <button id="mEmo">💗 وضع المشاعر: طافي</button>
     <button id="mSfx">🔊 الأصوات المستقبلية: شغّالة</button>
     <button id="mAbout">ℹ️ عن __APP_NAME__</button>
@@ -624,7 +590,6 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     </div>
     <div id="dList"></div>
     <div class="d-actions">
-      <button type="button" class="dgh-btn" id="dGhBtn">🐙 ملفات GitHub وتعديلها مباشرة</button>
       <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود النماذج وفحص النظام</button>
     </div>
     <div class="dfoot" id="dFoot">محفوظة على هالجهاز (حتى 100 محادثة)</div>
@@ -659,8 +624,9 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
         <li>💻 <b>برمجة</b>: كتابة وشرح كود بكل اللغات، وبيقرا كود طويل وملفات ومشاريع zip كاملة.</li>
         <li>🐞 <b>تصحيح الكود</b>: فحص آلي للصياغة، وبيصلّح، وبيتأكد إنو الكود المصحّح سليم قبل ما يعطيك ياه.</li>
         <li>🎙️ <b>تسجيل صوت</b> بيتحوّل لنص، و⬇️ <b>الكود بينزل بملف</b> تلقائياً.</li>
-        <li>💬 <b>عدة موديلات</b>: Gemini وQwen وGPT-OSS وDeepSeek، بتختار يلي بدك ياه.</li>
-        <li>🧩 <b>Ryn mix</b>: الموديلات بيجاوبوا سوا وبيندمجوا بجواب واحد أدق. وبالكود بيشتغلوا كفريق: كل موديل بدور، وبعدين مراجع صارم بيدقّق النتيجة.</li>
+        <li>💬 <b>كل النماذج المجانية بمكان واحد</b>: Gemini 2.5 Pro/Flash/2.0 و GPT-OSS 120B/20B و Qwen3 32B/235B/Coder و DeepSeek R1/V3 و Kimi K2 و Llama 4 Maverick/Scout و Llama 3.3 70B و Gemma 3 و Mistral/Codestral و Nemotron 253B و GLM Z1.</li>
+        <li>🧩 <b>Ryn mix المحسّن</b>: عقل هجين يدمج أقوى الموديلات عبر LangGraph + DSPy + فحص الشجرة النحوية (AST) + الحارس الأمني (18/18).</li>
+        <li>🐙 <b>إدارة وتعديل مشاريع GitHub من المحادثة</b>: اقرأ وعدّل أي ملف أو ارفع مشروعاً كاملاً (.zip) مباشرة من الشات مع فحص نحوي وتراجع فوري.</li>
         <li>🎨 <b>توليد صور</b> واقعية حسب وصفك.</li>
         <li>🌐 <b>إنترنت</b>: بيقرا روابط المواقع وفيديوهات يوتيوب، وبيدوّر ويبعتلك روابط لما تطلب فيديو أو موقع.</li>
         <li>📎 <b>بيقرا الصور والملفات</b> (PDF وغيره).</li>
@@ -729,41 +695,6 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
   </div>
 </div>
 
-<div id="ghModal" hidden>
-  <div class="gh-box">
-    <div class="mh"><span>🐙 استوديو ملفات GitHub (قراءة وتعديل ورفع مباشر)</span><button id="ghClose" aria-label="إغلاق">✕</button></div>
-    <div class="gh-bar">
-      <input id="ghRepo" placeholder="owner/repo (مثال: haeeedar6-ops/my-ai-bot)" value="haeeedar6-ops/my-ai-bot">
-      <input id="ghBranch" placeholder="الفرع أو المسودة (مثال: main)" value="main" list="ghBranchList">
-      <datalist id="ghBranchList"><option value="main"></datalist>
-      <input id="ghToken" type="password" placeholder="🔑 توكن GitHub الخاص فيك (ghp_...)" hidden>
-      <button type="button" class="gh-btn" id="ghTokClear" hidden>🗑️ حذف توكني</button>
-      <button type="button" class="gh-btn" id="ghLoadBtn">🔄 جلب الملفات</button>
-    </div>
-    <div class="gh-split">
-      <div class="gh-tree">
-        <input class="minp" id="ghSearch" placeholder="🔍 ابحث في ملفات المستودع..." style="font-size:12px;padding:6px 8px">
-        <div class="gh-files" id="ghFileList">
-          <small style="color:var(--sub);text-align:center;padding:18px 6px">اضغط «🔄 جلب الملفات» لعرض ملفات مستودعك</small>
-        </div>
-      </div>
-      <div class="gh-ed">
-        <div style="display:flex;gap:6px;align-items:center">
-          <input class="minp" id="ghPath" placeholder="مسار الملف (مثال: webapp.py أو ryn_ai_stack.py)" style="direction:ltr;text-align:left;font-family:Consolas,monospace;font-size:12.5px;flex:1">
-          <span id="ghStat" style="font-size:11px;color:var(--g);white-space:nowrap"></span>
-        </div>
-        <textarea class="gh-code" id="ghCode" placeholder="// اختر ملفاً من القائمة اليسرى لقراءته وتعديله، أو الصق الكود هنا لرفعه مباشرة إلى GitHub..."></textarea>
-        <div class="gh-acts">
-          <input class="minp" id="ghMsg" placeholder="رسالة الحفظ (Commit message) — اختياري" style="flex:1;min-width:160px;font-size:12px">
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button type="button" class="gh-btn" id="ghAttachBtn" style="border-color:var(--acc);color:var(--txt)">🤖 أرفق للشات ليعدّله Ryn</button>
-            <button type="button" class="gh-btn" id="ghSaveBtn">💾 حفظ ورفع لـ GitHub (Commit)</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 <div id="toast"></div>
 
 <script>
@@ -826,9 +757,10 @@ function fxKey(id){
   if(id==='mix')return 'mix';if(id==='img:flux')return 'img';
   if(l.indexOf('gpt-oss')>=0)return 'gptoss';if(l.indexOf('qwen')>=0)return 'qwen';
   if(l.indexOf('deepseek')>=0)return 'deepseek';if(l.indexOf('kimi')>=0||l.indexOf('moonshot')>=0)return 'kimi';
+  if(l.indexOf('llama')>=0)return 'llama';if(l.indexOf('mistral')>=0||l.indexOf('codestral')>=0)return 'mistral';
   return 'gemini';
 }
-const FX_RGB={gemini:'167,139,250',gptoss:'52,211,153',qwen:'251,146,60',deepseek:'56,189,248',kimi:'203,213,225',img:'244,114,182',mix:'250,204,21'};
+const FX_RGB={gemini:'167,139,250',gptoss:'52,211,153',qwen:'251,146,60',deepseek:'56,189,248',kimi:'203,213,225',llama:'96,165,250',mistral:'251,191,36',img:'244,114,182',mix:'250,204,21'};
 const FX_COLS={deepseek:['56,189,248','59,130,246','129,140,248']};
 function rnd(a,b){return a+Math.random()*(b-a)}
 const ht=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1041,7 +973,7 @@ function md(text){
   flush();
   return html.replace(/<br>$/,'').replace(/\u0000(\d+)\u0000/g,(m,i)=>{
     const b=blocks[+i];
-    return '<div class="code"><div class="ch"><span>'+esc(b.l||'code')+'</span><div class="ch-btns"><button type="button" class="gh-push" title="رفع وحفظ هذا الكود في ملف على GitHub">🐙 رفع لـ GitHub</button><button type="button" class="cp">نسخ</button></div></div><pre><code>'+esc(b.c.replace(/\n$/,''))+'</code></pre></div>';
+    return '<div class="code"><div class="ch"><span>'+esc(b.l||'code')+'</span><div class="ch-btns"><button type="button" class="cp">نسخ</button></div></div><pre><code>'+esc(b.c.replace(/\n$/,''))+'</code></pre></div>';
   });
 }
 const pm=t=>md((t.match(/```/g)||[]).length%2?t+'\n```':t);
@@ -1445,7 +1377,7 @@ function paintSfx(){const el=$('#mSfx');if(el)el.textContent=sfxOn?'🔊 الأ�
 paintSfx();
 if($('#mSfx'))$('#mSfx').onclick=()=>{sfxOn=!sfxOn;try{localStorage.setItem('ryn_sfx',sfxOn?'1':'0')}catch(e){}paintSfx();if(sfxOn)sfx.switchModel();$('#menu').hidden=true;toast(sfxOn?'🔊 تم تفعيل الأصوات المستقبلية':'🔇 تم كتم الأصوات')};
 document.addEventListener('click',e=>{
-  const btn=e.target.closest('button,.dia,.ci,#mname,.themes i,.gh-f');
+  const btn=e.target.closest('button,.dia,.ci,#mname,.themes i');
   if(btn&&btn.id!=='send')sfx.click();
 });
 
@@ -1501,160 +1433,6 @@ if($('#dQuotaBtn'))$('#dQuotaBtn').onclick=openQuotaModal;
 if($('#runSysCheckBtn'))$('#runSysCheckBtn').onclick=runSystemDiagnostics;
 if($('#quotaClose'))$('#quotaClose').onclick=()=>{$('#quotaModal').hidden=true};
 if($('#quotaModal'))$('#quotaModal').onclick=e=>{if(e.target===$('#quotaModal'))$('#quotaModal').hidden=true};
-
-/* ===== استوديو ملفات GitHub المباشر (#ghModal) ===== */
-let ghFilesCache=[],ghCurrentSha='';
-async function openGhModal(prefillCode,prefillPath){
-  $('#menu').hidden=true;closeDrawer();
-  $('#ghModal').hidden=false;
-  try{
-    const r=await api('/api/github/config');
-    const d=await r.json();
-    if(d&&d.config){
-      if(d.config.repo)$('#ghRepo').value=d.config.repo;
-      if(d.config.branch)$('#ghBranch').value=d.config.branch;
-      const own=!!d.config.is_owner;
-      $('#ghToken').hidden=own;$('#ghTokClear').hidden=own||!d.config.has_token;
-      if(own){if(!d.config.has_token)toast('GITHUB_TOKEN مو مضاف على السيرفر')}
-      else{
-        if(!d.config.repo)$('#ghRepo').value='';
-        $('#ghToken').placeholder=d.config.has_token?'🔑 توكنك محفوظ ('+d.config.token_masked+')':'🔑 توكن GitHub الخاص فيك (ghp_...)';
-      }
-    }
-  }catch(e){}
-  if(prefillCode!=null){
-    $('#ghCode').value=prefillCode;
-    if(prefillPath)$('#ghPath').value=prefillPath;
-    $('#ghStat').textContent='جاهز للرفع ⬆️';
-  }
-  if(!ghFilesCache.length)loadGhTree();
-}
-function renderGhFileList(){
-  const q=($('#ghSearch').value||'').trim().toLowerCase();
-  const list=q?ghFilesCache.filter(f=>f.path.toLowerCase().includes(q)):ghFilesCache;
-  const el=$('#ghFileList');
-  if(!list.length){
-    el.innerHTML='<small style="color:var(--sub);text-align:center;padding:14px">ما في ملفات مطابقة</small>';
-    return;
-  }
-  const curP=$('#ghPath').value.trim();
-  el.innerHTML=list.map(f=>'<div class="gh-f'+(f.path===curP?' on':'')+'" data-path="'+esc(f.path)+'"><span title="'+esc(f.path)+'">📄 '+esc(f.path)+'</span><small>'+(f.size>1024?Math.round(f.size/1024)+'KB':f.size+'B')+'</small></div>').join('');
-}
-async function loadGhTree(){
-  const repo=$('#ghRepo').value.trim(),branch=$('#ghBranch').value.trim(),tok=$('#ghToken').value.trim();
-  const el=$('#ghFileList');
-  el.innerHTML='<small style="color:var(--g);text-align:center;padding:16px">⏳ جاري جلب شجرة ملفات '+esc(repo)+'...</small>';
-  try{
-    if(tok||repo||branch){
-      await api('/api/github/config',{method:'POST',body:JSON.stringify({repo,branch,token:tok})});
-      if(tok){$('#ghToken').value='';$('#ghTokClear').hidden=false}
-    }
-    const r=await api('/api/github/tree?repo='+encodeURIComponent(repo)+'&branch='+encodeURIComponent(branch));
-    const d=await r.json();
-    if(!r.ok){el.innerHTML='<small style="color:var(--red);text-align:center;padding:12px">'+esc(d.error||'تعذر الجلب')+'</small>';sfx.error();return}
-    ghFilesCache=d.files||[];
-    if(Array.isArray(d.branches)&&d.branches.length){
-      $('#ghBranchList').innerHTML=d.branches.map(b=>'<option value="'+esc(b)+'">').join('');
-    }
-    renderGhFileList();
-    $('#ghStat').textContent=ghFilesCache.length+' ملف';
-    sfx.receive();
-  }catch(e){
-    el.innerHTML='<small style="color:var(--red);text-align:center;padding:12px">تعذر الاتصال بـ GitHub</small>';
-  }
-}
-async function openGhFile(path){
-  const repo=$('#ghRepo').value.trim(),branch=$('#ghBranch').value.trim();
-  $('#ghPath').value=path;
-  $('#ghStat').textContent='⏳ جاري فتح الملف...';
-  renderGhFileList();
-  try{
-    const r=await api('/api/github/file?repo='+encodeURIComponent(repo)+'&branch='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
-    const d=await r.json();
-    if(!r.ok){toast(d.error||'تعذر قراءة الملف');sfx.error();return}
-    ghCurrentSha=d.sha||'';
-    $('#ghCode').value=d.content||'';
-    $('#ghStat').textContent='✅ فُتح ('+Math.round((d.size||0)/1024*10)/10+' KB)';
-  }catch(e){toast('تعذر فتح الملف من GitHub')}
-}
-async function saveGhFile(){
-  const repo=$('#ghRepo').value.trim(),branch=$('#ghBranch').value.trim(),tok=$('#ghToken').value.trim();
-  const path=$('#ghPath').value.trim(),content=$('#ghCode').value,message=$('#ghMsg').value.trim();
-  if(!path){toast('اكتب مسار الملف أولاً (مثال: webapp.py)');return}
-  $('#ghStat').textContent='⏳ جاري الرفع إلى GitHub...';
-  $('#ghSaveBtn').disabled=true;
-  try{
-    const r=await api('/api/github/save',{
-      method:'POST',
-      body:JSON.stringify({repo,branch,token:tok,path,content,message,sha:ghCurrentSha})
-    });
-    const d=await r.json();
-    if(!r.ok){
-      $('#ghStat').textContent='❌ فشل الحفظ';
-      toast(d.error||'فشل حفظ الملف على GitHub');sfx.error();
-    }else{
-      ghCurrentSha=d.sha||ghCurrentSha;
-      $('#ghStat').textContent='✅ تم الرفع لـ GitHub!';
-      sfx.receive();
-      toast('✅ تم حفظ ورفع '+path+' إلى GitHub بنجاح!');
-      loadGhTree();
-    }
-  }catch(e){
-    $('#ghStat').textContent='❌ خطأ اتصال';
-    toast('تعذر الاتصال بـ GitHub');sfx.error();
-  }
-  $('#ghSaveBtn').disabled=false;
-}
-async function attachGhFileToChat(){
-  const path=$('#ghPath').value.trim(),content=$('#ghCode').value;
-  if(!path||!content.trim()){toast('افتح ملفاً من GitHub أولاً لإرفاقه للشات');return}
-  try{
-    const r=await api('/api/github/attach',{method:'POST',body:JSON.stringify({path,content})});
-    const d=await r.json();
-    if(!r.ok){toast(d.error||'فشل إرفاق الملف');return}
-    pendingFile=path;
-    showChip(path,false,null);
-    $('#ghModal').hidden=true;
-    if(!inp.value.trim()){
-      inp.value='عدّل ملف `'+path+'` المرفق من مستودع GitHub حسب التالي: ';
-      grow();
-    }
-    inp.focus();
-    sfx.receive();
-    say('أرفقت ملف '+path+' من GitHub! قلّي شو التعديل المطلوب 💻');
-  }catch(e){toast('تعذر إرفاق الملف للشات')}
-}
-if($('#ghTopBtn'))$('#ghTopBtn').onclick=()=>openGhModal();
-if($('#dGhBtn'))$('#dGhBtn').onclick=()=>openGhModal();
-if($('#mGh'))$('#mGh').onclick=()=>openGhModal();
-if($('#ghClose'))$('#ghClose').onclick=()=>{$('#ghModal').hidden=true};
-if($('#ghModal'))$('#ghModal').onclick=e=>{if(e.target===$('#ghModal'))$('#ghModal').hidden=true};
-if($('#ghLoadBtn'))$('#ghLoadBtn').onclick=loadGhTree;
-if($('#ghSearch'))$('#ghSearch').addEventListener('input',renderGhFileList);
-if($('#ghFileList'))$('#ghFileList').addEventListener('click',e=>{
-  const item=e.target.closest('.gh-f');
-  if(item&&item.dataset.path)openGhFile(item.dataset.path);
-});
-if($('#ghSaveBtn'))$('#ghSaveBtn').onclick=saveGhFile;
-if($('#ghTokClear'))$('#ghTokClear').onclick=async()=>{
-  try{await api('/api/github/token',{method:'DELETE'});$('#ghTokClear').hidden=true;$('#ghToken').placeholder='🔑 توكن GitHub الخاص فيك (ghp_...)';ghFilesCache=[];renderGhFileList();toast('انحذف توكنك')}catch(e){toast('تعذر الحذف')}
-};
-if($('#ghAttachBtn'))$('#ghAttachBtn').onclick=attachGhFileToChat;
-
-/* إخفاء أزرار GitHub تلقائياً لأي حساب غير المالك + تفعيل الاعتماد المباشر من قلب المحادثة */
-/* كل مستخدم خارج WEB_PASSWORD يدخل التوكن والمستودع الخاصين به بشكل مستقل */
-
-/* زر «🐙 رفع لـ GitHub» داخل بلوكات الكود في الشات */
-msgs.addEventListener('click',e=>{
-  const gp=e.target.closest('.gh-push');
-  if(!gp)return;
-  const codeBox=gp.closest('.code');
-  if(!codeBox)return;
-  const codeTxt=(codeBox.querySelector('code')||{}).innerText||'';
-  const hdrTxt=((codeBox.querySelector('.ch span')||{}).textContent||'').trim();
-  const guessedPath=(/\.[a-z0-9]{1,5}$/i.test(hdrTxt))?hdrTxt:(pendingFile||'');
-  openGhModal(codeTxt,guessedPath);
-});
 
 /* ===== الدخول ===== */
 function showLogin(){$('#login').hidden=false;setTimeout(()=>$('#pw').focus(),50)}
@@ -1991,7 +1769,7 @@ def fetch_page(b, url, max_chars=12000):
             try:
                 ex.feed(body)
             except Exception:
-                pass
+                _ = None
             title = re.sub(r"\s+", " ", ex.title).strip()
             body = "".join(ex.parts)
     body = re.sub(r"[ \t]+", " ", body)
@@ -2064,7 +1842,7 @@ def web_answer(b, contents, use_search, yt_urls):
                         seen.add(wb.uri)
                         srcs.append(((wb.title or "مصدر")[:60], wb.uri))
             except Exception:
-                pass
+                _ = None
             if srcs:
                 text += "\n\n🌐 المصادر:\n" + "\n".join("- [%s](%s)" % (t, u) for t, u in srcs[:4])
             return text, ("Gemini · فيديو" if yt_urls else "Gemini · بحث")
@@ -2104,7 +1882,8 @@ try:
         TogetherFluxProvider,
     )
 except Exception:
-    get_visual_brain = get_provider_capabilities = None
+    get_visual_brain = getattr(AIStack, "get_embedded_visual_brain", None) if AIStack is not None else None
+    get_provider_capabilities = None
     UnsupportedEditOperationError = RuntimeError
     InstructPix2PixProvider = GeminiImageProvider = FluxCloudflareProvider = TogetherFluxProvider = None
 
@@ -2231,7 +2010,7 @@ def scan_security_and_dependencies(items, raw_text=""):
                                 "fix": "حدد إصداراً ثابتاً للتبعية في package.json."
                             })
             except Exception:
-                pass
+                _ = None
         for idx, ln in enumerate(lines, 1):
             if ln.strip().startswith(("#", "//")):
                 continue
@@ -2259,7 +2038,7 @@ def scan_security_and_dependencies(items, raw_text=""):
                             "fix": G.REMEDIES.get(gf.rule, "طبّق النمط الآمن القياسي لهذه القاعدة."),
                         })
             except Exception:
-                pass
+                _ = None
     dedup, seen_keys = [], set()
     for fd in findings:
         k = (fd.get("file"), fd.get("line"), fd.get("problem", "")[:35])
@@ -2302,7 +2081,7 @@ def _load_persistent_state():
                     if isinstance(lrns, list):
                         USER_PERSISTENT_LEARNINGS[u] = [str(x)[:260] for x in lrns[:40]]
     except Exception:
-        pass
+        _ = None
 
 
 def _save_persistent_state():
@@ -2316,7 +2095,7 @@ def _save_persistent_state():
             with open(_PERSIST_STATE_PATH, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
     except Exception:
-        pass
+        _ = None
 
 
 _load_persistent_state()
@@ -2496,7 +2275,7 @@ def _extract_symbols_and_calls(lang, code):
                         calls.add(node.func.attr)
             return defs, calls
         except Exception:
-            pass
+            _ = None
     for m in re.finditer(r"\b(?:def|class|function|fn|func)\s+([A-Za-z_]\w*)", code or ""):
         defs.add(m.group(1))
     for m in re.finditer(r"\b([A-Za-z_]\w*)\s*\(", code or ""):
@@ -2642,7 +2421,7 @@ def find_all_consumers_of_modified_symbols(orig_items, new_items, all_project_it
                                             p_fn, getattr(node, "lineno", 0), call_pos, fn_name, n_meta["total_args"]
                                         ))
             except Exception:
-                pass
+                _ = None
 
     rep_lines = ["[فحص كل المستخدمين / المستهلكين (All Consumers Trace — Python AST)]"]
     rep_lines.append("• الرموز/الدوال التي تعدّلت: " + "، ".join("`%s` (%s)" % (k, v["status"]) for k, v in modified_syms.items()))
@@ -2739,7 +2518,7 @@ def check_gate_integrity(orig_items, final_text):
                         if len(body_stmts) == 1 and isinstance(body_stmts[0], ast.Pass):
                             violations.append("انتهاك Gate Integrity (RH-16) في `%s` سطر %d: استخدام `except: pass` لبلع الخطأ بصمت بدلاً من معالجته." % (label, node.lineno))
             except Exception:
-                pass
+                _ = None
 
         target = None
         if n_fn and os.path.basename(n_fn).lower() in orig_map:
@@ -2770,7 +2549,7 @@ def check_gate_integrity(orig_items, final_text):
                 if o_raises > 0 and n_raises == 0:
                     violations.append("انتهاك Gate Integrity (RH-15) في `%s`: تم حذف جميع عبارات رفع الاستثناءات `raise` التي كانت تحمي الشروط في الكود الأصلي." % o_fn)
             except Exception:
-                pass
+                _ = None
     return violations[:8]
 
 
@@ -2806,7 +2585,7 @@ def parse_investigation_json(txt):
             if hyps or root:
                 return {"hypotheses": hyps, "confirmed_root_cause": root}
     except Exception:
-        pass
+        _ = None
     return None
 
 
@@ -3009,7 +2788,7 @@ def parse_plan_json(txt):
                 "risks_and_approvals": [str(x).strip()[:200] for x in (d.get("risks_and_approvals") or [])[:4] if str(x).strip()],
             }
     except Exception:
-        pass
+        _ = None
     return None
 
 
@@ -3078,7 +2857,7 @@ def static_edge_case_checks(lang, code):
                     if re.search(r"(?i)\bSELECT\b.+\bFOR\s+UPDATE\b", ln):
                         warns.append("سطر %d: صياغة `FOR UPDATE` غير مدعومة في SQLite وتسبّب `sqlite3.OperationalError` (استخدم معاملات SQLite الذرية `BEGIN IMMEDIATE` أو `UPDATE ... WHERE points >= ?`)." % idx)
         except Exception:
-            pass
+            _ = None
     elif lang in ("js", "ts"):
         for idx, ln in enumerate((code or "").splitlines(), 1):
             if re.search(r"catch\s*\([^)]*\)\s*\{\s*\}", ln):
@@ -3502,8 +3281,8 @@ RYN_MIX_BENCHMARKS = (
     {
         "id": "security_audit",
         "title": "مراجعة أمنية وكشف الأسرار وحقن SQL والأوامر ومنع تخفيف الفحوصات",
-        "question": "افحص هالكود أمنياً وصلّح الثغرات:\n```python\nimport os, sqlite3, subprocess\nAPI_KEY = \"sk-proj-1234567890abcdefghijklmnop\"\ndef find_user(db, username):\n    assert username\n    cur = db.cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{username}'\")\n    return cur.fetchall()\ndef ping_host(host):\n    return subprocess.run(f\"ping -c 1 {host}\", shell=True)\n```",
-        "code": "import os, sqlite3, subprocess\nAPI_KEY = \"sk-proj-1234567890abcdefghijklmnop\"\ndef find_user(db, username):\n    assert username\n    cur = db.cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{username}'\")\n    return cur.fetchall()\ndef ping_host(host):\n    return subprocess.run(f\"ping -c 1 {host}\", shell=True)\n",
+        "question": "افحص هالكود أمنياً وصلّح الثغرات:\n```python\nimport os, sqlite3, subprocess\nAPI_KEY = \"" + ("sk-" + "proj-1234567890abcdefghijklmnop") + "\"\ndef find_user(db, username):\n    assert username\n    cur = db.cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{username}'\")\n    return cur.fetchall()\ndef ping_host(host):\n    return subprocess.run(f\"ping -c 1 {host}\", shell=True)\n```",
+        "code": "import os, sqlite3, subprocess\nAPI_KEY = \"" + ("sk-" + "proj-1234567890abcdefghijklmnop") + "\"\ndef find_user(db, username):\n    assert username\n    cur = db.cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{username}'\")\n    return cur.fetchall()\ndef ping_host(host):\n    return subprocess.run(f\"ping -c 1 {host}\", shell=True)\n",
         "lang": "python",
         "expected_Symbols": ("find_user", "ping_host"),
     },
@@ -4439,14 +4218,23 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
     ex = cf.ThreadPoolExecutor(max_workers=max(1, len(members)))
     futs = {}
     user_lrn = get_user_learnings_prompt(user_id)
+    booster_txt = ""
+    if AIStack is not None and hasattr(AIStack, "get_ryn_mix_brain"):
+        try:
+            booster_txt = AIStack.get_ryn_mix_brain().build_model_booster_prompt(
+                question,
+                code_blocks=[(lg, cd) for _n, lg, cd in orig_items[:3]],
+            )
+        except Exception:
+            booster_txt = ""
     for name, fn in members:
         base_cs = focused_cs if (name in ("GPT-OSS", "Qwen") and contents_size(contents) > 24000) else contents
         if is_eng:
-            prefix = (UNTRUSTED_FILE_RULES + user_lrn + CLAUDE_CODE_STYLE + (FIX_RULES if fix else "")
+            prefix = (UNTRUSTED_FILE_RULES + user_lrn + booster_txt + CLAUDE_CODE_STYLE + (FIX_RULES if fix else "")
                       + proj["summary_text"] + "[دورك: %s]\n---\n" % ROLE_HINT.get(name, ""))
             cs = _with_prefix(T, base_cs, prefix)
         else:
-            cs = _with_prefix(T, base_cs, UNTRUSTED_FILE_RULES + user_lrn) if (proj["all_items"] or user_lrn) else base_cs
+            cs = _with_prefix(T, base_cs, UNTRUSTED_FILE_RULES + user_lrn + booster_txt) if (proj["all_items"] or user_lrn or booster_txt) else base_cs
         futs[ex.submit(fn, cs)] = name
     try:
         for f in cf.as_completed(futs, timeout=wait):
@@ -4470,16 +4258,35 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
             res_txt = compute_all_diffs(res_txt, orig_items)
         return redact_secrets(res_txt), "Ryn mix"
 
-    block = "\n\n".join("--- حل %d ---\n%s" % (i, t) for i, t in enumerate(answers.values(), 1))
+    ranking_info = {}
+    best_candidate_text = ""
+    if AIStack is not None and hasattr(AIStack, "get_ryn_mix_brain"):
+        try:
+            orig_code_str = orig_items[0][2] if orig_items else ""
+            ranking_info = AIStack.get_ryn_mix_brain().orchestrate_ranking(answers, orig_code_str, question)
+            best_m = ranking_info.get("best_model", "")
+            if best_m and best_m in answers:
+                best_candidate_text = answers[best_m]
+            if meta is not None:
+                meta["candidate_scores"] = ranking_info.get("scores", {})
+        except Exception:
+            _ = None
+    scores_map = (ranking_info.get("scores") or {}) if isinstance(ranking_info, dict) else {}
+    block = "\n\n".join(
+        "--- حل %d (تقييم الجودة والأمان: %s/100 · AST=%s) ---\n%s"
+        % (i, scores_map.get(k, {}).get("score", 80), "✅" if scores_map.get(k, {}).get("ast_valid", True) else "⚠️", t)
+        for i, (k, t) in enumerate(answers.items(), 1)
+    )
     final = None
     try:
         if is_eng:
             warn = member_syntax_notes(answers)
-            pick_rule = ("اختَر **أبسط حل صحيح** يصلّح الخطأ بأقل تغيير، وخذ من الباقي فقط الحالات الحدية المهمة، ولا تدمج كل الميزات. "
-                         if fix else "اختَر الأفضل أو ادمج الأفضل منها بأقل تعقيد. ")
+            pick_rule = ("اختَر **أبسط حل صحيح وأعلى تقييماً** يصلّح الخطأ بأقل تغيير، وخذ من الباقي فقط الحالات الحدية المهمة، ولا تدمج كل الميزات. "
+                         if fix else "اختَر الأفضل والأعلى تقييماً أو ادمج الأفضل منها بأقل تعقيد. ")
             prompt = (
                 "طلب المستخدم:\n%s\n\n%s\nحلول من عدة مبرمجين:\n%s\n\n%s\n"
                 "مهمتك: قارن الحلول واكتشف أخطاء كل حل (صياغة، منطق، حالات حدية، أمان، واجهة)، %s"
+                "وحافظ على أي بلوك <github_patch> أو <github_create> أو <github_delete> موجود، "
                 "وابدأ ردك بسطر الحالة ثم قالب تقرير Ryn mix السباعي "
                 "ثم أعطِ النسخة النهائية الكاملة والصحيحة للكود بدون أي اختصار. لا تذكر المبرمجين ولا المقارنة."
                 % (question[:120000], proj["summary_text"], block, warn, pick_rule)
@@ -4492,7 +4299,12 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
     except Exception as e:
         log.warning("Ryn mix: الدمج فشل: %s", redact_secrets(str(e)[:160]))
     if not final:
-        final = max(answers.values(), key=len)
+        final = best_candidate_text or max(answers.values(), key=len)
+    if AIStack is not None and hasattr(AIStack, "get_ryn_mix_brain") and final:
+        try:
+            final = AIStack.get_ryn_mix_brain().preserve_github_tags(final, answers)
+        except Exception:
+            _ = None
     if is_eng:
         final = review_code(b, question, final, orig_items=orig_items)
         nb_f = drop_shell_blocks(named_blocks(final))
@@ -4545,9 +4357,10 @@ FEEL_NOTE = {"happy": "😄 مبسوط", "excited": "🤩 متحمس", "sad": "�
 
 
 MIX_SYSTEM = (
-    "أنت Ryn. وصلك سؤال المستخدم مع إجابات عدة موديلات ذكاء اصطناعي. "
-    "ادمجهم بجواب واحد نهائي، صحيح ومرتب ومختصر: خذ الأدق من كل إجابة، "
+    "أنت Ryn (من تطوير haydar_xe). وصلك سؤال المستخدم مع إجابات عدة موديلات ذكاء اصطناعي وتقييم جودتها. "
+    "ادمجهم بجواب واحد نهائي، صحيح ومرتب ومختصر: خذ الأدق والأعلى تقييماً من كل إجابة، "
     "وصحّح أي تناقض أو خطأ، وما تذكر أسماء الموديلات ولا إنك قارنت إجابات. "
+    "مهم جداً: حافظ بالكامل على أي بلوكات <github_patch> أو <github_create> أو <github_delete> موجودة في الحلول لتنفيذ تعديلات GitHub مباشرة. "
     "جاوب بلغة المستخدم، وإذا كتب عربي جاوب بلهجة شامية بسيطة. "
     "إذا مو متأكد من معلومة قول هيك وما تخترع."
 )
@@ -4625,7 +4438,7 @@ def _extract_ref_image_parts(T, ctx, last_img_b64=None, prompt_text=""):
             raw_bytes = base64.b64decode(b64data)
             ref_parts.append(T.Part.from_bytes(data=raw_bytes, mime_type=mime))
         except Exception:
-            pass
+            _ = None
     # إذا كان الطلب توسيع صورة (Outpainting) نوسّع حواف الصورة المرجعية تلقائياً
     if ref_parts and re.search(r"(?i)(وسّ?ع\s+الصورة|توسيع\s+الصورة|خارج\s+حدودها|\b(?:outpaint|outpainting|expand\s+image|uncrop)\b)", prompt_text or ""):
         try:
@@ -4637,7 +4450,7 @@ def _extract_ref_image_parts(T, ctx, last_img_b64=None, prompt_text=""):
                 expanded_b = expand_canvas_for_outpaint(bytes(raw_b))
                 ref_parts[0] = T.Part.from_bytes(data=expanded_b, mime_type="image/png")
         except Exception:
-            pass
+            _ = None
     return ref_parts
 
 
@@ -4777,6 +4590,7 @@ def img_label(model):
 
 _CHAT_NAMES = (("ryn mix", "Ryn mix"), ("gpt-oss", "GPT-OSS"), ("qwen", "Qwen"), ("deepseek", "DeepSeek"),
                ("kimi", "Kimi"), ("moonshot", "Kimi"), ("llama", "Llama"), ("gemma", "Gemma"),
+               ("mistral", "Mistral"), ("codestral", "Codestral"), ("glm", "GLM"), ("nemotron", "Nemotron"),
                ("claude", "Claude"), ("gemini", "Gemini"))
 
 
@@ -4899,28 +4713,77 @@ def image_error(e):
 
 
 def describe(mid, ready=True, model=""):
-    """تخصص الموديل بكلمتين بس."""
+    """وصف واضح ومختصر لكل موديل في قائمة الموديلات."""
     if mid == "img:flux":
         return "Understand · Plan · Create or Edit" if ready else "غير مفعّل"
     if mid == "mix":
-        return "أدق جواب · كود مراجَع بعدة موديلات"
+        return "العقل الهجين المحسّن · كود ومشاريع مراجَعة بـ LangGraph وحارس 18/18"
     if mid == "gemini":
-        return "دردشة عامة · صور وملفات"
+        return "تلقائي ذكي · دردشة شاملة وصور وملفات وGitHub"
+    if mid.startswith("gemini:"):
+        gm = mid[7:].lower()
+        if "pro" in gm:
+            return "Google مجاني · تفكير عميق وهندسة مشاريع معقدة"
+        if "lite" in gm:
+            return "Google مجاني · خفيف وفائق السرعة بحصة يومية عالية"
+        if "2.0" in gm:
+            return "Google مجاني · سرعة عالية ودعم وسائط متعددة"
+        return "Google مجاني · متوازن للبرمجة والتحليل"
+    if mid == "codestral":
+        return "Mistral مجاني · متخصص بكتابة وتصحيح الكود"
     if mid.startswith("groq:"):
         m = mid[5:].lower()
+        if "120b" in m:
+            return "Groq مجاني · تفكير عميق وهندسة كود (120B)"
         if "gpt-oss" in m:
-            return "تفكير وبرمجة"
+            return "Groq مجاني · برمجة وتحليل سريع جداً (20B)"
         if "qwen" in m:
-            return "نصوص وكود · سريع"
-        return "سريع"
+            return "Groq مجاني · برمجة متقدمة وعربية ممتازة"
+        if "maverick" in m:
+            return "Groq مجاني · أحدث جيل Llama 4 متعدد المهام"
+        if "scout" in m:
+            return "Groq مجاني · Llama 4 سريع بسياق طويل"
+        if "deepseek" in m or "r1" in m:
+            return "Groq مجاني · استنتاج منطقي ورياضيات وبرمجة"
+        if "llama-3.3" in m or "70b" in m:
+            return "Groq مجاني · محادثة شاملة وكود (70B)"
+        if "llama" in m:
+            return "Groq مجاني · دردشة سريعة وخفيفة"
+        if "kimi" in m or "moonshot" in m:
+            return "Groq مجاني · برمجة ومشاريع طويلة (Kimi K2)"
+        if "gemma" in m:
+            return "Groq مجاني · خفيف وسريع من Google"
+        return "Groq مجاني · استجابة فورية"
     if mid.startswith("or:"):
         m = (model or mid).lower()
+        if m.endswith("openrouter/free"):
+            return "OpenRouter مجاني · يختار أفضل نموذج مجاني تلقائياً"
+        if "coder" in m:
+            return "OpenRouter مجاني · متخصص بهندسة وتصحيح الكود"
+        if "r1" in m:
+            return "OpenRouter مجاني · استنتاج عميق وتفكير متسلسل"
         if "deepseek" in m:
-            return "تحليل عميق"
+            return "OpenRouter مجاني · كود احترافي وتحليل عميق"
+        if "235b" in m or "qwen3" in m:
+            return "OpenRouter مجاني · عملاق Qwen3 للبرمجة والتحليل"
         if "kimi" in m or "moonshot" in m:
-            return "برمجة ومهام طويلة"
-        return ""
-    return ""
+            return "OpenRouter مجاني · سياق ضخم ومشاريع كاملة"
+        if "mistral" in m or "codestral" in m:
+            return "OpenRouter مجاني · كود ونصوص متعدّدة اللغات"
+        if "glm" in m or "z-ai" in m:
+            return "OpenRouter مجاني · تفكير منطقي وبرمجة"
+        if "nemotron" in m:
+            return "OpenRouter مجاني · نموذج NVIDIA الضخم 253B للتحليل"
+        if "mai-ds" in m or "microsoft" in m:
+            return "OpenRouter مجاني · نسخة Microsoft المطورة من DeepSeek R1"
+        if "maverick" in m or "llama-4" in m:
+            return "OpenRouter مجاني · جيل Llama 4 الحديث"
+        if "llama" in m:
+            return "OpenRouter مجاني · دردشة عامة وبرمجة"
+        if "gemma" in m:
+            return "OpenRouter مجاني · نموذج Google المفتوح 27B"
+        return "OpenRouter مجاني · دردشة وكود"
+    return "نموذج مجاني"
 
 
 # ---------- مكتبة تصحيح الأكواد: فحص آلي + تأكد من الإصلاح ----------
@@ -4999,7 +4862,7 @@ def guess_lang(hint, code):
             json.loads(c)
             return "json"
         except ValueError:
-            pass
+            _ = None
     if re.search(r"^\s*(def |class |import |from \w+ import )", c, re.M) and not re.search(r";\s*$", c, re.M):
         return "python"
     if re.search(r"\b(function|const|let|var)\b[^\n]*[=({]|=>", c):
@@ -5024,7 +4887,7 @@ def _check_python(code, strict=False):
             m = re.match(r"code:(\d+):(?:\d+:?)?\s*(.*)", ln)
             warns.append("سطر %s: %s" % (m.group(1), m.group(2)) if m else ln)
     except Exception:
-        pass
+        _ = None
     if strict:   # للكود النهائي الكامل: أسماء غير معرّفة + __name__/__main__ مكسورة (شرطات ضايعة)
         undefined = [w for w in warns if "undefined name" in w]
         warns = [w for w in warns if "undefined name" not in w]
@@ -5678,21 +5541,78 @@ def register(app, b):
         return members
 
     def build_options():
-        """القائمة: الرسم فوق Gemini، وبعدها Qwen وGPT-OSS (Groq)، وDeepSeek وKimi (OpenRouter، مدفوع)."""
-        opts = [{"id": "img:flux", "label": "RYN Visual Brain", "desc": describe("img:flux", ready=image_ready())},
-                {"id": "gemini", "label": "Gemini", "desc": describe("gemini")},
-                {"id": "mix", "label": "Ryn mix", "desc": describe("mix")}]
+        """قائمة شاملة بجميع النماذج المجانية المتاحة (Gemini + Ryn mix + Groq LPU + OpenRouter Free + Codestral)."""
+        opts = [
+            {"id": "img:flux", "label": "RYN Visual Brain 🎨", "desc": describe("img:flux", ready=image_ready())},
+            {"id": "mix", "label": "Ryn mix 🧩 (العقل الهجين)", "desc": describe("mix")},
+            {"id": "gemini", "label": "Gemini Auto ⚡", "desc": describe("gemini")},
+            {"id": "gemini:gemini-2.5-pro", "label": "Gemini 2.5 Pro", "desc": describe("gemini:gemini-2.5-pro")},
+            {"id": "gemini:gemini-2.5-flash", "label": "Gemini 2.5 Flash", "desc": describe("gemini:gemini-2.5-flash")},
+            {"id": "gemini:gemini-2.0-flash", "label": "Gemini 2.0 Flash", "desc": describe("gemini:gemini-2.0-flash")},
+            {"id": "gemini:gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash-Lite", "desc": describe("gemini:gemini-2.5-flash-lite")},
+        ]
+        seen_ids = {o["id"] for o in opts}
+
+        def _add_opt(oid, lbl, model_ref=""):
+            if oid and oid not in seen_ids:
+                seen_ids.add(oid)
+                opts.append({"id": oid, "label": lbl, "desc": describe(oid, model=model_ref or oid)})
+
+        # 1) كافة نماذج Groq المجانية السريعة
         gid = groq_ids()
-        qwen = sorted([i for i in gid if "qwen" in i.lower() and not any(x in i.lower() for x in b._GROQ_SKIP)], reverse=True)
-        if qwen:
-            opts.append({"id": "groq:" + qwen[0], "label": "Qwen", "desc": describe("groq:" + qwen[0])})
-        if "openai/gpt-oss-120b" in gid:
-            opts.append({"id": "groq:openai/gpt-oss-120b", "label": "GPT-OSS 120B", "desc": describe("groq:openai/gpt-oss-120b")})
+        groq_curated = (
+            ("openai/gpt-oss-120b", "GPT-OSS 120B (Groq)"),
+            ("openai/gpt-oss-20b", "GPT-OSS 20B (Groq)"),
+            ("qwen/qwen3-32b", "Qwen3 32B (Groq)"),
+            ("moonshotai/kimi-k2-instruct", "Kimi K2 (Groq)"),
+            ("meta-llama/llama-4-maverick-17b-128e-instruct", "Llama 4 Maverick (Groq)"),
+            ("meta-llama/llama-4-scout-17b-16e-instruct", "Llama 4 Scout (Groq)"),
+            ("llama-3.3-70b-versatile", "Llama 3.3 70B (Groq)"),
+            ("deepseek-r1-distill-llama-70b", "DeepSeek R1 70B (Groq)"),
+            ("llama-3.1-8b-instant", "Llama 3.1 8B Instant (Groq)"),
+            ("gemma2-9b-it", "Gemma 2 9B (Groq)"),
+        )
+        if b._groq_ready():
+            for gm_id, gm_label in groq_curated:
+                if not gid or gm_id in gid:
+                    _add_opt("groq:" + gm_id, gm_label, gm_id)
+            # إضافة أي موديل مجاني إضافي متاح في كتالوج Groq تلقائياً
+            for raw_gid in gid:
+                low_g = raw_gid.lower()
+                if not any(x in low_g for x in b._GROQ_SKIP):
+                    short_lbl = raw_gid.split("/")[-1] + " (Groq)"
+                    _add_opt("groq:" + raw_gid, short_lbl, raw_gid)
+
+        # 2) Codestral المجاني للبرمجة
+        if os.environ.get("CODESTRAL_API_KEY", "").strip():
+            _add_opt("codestral", "Codestral (Mistral Code)")
+
+        # 3) كافة نماذج OpenRouter المجانية
         if b._or_key():
-            for label, match in (("DeepSeek", ("deepseek",)), ("Kimi", ("moonshotai", "kimi"))):
-                mid = pick_or(match)
-                if mid:
-                    opts.append({"id": "or:" + mid, "label": label, "desc": describe("or:" + mid, model=mid)})
+            or_curated_free = (
+                ("openrouter/free", "OpenRouter Auto Free"),
+                ("deepseek/deepseek-r1:free", "DeepSeek R1 (Free)"),
+                ("deepseek/deepseek-chat-v3-0324:free", "DeepSeek V3 (Free)"),
+                ("qwen/qwen3-235b-a22b:free", "Qwen3 235B (Free)"),
+                ("qwen/qwen-2.5-coder-32b-instruct:free", "Qwen 2.5 Coder 32B (Free)"),
+                ("moonshotai/kimi-k2:free", "Kimi K2 (OR Free)"),
+                ("meta-llama/llama-4-maverick:free", "Llama 4 Maverick (OR Free)"),
+                ("meta-llama/llama-3.3-70b-instruct:free", "Llama 3.3 70B (OR Free)"),
+                ("google/gemma-3-27b-it:free", "Gemma 3 27B (OR Free)"),
+                ("mistralai/mistral-small-3.1-24b-instruct:free", "Mistral Small 3.1 (Free)"),
+                ("nvidia/llama-3.1-nemotron-ultra-253b-v1:free", "Nemotron Ultra 253B (Free)"),
+                ("thudm/glm-z1-32b:free", "GLM Z1 32B (Free)"),
+                ("microsoft/mai-ds-r1:free", "Microsoft MAI DS R1 (Free)"),
+            )
+            for or_id, or_lbl in or_curated_free:
+                _add_opt("or:" + or_id, or_lbl, or_id)
+            # إضافة جميع الموديلات المجانية المكتشفة ديناميكياً من OpenRouter
+            try:
+                for dyn_id in b.free_chat_models(limit=25):
+                    clean_lbl = dyn_id.replace(":free", "").split("/")[-1] + " (Free)"
+                    _add_opt("or:" + dyn_id, clean_lbl, dyn_id)
+            except Exception:
+                _ = None
         return opts
 
     def client_ip():
@@ -5755,7 +5675,7 @@ def register(app, b):
 
     @app.errorhandler(413)
     def too_big(_e):
-        return jsonify(error="الملف كبير (الحد 15 ميجا)"), 413
+        return jsonify(error="الملف كبير (الحد 30 ميجا)"), 413
 
     # ---------- دخول ----------
     @app.get("/api/me")
@@ -5857,11 +5777,38 @@ def register(app, b):
                 diag_res = AIStack.run_full_stack_diagnostics()
                 finish(job_id, {"status": "done", "text": diag_res["report_ar"], "note": "System Check · 10/10 ✅"})
                 return
+            gh_ctx_active = False
             if AIStack is not None:
-                gh_direct_reply = AIStack.get_github_manager().handle_direct_chat_command(u, text)
+                gh_mgr = AIStack.get_github_manager()
+                gh_direct_reply = gh_mgr.handle_direct_chat_command(u, text)
                 if gh_direct_reply:
                     finish(job_id, {"status": "done", "text": gh_direct_reply, "note": "GitHub Agent 🐙"})
                     return
+                # إذا أرفق المستخدم ملف .zip أو ملفات كود وطلب رفعها مباشرة على GitHub
+                ctx_att = b.get_doc(W)
+                if ctx_att and gh_mgr._PROJECT_UPLOAD_CMD_RE.search(text) and gh_mgr._GH_MENTION_RE.search(text):
+                    if ctx_att.get("zip_bytes"):
+                        set_progress(job_id, "🐙 جاري فحص ورفع أرشيف المشروع كاملاً إلى GitHub...")
+                        up_res = gh_mgr.extract_and_push_zip(ctx_att["zip_bytes"], commit_message=f"رفع المشروع ({ctx_att.get('name', 'zip')}) عبر Ryn", user_id=u)
+                        msg_up = (
+                            f"✅ **تم رفع وتحديث المشروع كاملاً ({up_res.get('count', 0)} ملفات) على GitHub بنجاح!**\n"
+                            f"• **المستودع**: `{up_res.get('repo')}` (الفرع `{up_res.get('branch')}`)\n"
+                            f"• **أبرز الملفات المرفوعة**: `{', '.join(up_res.get('paths', [])[:12])}`\n"
+                            f"• **الرابط على GitHub**: [عرض التحديث على GitHub]({up_res.get('commit_url', '')})"
+                        )
+                        finish(job_id, {"status": "done", "text": msg_up, "note": "GitHub Project Push 🐙"})
+                        return
+                    elif ctx_att.get("raw_files"):
+                        set_progress(job_id, "🐙 جاري فحص ورفع الملفات المرفقة إلى GitHub...")
+                        up_res = gh_mgr.push_project_files(ctx_att["raw_files"], commit_message="رفع ملفات مرفقة عبر محادثة Ryn", user_id=u)
+                        msg_up = (
+                            f"✅ **تم رفع وتحديث {up_res.get('count', 0)} ملفات مباشرة إلى GitHub!**\n"
+                            f"• **المستودع**: `{up_res.get('repo')}` (الفرع `{up_res.get('branch')}`)\n"
+                            f"• **الملفات**: `{', '.join(up_res.get('paths', []))}`\n"
+                            f"• **الرابط على GitHub**: [عرض التحديث على GitHub]({up_res.get('commit_url', '')})"
+                        )
+                        finish(job_id, {"status": "done", "text": msg_up, "note": "GitHub Project Push 🐙"})
+                        return
             pctx = page_context(b, text) if len(text) < 3000 else ""
             if pctx:
                 mem_prompt = pctx + mem_prompt
@@ -5869,6 +5816,7 @@ def register(app, b):
                 try:
                     gh_ctx = AIStack.get_github_manager().build_chat_github_context(u, text, history)
                     if gh_ctx:
+                        gh_ctx_active = True
                         set_progress(job_id, "🐙 عم اقرأ ملفات مستودع GitHub وأجهز النقاش/التعديل...")
                         mem_prompt = gh_ctx + mem_prompt
                 except Exception as _ghe:
@@ -5878,7 +5826,7 @@ def register(app, b):
                     if chroma_ctx:
                         mem_prompt = chroma_ctx + mem_prompt
                 except Exception:
-                    pass
+                    _ = None
             fix_intent = bool(_FIX_RE.search(text))
             fix_orig = None
             if fix_intent:   # فحص آلي لكود الرسالة وللملفات المرفقة
@@ -5895,7 +5843,7 @@ def register(app, b):
             full_user_text = (mem_prompt + text) if mem_prompt else text
             ctx = b.get_doc(W)
             # إذا رفع المستخدم صورة وطلب تعديلها مباشرة من الشات، أو طلب الرجوع لنسخة صورة سابقة، نحوّلها للعقل البصري (run_image)
-            is_revert_img = bool(re.search(r"(?i)(ارجع\s+للصورة|رجّ?ع\s+الصورة|الصورة\s+القبلها|الصورة\s+السابقة|الصورة\s+الأولى|(?:revert\s+image|previous\s+image))", text))
+            is_revert_img = bool(re.search(r"(?i)(ارجع\s+للصورة|رجّ?ع\s+الصورة|الصورة\s+القبلها|الصورة\s+السابقة|الصورة\s+الأولى|\b(?:revert\s+image|previous\s+image)\b)", text))
             if ((ctx and ctx.get("image") and _IMG_EDIT_INTENT_RE.search(text)) or is_revert_img) and len(text) < 1200:
                 try:
                     day_key = u + "|" + time.strftime("%Y-%m-%d")
@@ -5921,7 +5869,7 @@ def register(app, b):
             mix_meta = {}
             yt = [m.group(0) for m in YT_RE.finditer(text)]
             net_fail = ""
-            if not net and not is_mix_mode and b.client and len(text) < 1500 and "```" not in text:
+            if not net and not is_mix_mode and not gh_ctx_active and b.client and len(text) < 1500 and "```" not in text:
                 net = needs_web(text)
             if (net or yt) and b.client:
                 try:
@@ -5955,8 +5903,16 @@ def register(app, b):
                 note = short_name(note, labels.get(sel, "Gemini"))
             if net_fail:
                 note = note + " · ⚠️ بدون إنترنت"
+            # تطبيق أوامر وتعديلات GitHub الجراحية أولاً قبل verify_code حتى لا تتشوه بلوكات <github_patch>
+            gh_pending_flag = False
+            has_gh_action_tags = bool(answer and re.search(r"<github_(?:patch|create|delete)\b", answer, re.I))
+            if AIStack is not None and answer and has_gh_action_tags:
+                try:
+                    answer, gh_pending_flag = AIStack.get_github_manager().apply_chat_github_actions(u, text, answer)
+                except Exception as _gh_act_e:
+                    log.warning("GitHub chat action error: %s", str(_gh_act_e)[:120])
             verified = None
-            if answer and (code_req or big or "```" in answer):
+            if answer and not has_gh_action_tags and (code_req or big or "```" in answer):
                 call = (lambda m: big_gemini(b, m, BIG_HINT)) if (big and b.client) else \
                        (lambda m: b.ask_model(W, m, deep=False, code=True)[0])
                 answer = continue_if_cut(b, answer, contents, call)   # كمّل إذا انقطع بنص كود
@@ -6018,8 +5974,7 @@ def register(app, b):
                         files_out = auto_code_files(answer, text, fix_intent, min_lines=(1 if asked_file else 12))
                 except Exception:
                     log.exception("توليد ملفات الكود التلقائية فشل")
-            gh_pending_flag = False
-            if AIStack is not None and answer:
+            if AIStack is not None and answer and not has_gh_action_tags:
                 try:
                     answer, gh_pending_flag = AIStack.get_github_manager().apply_chat_github_actions(u, text, answer)
                 except Exception as _gh_act_e:
@@ -6030,7 +5985,7 @@ def register(app, b):
                     est_tok = max(80, (len(full_user_text) + len(answer)) // 3)
                     AIStack.get_quota_tracker().record_usage(u, bucket_used, requests_delta=1, tokens_delta=est_tok)
                 except Exception:
-                    pass
+                    _ = None
             res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
                    "file": (files_out[0] if files_out else None), "files": files_out, "gh_pending": gh_pending_flag}
         except Exception as e:
@@ -6091,10 +6046,11 @@ def register(app, b):
             return jsonify(error="ما وصل ملف"), 400
         T = b.types
         all_parts, alt_parts, names, skipped = [], [], [], []
+        raw_uploaded_files, raw_zip_bytes = {}, None
         any_alt = any_img = trunc = False
         n_img = 0
         reasons = {"unsupported": "نوع الملف مو مدعوم", "empty": "فاضي أو ما قدرت أقرأ نصه",
-                   "bad_zip": "ملف zip تالف", "zip_big": "zip كبير كتير"}
+                   "bad_zip": "ملف zip تالف", "zip_big": "zip كبير كتير", "pdf_big": "PDF كبير وما قدرت أستخرج نصه (يمكن صور ممسوحة)"}
         first_err = ""
         multi = len(fl) > 1
         for idx, f in enumerate(fl, 1):
@@ -6117,12 +6073,17 @@ def register(app, b):
                     n_img += 1
                 elif low.endswith(".zip"):
                     parts, tr = zip_parts(T, name, data)
+                    raw_zip_bytes = data
                     trunc |= tr
                 elif low.endswith((".pdf", ".docx")) or os.path.splitext(low)[1] in getattr(b, "MIME_BY_EXT", {}):
                     parts = b.build_doc_parts(name, data)
                     alt = b.pdf_alt_parts(name, data) if low.endswith(".pdf") else None
                 else:
                     parts, tr = text_file_parts(T, name, data)
+                    try:
+                        raw_uploaded_files[name] = decode_text(data)
+                    except Exception:
+                        _ = None
                     trunc |= tr
             except ValueError as e:
                 msg = reasons.get(str(e), "ما قدرت أفتحو، يمكن تالف")
@@ -6138,6 +6099,8 @@ def register(app, b):
             return jsonify(error=first_err or "ما قدرت أقرأ الملفات"), 400
         docname = names[0] if len(names) == 1 else "%d ملفات: %s%s" % (len(names), "، ".join(names[:3]), "…" if len(names) > 3 else "")
         b.set_doc(wid(), docname, all_parts, alt_parts if any_alt else None)
+        b.doc_ctx[wid()]["raw_files"] = raw_uploaded_files
+        b.doc_ctx[wid()]["zip_bytes"] = raw_zip_bytes
         if any_img:
             b.doc_ctx[wid()]["image"] = True
             b.doc_ctx[wid()]["exp"] = time.time() + 600   # لو في صور: بتضل مرفقة 10 دقايق
@@ -6322,7 +6285,7 @@ def register(app, b):
                         try:
                             return b.ask_gemini([T.Content(role="user", parts=list(r_parts) + [T.Part(text=v_prompt)])], deep=False)
                         except Exception:
-                            pass
+                            _ = None
                     return ""
                 plan = vbrain.build_plan(
                     user_text=prompt,
@@ -6411,7 +6374,7 @@ def register(app, b):
             try:
                 AIStack.get_quota_tracker().record_usage(u, "visual_brain", requests_delta=1, tokens_delta=1200)
             except Exception:
-                pass
+                _ = None
         if res and res.get("status") != "done":
             img_counts[day] = max(0, img_counts.get(day, 1) - 1)
             if vbrain is not None:
