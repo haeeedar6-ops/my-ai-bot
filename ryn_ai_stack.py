@@ -2885,3 +2885,18 @@ def get_embedded_visual_brain() -> EmbeddedVisualBrain:
 
 def get_visual_brain() -> EmbeddedVisualBrain:
     return get_embedded_visual_brain()
+
+
+# ==============================================================================
+# القسم 14: جسر منظومة وكيل الأجهزة (RYN Agent Multi-Device Computer-Use Bridge)
+# ==============================================================================
+try:
+    import ryn_agent as _RynAgentMod
+except Exception:
+    _RynAgentMod = None
+
+
+def get_agent_core():
+    if _RynAgentMod is not None:
+        return _RynAgentMod.get_agent_core()
+    return None

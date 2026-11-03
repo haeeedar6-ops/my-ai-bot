@@ -315,7 +315,7 @@ def make_file(ext, text, request_text=""):
         try:
             content = json.dumps(json.loads(content), ensure_ascii=False, indent=2)
         except Exception:
-            pass  # بنحفظه كما هو إذا مو JSON سليم
+            _ = None  # بنحفظه كما هو إذا مو JSON سليم
         return _slug(request_text, ext), mime, content.encode("utf-8")
 
     if ext == "csv":

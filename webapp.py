@@ -423,7 +423,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 .dquota-btn:hover{transform:translateY(-1.5px);background:linear-gradient(135deg,rgba(var(--acc-rgb),.35),rgba(var(--g-rgb),.25));box-shadow:0 0 22px rgba(var(--g-rgb),.45)}
 
 /* ===== نافذة حدود النماذج وفحص النظام (#quotaModal) ===== */
-#quotaModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(7px);z-index:68;
+#quotaModal,#agentModal{position:fixed;inset:0;background:rgba(4,5,18,.86);backdrop-filter:blur(7px);z-index:68;
  display:flex;align-items:center;justify-content:center;padding:14px}
 .qlist{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;padding-left:2px}
 .qm-item{background:rgba(7,6,26,.85);border:1px solid rgba(var(--acc-rgb),.42);border-radius:14px;padding:9px 12px;
@@ -590,6 +590,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     </div>
     <div id="dList"></div>
     <div class="d-actions">
+      <button type="button" class="dquota-btn" id="dAgentBtn">🤖 وكيل الأجهزة (Windows / Android)</button>
       <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود النماذج وفحص النظام</button>
     </div>
     <div class="dfoot" id="dFoot">محفوظة على هالجهاز (حتى 100 محادثة)</div>
@@ -691,6 +692,47 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
       </div>
       <button type="button" class="syscheck-btn" id="runSysCheckBtn">🧪 فحص شامل للتأكد أن كل الأنظمة الـ 10 شغّالة</button>
       <div class="sys-box" id="sysCheckBox" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="agentModal" hidden>
+  <div class="mbox" style="max-width:480px">
+    <div class="mh"><span>🤖 لوحة تحكم RYN Agent (Windows &amp; Android)</span><button id="agentClose" aria-label="إغلاق">✕</button></div>
+    <div class="mbody">
+      <div class="msec">
+        <label style="flex-wrap:wrap;gap:6px"><span>🔗 إقران جهاز جديد</span><span style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="syscheck-btn" id="agPairBtn" style="width:auto;padding:4px 10px;font-size:11px">＋ كود إقران (6 أرقام)</button><button type="button" class="syscheck-btn" id="agPairPhoneBtn" style="width:auto;padding:4px 10px;font-size:11px;border-color:var(--g);color:var(--g)">💻📱 ربط هذا الجهاز فوراً (PC / هاتف)</button></span></label>
+        <div id="agPhoneLiveBar" hidden style="margin-top:6px;padding:8px;border-radius:10px;background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.3);font-size:11.5px">
+          <div style="color:var(--g);font-weight:700;margin-bottom:5px">🟢 هذا الجهاز (كمبيوتر / هاتف) متصل الآن كعميل RYN نشط!</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <label class="syscheck-btn" style="width:auto;padding:4px 10px;font-size:11px;cursor:pointer;margin:0">📸 إرسال لقطة شاشة للوكيل<input type="file" id="agPhoneShotInp" accept="image/*" hidden></label>
+            <button type="button" class="syscheck-btn" id="agPhoneStepBtn" style="width:auto;padding:4px 10px;font-size:11px">⚡ تنفيذ الخطوة التالية</button>
+          </div>
+        </div>
+        <small>أدخل الكود في تطبيق RYN Desktop على ويندوز أو RYN Mobile على أندرويد لربطه بحسابك بأمان.</small>
+        <div id="agPairCodeBox" hidden style="text-align:center;padding:8px;border-radius:10px;background:rgba(0,255,157,.12);border:1px dashed var(--g);font-family:Consolas,monospace;font-size:20px;font-weight:800;color:var(--g);letter-spacing:3px;direction:ltr"></div>
+      </div>
+      <div class="msec">
+        <label style="flex-wrap:wrap;gap:6px"><span>🚀 تحكم كتابي وصوتي بالجهاز المقترن</span><button type="button" class="syscheck-btn" id="agTtsBtn" style="width:auto;padding:2px 8px;font-size:11px;border-color:var(--g);color:var(--g)">🔊 الرد الصوتي: مفعّل</button></label>
+        <div class="madd" style="gap:6px">
+          <input class="minp" id="agGoalInp" placeholder="اكتب الأمر هنا أو اضغط 🎤 وتحدث بصوتك...">
+          <button type="button" id="agVoiceBtn" title="تحدث بصوتك لإرسال أمر للوكيل" style="background:rgba(168,85,247,.22);border:1px solid rgba(168,85,247,.5);color:#e9d5ff;min-width:38px">🎤</button>
+          <button type="button" id="agStartTaskBtn" title="إرسال الأمر الكتابي">▶</button>
+        </div>
+        <small id="agVoiceStatus" style="color:var(--c2);display:none">🎙️ جاري الاستماع لصوتك... تحدث الآن</small>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <button type="button" class="syscheck-btn" id="agStopAllBtn" style="border-color:var(--red);color:var(--red);background:rgba(255,93,108,.12)">⏹ إيقاف المهام الجارية</button>
+          <button type="button" class="syscheck-btn" id="agKillBtn" style="border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.12)">🛑 مفتاح الطوارئ</button>
+        </div>
+      </div>
+      <div class="msec">
+        <label><span>💻 الأجهزة المقترنة والمهام النشطة</span><small id="agQuotaTxt">0 طلب اليوم</small></label>
+        <div class="sys-box" id="agStatusBox" style="max-height:190px"></div>
+      </div>
+      <div class="msec">
+        <label><span>🛡️ سجل التدقيق الأمني (Audit Log)</span></label>
+        <div class="sys-box" id="agLogsBox" style="max-height:130px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1567,6 +1609,188 @@ async function runSystemDiagnostics(){
   }
   btn.disabled=false;
 }
+
+/* ===== لوحة تحكم وكيل الأجهزة RYN Agent (#agentModal) ===== */
+let agKillActive=false;
+async function refreshAgentDashboard(){
+  const stBox=$('#agStatusBox'),lgBox=$('#agLogsBox');
+  if(!stBox)return;
+  try{
+    const [rSt,rLg]=await Promise.all([api('/api/v1/agent/status'),api('/api/v1/agent/logs?limit=15')]);
+    const st=await rSt.json(),lg=await rLg.json();
+    agKillActive=!!st.kill_switch;
+    if($('#agKillBtn'))$('#agKillBtn').textContent=agKillActive?'🟢 إلغاء إيقاف الطوارئ':'🛑 مفتاح الطوارئ (Kill Switch)';
+    if($('#agQuotaTxt')&&st.usage)$('#agQuotaTxt').textContent=st.usage.request_count+' / '+st.usage.request_limit+' طلب اليوم';
+    const devs=st.devices||[],tasks=st.tasks||[];
+    let h='';
+    if(!devs.length)h+='<small style="text-align:center;color:var(--sub)">لا توجد أجهزة مقترنة بعد. اضغط «توليد كود إقران» أعلاه.</small>';
+    devs.forEach(d=>{
+      h+='<div class="sys-row"><b>'+(d.revoked?'⛔ ':'💻 ')+esc(d.name)+' ('+esc(d.platform)+')</b>'+
+         (d.revoked?'<span style="color:var(--red)">ملغى</span>':'<button type="button" data-revdev="'+esc(d.id)+'" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:1px 6px;font-size:10.5px">إلغاء ربط</button>')+'</div>';
+    });
+    tasks.slice(0,5).forEach(t=>{
+      h+='<div class="sys-row" style="flex-direction:column;align-items:stretch;gap:4px"><div style="display:flex;justify-content:space-between"><b>📋 '+esc(t.goal.slice(0,48))+'</b><span>'+esc(t.status)+' (خطوة '+t.current_step+')</span></div>';
+      if(t.pending_command){
+        const pc=t.pending_command;
+        h+='<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(245,158,11,.15);padding:4px 8px;border-radius:8px;font-size:11px"><span>⚠️ ينتظر موافقتك: '+esc(pc.action)+' ('+esc(pc.reason||'')+')</span>'+
+           '<div style="display:flex;gap:4px"><button type="button" data-agapp="'+esc(pc.command_id)+'" data-ok="1" style="background:var(--g);color:#031a10;border:0;border-radius:6px;padding:2px 7px;font-weight:800">موافقة</button>'+
+           '<button type="button" data-agapp="'+esc(pc.command_id)+'" data-ok="0" style="background:var(--red);color:#fff;border:0;border-radius:6px;padding:2px 7px;font-weight:800">رفض</button></div></div>';
+      }
+      h+='</div>';
+    });
+    stBox.innerHTML=h||'<small style="text-align:center">لا توجد بيانات.</small>';
+    const evs=(lg&&lg.events)||[];
+    lgBox.innerHTML=evs.length?evs.map(e=>'<div class="sys-row"><b>'+esc(e.event_type)+'</b><span>'+esc((e.result||e.error_code||'').slice(0,55))+'</span></div>').join(''):'<small style="text-align:center;color:var(--sub)">السجل فارغ حالياً.</small>';
+  }catch(e){
+    stBox.innerHTML='<small style="color:var(--red)">تعذر جلب حالة الوكيل.</small>';
+  }
+}
+async function openAgentModal(){
+  closeDrawer();
+  $('#agPairCodeBox').hidden=true;
+  $('#agentModal').hidden=false;
+  await refreshAgentDashboard();
+}
+if($('#dAgentBtn'))$('#dAgentBtn').onclick=openAgentModal;
+if($('#agentClose'))$('#agentClose').onclick=()=>{$('#agentModal').hidden=true};
+if($('#agentModal'))$('#agentModal').onclick=e=>{if(e.target===$('#agentModal'))$('#agentModal').hidden=true};
+let phoneDevTok=(()=>{try{return localStorage.getItem('ryn_phone_agent_tok_v1')||''}catch(e){return ''}})();
+let phoneSeq=1;
+function syncPhoneBar(){const b=$('#agPhoneLiveBar');if(b)b.hidden=!phoneDevTok;}
+syncPhoneBar();
+if($('#agPairPhoneBtn'))$('#agPairPhoneBtn').onclick=async()=>{
+  try{
+    const r1=await api('/api/v1/agent/pair/start',{method:'POST',body:JSON.stringify({})});
+    const d1=await r1.json();
+    if(!r1.ok||!d1.pairing_code){toast(d1.error||'تعذر توليد الكود');return;}
+    const r2=await api('/api/v1/agent/pair/complete',{method:'POST',body:JSON.stringify({code:d1.pairing_code,device_name:(/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'هاتف ذكي ('+(navigator.platform||'Mobile')+')':'كمبيوتر ('+(navigator.platform||'PC')+')'),platform:(/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'android':'windows')})});
+    const d2=await r2.json();
+    if(r2.ok&&d2.device_token){
+      phoneDevTok=d2.device_token;
+      try{localStorage.setItem('ryn_phone_agent_tok_v1',phoneDevTok)}catch(e){}
+      syncPhoneBar();
+      toast('✅ تم ربط جهازك فوراً مع RYN Agent!');
+      await refreshAgentDashboard();
+    }else toast(d2.error||'تعذر ربط الهاتف');
+  }catch(e){toast('خطأ بالاتصال')}
+};
+async function runPhoneStep(b64Img){
+  if(!phoneDevTok){toast('اضغط أولاً على (💻📱 ربط هذا الجهاز فوراً (PC / هاتف))');return;}
+  try{
+    const r=await fetch('/api/v1/agent/step',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+phoneDevTok},body:JSON.stringify({sequence:phoneSeq,screenshot:b64Img||'',screen_width:window.screen.width||1080,screen_height:window.screen.height||2400,observation:'Mobile Web Companion ('+window.innerWidth+'x'+window.innerHeight+')',use_vision_model:!!b64Img})});
+    const d=await r.json();
+    if(!r.ok||!d.ok){toast(d.error||'تعذر جلب الخطوة');return;}
+    if(d.status==='idle'){toast('اكتب مهمة أولاً في خانة (إرسال مهمة جديدة) واضغط ▶');return;}
+    if(d.command_id){
+      await fetch('/api/v1/agent/result',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+phoneDevTok},body:JSON.stringify({task_id:d.task_id,command_id:d.command_id,sequence:d.sequence||phoneSeq,status:'succeeded',verification:'Mobile Companion executed: '+(d.action||'')+' - '+(d.reason||'')})});
+      phoneSeq=(d.sequence||phoneSeq)+1;
+    }
+    toast('🤖 '+(d.action||d.status)+': '+(d.reason||d.message||'تمت الخطوة'));
+    await refreshAgentDashboard();
+  }catch(e){toast('خطأ بالاتصال')}
+}
+if($('#agPhoneStepBtn'))$('#agPhoneStepBtn').onclick=()=>runPhoneStep('');
+if($('#agPhoneShotInp'))$('#agPhoneShotInp').onchange=e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=ev=>{runPhoneStep(String(ev.target.result||''));e.target.value='';};
+  rd.readAsDataURL(f);
+};
+if($('#agPairBtn'))$('#agPairBtn').onclick=async()=>{
+  try{
+    const r=await api('/api/v1/agent/pair/start',{method:'POST',body:JSON.stringify({})});
+    const d=await r.json();
+    if(r.ok&&d.pairing_code){
+      const el=$('#agPairCodeBox');el.textContent=d.pairing_code;el.hidden=false;
+      toast('🔗 تم توليد كود الإقران (صالح لـ 5 دقائق)');
+      await refreshAgentDashboard();
+    }else toast(d.error||'تعذر توليد الكود');
+  }catch(e){toast('خطأ بالاتصال')}
+};
+let agTtsOn=true;
+function speakAgentReply(txt){
+  if(!agTtsOn||!txt||!('speechSynthesis' in window))return;
+  try{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(txt);
+    u.lang=/[\u0600-\u06FF]/.test(txt)?'ar-SA':'en-US';
+    u.rate=1.02;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+if($('#agTtsBtn'))$('#agTtsBtn').onclick=()=>{
+  agTtsOn=!agTtsOn;
+  $('#agTtsBtn').textContent=agTtsOn?'🔊 الرد الصوتي: مفعّل':'🔇 الرد الصوتي: صامت';
+  $('#agTtsBtn').style.color=agTtsOn?'var(--g)':'var(--mut)';
+};
+if($('#agGoalInp'))$('#agGoalInp').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();if($('#agStartTaskBtn'))$('#agStartTaskBtn').click();}
+});
+if($('#agStartTaskBtn'))$('#agStartTaskBtn').onclick=async()=>{
+  const g=$('#agGoalInp').value.trim();if(!g)return;
+  try{
+    const r=await api('/api/v1/agent/tasks',{method:'POST',body:JSON.stringify({goal:g})});
+    const d=await r.json();
+    if(r.ok){
+      $('#agGoalInp').value='';
+      toast('🚀 بدأت المهمة الكتابية على الجهاز المقترن');
+      speakAgentReply('تم استلام الأمر، بدأت تنفيذ المهمة على جهازك.');
+      await refreshAgentDashboard();
+    }else toast(d.error||'تعذر بدء المهمة');
+  }catch(e){toast('خطأ بالاتصال')}
+};
+let agRec=null,agListening=false;
+if($('#agVoiceBtn'))$('#agVoiceBtn').onclick=()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('متصفحك لا يدعم الإملاء الصوتي المباشر، استخدم خانة الكتابة');return;}
+  if(agListening&&agRec){try{agRec.stop()}catch(e){}return;}
+  agRec=new SR();
+  agRec.lang='ar-SA';
+  agRec.interimResults=true;
+  agRec.continuous=false;
+  const st=$('#agVoiceStatus'),btn=$('#agVoiceBtn');
+  agRec.onstart=()=>{agListening=true;if(st)st.style.display='block';if(btn)btn.textContent='⏹';};
+  agRec.onresult=ev=>{
+    let tr='';
+    for(let i=ev.resultIndex;i<ev.results.length;i++)tr+=ev.results[i][0].transcript;
+    if($('#agGoalInp'))$('#agGoalInp').value=tr.trim();
+  };
+  agRec.onend=async()=>{
+    agListening=false;if(st)st.style.display='none';if(btn)btn.textContent='🎤';
+    const finalTxt=($('#agGoalInp')&&$('#agGoalInp').value.trim())||'';
+    if(!finalTxt)return;
+    try{
+      const r=await api('/api/v1/agent/voice',{method:'POST',body:JSON.stringify({transcript:finalTxt,start_task:true})});
+      const d=await r.json();
+      if(r.ok&&d.ok){
+        $('#agGoalInp').value='';
+        toast('🎙️ '+(d.assistant_response||'تم بدء المهمة الصوتية'));
+        speakAgentReply(d.assistant_response||'سمعتك، بدأت المهمة على جهازك المقترن.');
+        await refreshAgentDashboard();
+      }else toast(d.error||'تعذر إرسال الأمر الصوتي');
+    }catch(e){toast('خطأ بالاتصال')}
+  };
+  agRec.onerror=()=>{agListening=false;if(st)st.style.display='none';if(btn)btn.textContent='🎤';toast('تعذر التقاط الصوت');};
+  try{agRec.start()}catch(e){}
+};
+if($('#agStopAllBtn'))$('#agStopAllBtn').onclick=async()=>{
+  try{await api('/api/v1/agent/stop',{method:'POST',body:JSON.stringify({})});toast('⏹ تم إيقاف المهام الجارية');await refreshAgentDashboard()}catch(e){}
+};
+if($('#agKillBtn'))$('#agKillBtn').onclick=async()=>{
+  try{await api('/api/v1/agent/killswitch',{method:'POST',body:JSON.stringify({active:!agKillActive})});toast(!agKillActive?'🛑 تم تفعيل مفتاح الطوارئ الشامل':'🟢 تم إلغاء مفتاح الطوارئ');await refreshAgentDashboard()}catch(e){}
+};
+if($('#agStatusBox'))$('#agStatusBox').addEventListener('click',async e=>{
+  const rev=e.target.closest('[data-revdev]');
+  if(rev){
+    try{await api('/api/v1/agent/device/revoke',{method:'POST',body:JSON.stringify({device_id:rev.dataset.revdev})});toast('⛔ تم إلغاء ربط الجهاز');await refreshAgentDashboard()}catch(x){}
+    return;
+  }
+  const app=e.target.closest('[data-agapp]');
+  if(app){
+    try{await api('/api/v1/agent/approve',{method:'POST',body:JSON.stringify({command_id:app.dataset.agapp,approve:app.dataset.ok==='1'})});toast('✅ تم تحديث حالة الأمر');await refreshAgentDashboard()}catch(x){}
+  }
+});
+
 if($('#dQuotaBtn'))$('#dQuotaBtn').onclick=openQuotaModal;
 if($('#runSysCheckBtn'))$('#runSysCheckBtn').onclick=runSystemDiagnostics;
 if($('#quotaClose'))$('#quotaClose').onclick=()=>{$('#quotaModal').hidden=true};
@@ -2006,6 +2230,10 @@ try:
     import ryn_ai_stack as AIStack
 except Exception:
     AIStack = None
+try:
+    import ryn_agent as RynAgent
+except Exception:
+    RynAgent = None
 try:
     import ryn_selftest as S
 except Exception:
@@ -5931,6 +6159,11 @@ def register(app, b):
             gh_ctx_active = False
             if AIStack is not None:
                 gh_mgr = AIStack.get_github_manager()
+                if RynAgent is not None:
+                    ag_reply = RynAgent.get_agent_core().handle_chat_agent_command(u, text)
+                    if ag_reply:
+                        finish(job_id, {"status": "done", "text": ag_reply, "note": "RYN Agent 🤖"})
+                        return
                 gh_direct_reply = gh_mgr.handle_direct_chat_command(u, text)
                 if gh_direct_reply:
                     finish(job_id, {"status": "done", "text": gh_direct_reply, "note": "GitHub Agent 🐙"})
@@ -6903,6 +7136,279 @@ def register(app, b):
             return bad
         is_live = request.args.get("live", "0") == "1"
         return jsonify(ryn_selftest_run(b, mix_members(True), live=is_live))
+
+
+    # ---------- منظومة وكيل الأجهزة RYN Agent API v1 (Sections 5..12 — Windows & Android) ----------
+    def _agent_device_token():
+        auth_h = request.headers.get("Authorization", "").strip()
+        if auth_h.lower().startswith("bearer "):
+            return auth_h[7:].strip()
+        return str(request.headers.get("X-Device-Token", "") or (request.get_json(silent=True) or {}).get("device_token", "")).strip()
+
+    def _vision_agent_planner(goal, img_bytes, memory_dict, screen_w, screen_h):
+        """يحلل لقطة الشاشة عبر Gemini Vision ويعيد أمراً واحداً فقط بصيغة JSON صارمة (One-Action-at-a-Time)."""
+        if not b.client or not img_bytes:
+            return None
+        T = b.types
+        mime_t = sniff_image(img_bytes) or "image/jpeg"
+        recent_actions = (memory_dict or {}).get("actions_attempted", [])[-4:]
+        recent_results = (memory_dict or {}).get("action_results", [])[-4:]
+        sys_p = (
+            "You are RYN Agent Planner. Inspect the device screenshot and propose EXACTLY ONE next action as strict JSON. "
+            "Allowed actions ONLY: observe, click, double_click, type_text, key_press, scroll, wait, done, ask_user. "
+            f"Screen dimensions: {screen_w}x{screen_h}. Coordinates must be within [0..{screen_w}, 0..{screen_h}]. "
+            "Never propose shell commands, arbitrary Python, banking, or password entry. "
+            "Return JSON with keys: {\"action\": \"...\", \"coordinates\": {\"x\": 0, \"y\": 0}, \"text\": \"\", \"key\": \"\", "
+            "\"scroll_dy\": 0, \"reason\": \"...\", \"risk\": \"low|medium|high\", \"requires_confirmation\": false}."
+        )
+        user_p = (
+            f"User Goal: {goal}\n"
+            f"Recent Actions: {json.dumps(recent_actions, ensure_ascii=False)}\n"
+            f"Recent Results: {json.dumps(recent_results, ensure_ascii=False)}\n"
+            "Propose the single next action in JSON:"
+        )
+        out_txt = b.ask_gemini(
+            [T.Content(role="user", parts=[T.Part.from_bytes(data=img_bytes, mime_type=mime_t), T.Part(text=user_p)])],
+            deep=False,
+            system=sys_p,
+            json_mode=True,
+        )
+        if not out_txt:
+            return None
+        clean_j = re.sub(r"^```(?:json)?\s*|\s*```$", "", out_txt.strip(), flags=re.I)
+        parsed = json.loads(clean_j)
+        if isinstance(parsed, dict):
+            return {k: v for k, v in parsed.items() if k in RynAgent.ALLOWED_ACTION_FIELDS}
+        return None
+
+    @app.post("/api/v1/agent/pair/start")
+    def api_v1_agent_pair_start():
+        bad = guard()
+        if bad:
+            return bad
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        try:
+            return jsonify(RynAgent.get_agent_core().start_pairing(uid()))
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v1/agent/pair/complete")
+    def api_v1_agent_pair_complete():
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            res = RynAgent.get_agent_core().complete_pairing(
+                code=str(body.get("code") or body.get("pairing_code") or ""),
+                device_name=str(body.get("device_name") or body.get("name") or "RYN Client"),
+                platform=str(body.get("platform") or "windows"),
+            )
+            return jsonify(res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 401
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v1/agent/tasks")
+    def api_v1_agent_create_task():
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        tok = _agent_device_token()
+        try:
+            if tok:
+                dev = RynAgent.get_agent_core().authenticate_device(tok)
+                target_u = dev["user_id"]
+                target_dev = dev["id"]
+            else:
+                bad = guard()
+                if bad:
+                    return bad
+                target_u = uid()
+                target_dev = str(body.get("device_id") or "")
+            res = RynAgent.get_agent_core().create_task(
+                user_id=target_u,
+                goal=str(body.get("goal") or ""),
+                device_id=target_dev,
+                require_approval_all=bool(body.get("require_approval_all", False)),
+            )
+            return jsonify(res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v1/agent/step")
+    def api_v1_agent_step():
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        tok = _agent_device_token()
+        try:
+            res = RynAgent.get_agent_core().propose_next_step(
+                device_token=tok,
+                task_id=str(body.get("task_id") or ""),
+                sequence=int(body.get("sequence", 1)),
+                screenshot_b64=str(body.get("screenshot") or body.get("screenshot_b64") or ""),
+                screen_width=int(body.get("screen_width", 1920)),
+                screen_height=int(body.get("screen_height", 1080)),
+                observation=str(body.get("observation") or ""),
+                vision_planner_fn=_vision_agent_planner if bool(body.get("use_vision_model", False)) else None,
+            )
+            return jsonify(res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 401
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v1/agent/result")
+    def api_v1_agent_result():
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        tok = _agent_device_token()
+        try:
+            res = RynAgent.get_agent_core().report_step_result(
+                device_token=tok,
+                task_id=str(body.get("task_id") or ""),
+                command_id=str(body.get("command_id") or ""),
+                sequence=int(body.get("sequence", 1)),
+                status=str(body.get("status") or "succeeded"),
+                error=str(body.get("error") or ""),
+                verification_note=str(body.get("verification") or body.get("verification_note") or ""),
+                screenshot_b64=str(body.get("screenshot") or ""),
+            )
+            return jsonify(res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 401
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v1/agent/voice")
+    def api_v1_agent_voice():
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        tok = _agent_device_token()
+        try:
+            if tok:
+                dev = RynAgent.get_agent_core().authenticate_device(tok)
+                target_u = dev["user_id"]
+                target_dev = dev["id"]
+            else:
+                bad = guard()
+                if bad:
+                    return bad
+                target_u = uid()
+                target_dev = ""
+            body = request.get_json(silent=True) or {}
+            transcript = str(body.get("transcript") or body.get("text") or "").strip()
+            if not transcript:
+                return jsonify(error="لم يتم استلام نص صوتي صالح"), 400
+            task_res = None
+            if body.get("start_task", True):
+                task_res = RynAgent.get_agent_core().create_task(target_u, goal=transcript, device_id=target_dev)
+            return jsonify(
+                ok=True,
+                transcription=transcript,
+                assistant_response=f"سمعتك: «{transcript}». بدأت المهمة على الجهاز المقترن.",
+                task=task_res,
+            )
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 401
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v1/agent/stop")
+    def api_v1_agent_stop():
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        tok = _agent_device_token()
+        try:
+            if tok:
+                dev = RynAgent.get_agent_core().authenticate_device(tok)
+                target_u = dev["user_id"]
+            else:
+                bad = guard()
+                if bad:
+                    return bad
+                target_u = uid()
+            return jsonify(RynAgent.get_agent_core().stop_task(target_u, task_id=str(body.get("task_id") or "")))
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 401
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.get("/api/v1/agent/status")
+    def api_v1_agent_status():
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        tok = _agent_device_token()
+        try:
+            if tok:
+                dev = RynAgent.get_agent_core().authenticate_device(tok)
+                target_u = dev["user_id"]
+            else:
+                bad = guard()
+                if bad:
+                    return bad
+                target_u = uid()
+            return jsonify(RynAgent.get_agent_core().get_status(target_u))
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 401
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.get("/api/v1/agent/logs")
+    def api_v1_agent_logs():
+        bad = guard()
+        if bad:
+            return bad
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        lim = int(request.args.get("limit") or 40)
+        return jsonify(ok=True, events=RynAgent.get_agent_core().get_logs(uid(), limit=lim))
+
+    @app.post("/api/v1/agent/device/revoke")
+    def api_v1_agent_revoke():
+        bad = guard()
+        if bad:
+            return bad
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            return jsonify(RynAgent.get_agent_core().revoke_device(uid(), str(body.get("device_id") or "")))
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v1/agent/approve")
+    def api_v1_agent_approve():
+        bad = guard()
+        if bad:
+            return bad
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            return jsonify(RynAgent.get_agent_core().approve_command(
+                uid(),
+                command_id=str(body.get("command_id") or ""),
+                approve=bool(body.get("approve", True)),
+            ))
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v1/agent/killswitch")
+    def api_v1_agent_killswitch():
+        bad = guard()
+        if bad:
+            return bad
+        if RynAgent is None:
+            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        return jsonify(RynAgent.get_agent_core().set_kill_switch(uid(), active=bool(body.get("active", True))))
 
     log.info("Web UI enabled (password %s)", "set" if password else "NOT set")
 
