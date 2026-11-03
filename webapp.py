@@ -529,6 +529,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mFix">🐞 تصحيح كود</button>
     <button id="mAdl">⬇️ تنزيل الكود تلقائياً: شغّال</button>
+    <button id="mAutoSpeak">🔊 نطق الردود بالصوت: طافي</button>
     <button id="mEmo">💗 وضع المشاعر: طافي</button>
     <button id="mSfx">🔊 الأصوات المستقبلية: شغّالة</button>
     <button id="mAbout">ℹ️ عن __APP_NAME__</button>
@@ -1039,7 +1040,7 @@ function render(){
     const body=pic+fbox+dbox+(m.reveal?'':md(shown));
     return '<div class="bubble '+(me?'me':'bot')+(m.err?' err':'')+'"'+(m.reveal?' data-rev="1"':'')+'>'+body+'</div>'+
       (m.note?'<div class="note">'+esc(m.note)+'</div>':'')+
-      (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button></div>');
+      (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button><button data-speak="'+i+'">🔊 نطق الرد</button></div>');
   }).join('')+(busy?'<div class="bubble bot"><span class="typing"><i></i><i></i><i></i></span></div>':'');
   msgs.scrollTop=msgs.scrollHeight;
   const rv=ms.findIndex(m=>m.reveal);if(rv>=0)startReveal(rv);
@@ -1071,7 +1072,9 @@ msgs.addEventListener('click',e=>{
   const cp=e.target.closest('.cp');
   if(cp){copy(cp.closest('.code').querySelector('code').innerText);return}
   const c=e.target.closest('[data-copy]');
-  if(c){copy(M()[+c.dataset.copy].text)}
+  if(c){copy(M()[+c.dataset.copy].text);return}
+  const sp=e.target.closest('[data-speak]');
+  if(sp){toggleSpeakBotMsg(M()[+sp.dataset.speak].text,sp);return}
 });
 async function copy(t){
   try{await navigator.clipboard.writeText(t)}catch(e){
@@ -1153,6 +1156,7 @@ async function applyCompletedJobPayload(j,targetChatId){
     const dfs=(j.files&&j.files.length?j.files:(j.file?[j.file]:[])).map(f=>({name:f.name,url:'/api/download/'+f.id,ext:f.ext,size:f.size,auto:!!f.auto}));
     if(dfs.length)say(dfs.some(f=>f.auto)?'نزّلتلك الكود بملف 💾':'جهزتلك ملف التحميل 💾');
     ms.push({role:'model',text:full,note:j.note,reveal:(!document.hidden&&full.length<6000&&!dfs.length),dfiles:dfs});
+    if((autoSpeak||lastUsedMic)&&full){lastUsedMic=false;setTimeout(()=>toggleSpeakBotMsg(full,null),350)}
     if(autoDl)dfs.filter(f=>f.auto).forEach((f,i)=>setTimeout(()=>autoDownload(f),500+800*i));
   }
 }
@@ -1377,7 +1381,7 @@ async function sendAudio(blob){
   try{
     const r=await api('/api/transcribe',{method:'POST',body:fd});let d={};try{d=await r.json()}catch(e){}
     if(!r.ok){toast(d.error||'ما قدرت أفرّغ الصوت');setBot('error',1800);return}
-    inp.value=(inp.value?inp.value+' ':'')+d.text;grow();inp.focus();setBot('happy',1200);say('سمعتك 🎧 راجع النص وابعتو');
+    lastUsedMic=true;inp.value=(inp.value?inp.value+' ':'')+d.text;grow();inp.focus();setBot('happy',1200);say('سمعتك 🎧 راجع النص وابعتو');
   }catch(e){if(e.message!=='auth'){toast('فشل إرسال الصوت');setBot('error',1800)}}
 }
 async function micToggle(){
