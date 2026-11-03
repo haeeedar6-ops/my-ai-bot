@@ -31,21 +31,33 @@ visual = None
 
 # ============ الإعدادات ============
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("\'").strip()
 PORT = int(os.environ.get("PORT", 10000))
 
 # موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
 FAST_MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip(),
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-4-argon",
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
     "gemini-2.5-flash-lite",
 ]
 DEEP_MODELS = [
-    os.environ.get("GEMINI_DEEP_MODEL", "gemini-2.5-pro"),
+    os.environ.get("GEMINI_DEEP_MODEL", "gemini-3.8-flash").strip(),
+    "gemini-3.8-flash",
+    "gemini-4-argon",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.1-pro-preview",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
 ]
 MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
@@ -221,7 +233,31 @@ def is_deep_question(text):
     tokens = set(re.findall(r"[\w\u0600-\u06FF]+", t.lower()))
     return bool(tokens & DEEP_WORDS)
 
-def make_config(deep, system, use_thinking=True, json_mode=False):
+_gemini_live_cache = {"t": 0.0, "ids": []}
+
+
+def discover_gemini_models():
+    """يكتشف تلقائياً الموديلات المتاحة فعلياً على مفتاح GEMINI_API_KEY الخاص بالمستخدم على Render."""
+    now = time.time()
+    if _gemini_live_cache["ids"] and now - _gemini_live_cache["t"] < 6 * 3600:
+        return _gemini_live_cache["ids"]
+    found = []
+    try:
+        for m in client.models.list():
+            name = getattr(m, "name", "") or ""
+            if name.startswith("models/"):
+                name = name[7:]
+            low = name.lower()
+            if low.startswith("gemini-") and not any(x in low for x in ("embedding", "tts", "image", "veo", "lyria", "robotics", "computer-use", "audio", "transcribe", "live")):
+                found.append(name)
+    except Exception as _ge:
+        log.warning("Gemini model discovery warning: %s", _ge)
+    if found:
+        _gemini_live_cache.update(t=now, ids=found)
+    return found
+
+
+def make_config(deep, system, use_thinking=True, json_mode=False, model=""):
     kwargs = {
         "system_instruction": system,
         "http_options": types.HttpOptions(
@@ -230,7 +266,9 @@ def make_config(deep, system, use_thinking=True, json_mode=False):
     }
     if json_mode:
         kwargs["response_mime_type"] = "application/json"
-    if use_thinking:
+    # thinking_level مدعوم في عائلة Gemini 3 و Gemini 4 فقط، ولا يُرسل لموديلات 2.5 لتجنب خطأ 400
+    is_gen3_or_4 = not str(model or "").startswith(("gemini-2.", "gemini-1."))
+    if use_thinking and is_gen3_or_4:
         try:
             kwargs["thinking_config"] = types.ThinkingConfig(
                 thinking_level="high" if deep else "low"
@@ -239,20 +277,29 @@ def make_config(deep, system, use_thinking=True, json_mode=False):
             _ = None
     return types.GenerateContentConfig(**kwargs)
 
+
 def ask_gemini(contents, deep=False, system=None, json_mode=False, preferred_model=None):
-    base_models = DEEP_MODELS if deep else FAST_MODELS
-    models = ([preferred_model] + [m for m in base_models if m != preferred_model]) if preferred_model else base_models
+    """يستدعي Gemini مباشرة عبر مفتاح GEMINI_API_KEY الموجود على Render مع تبديل ذكي بين موديلات Gemini 3 و 4 و 2.5."""
+    base_models = list(DEEP_MODELS if deep else FAST_MODELS) + list(FAST_MODELS if deep else DEEP_MODELS)
+    ordered = ([preferred_model] if preferred_model else []) + base_models
+    models = []
+    for m in ordered:
+        if m and m not in models:
+            models.append(m)
     system = system or get_system_prompt()
     last_err = None
+    tried = set()
     for model in models:
+        tried.add(model)
         for use_thinking in (True, False):
             try:
                 resp = client.models.generate_content(
                     model=model,
                     contents=contents,
-                    config=make_config(deep, system, use_thinking, json_mode),
+                    config=make_config(deep, system, use_thinking, json_mode, model=model),
                 )
-                return resp.text or None
+                if resp and getattr(resp, "text", None):
+                    return resp.text
             except errors.APIError as e:
                 last_err = e
                 code = getattr(e, "code", None)
@@ -264,10 +311,22 @@ def ask_gemini(contents, deep=False, system=None, json_mode=False, preferred_mod
             except Exception as e:
                 last_err = e
                 break
-    if deep:
-        log.warning("كل الموديلات العميقة فشلت، برجع للسريعة")
-        return ask_gemini(contents, deep=False, system=system, json_mode=json_mode)
-    raise last_err or RuntimeError("كل الموديلات فشلت")
+    # إذا تغيرت أسماء الموديلات في حساب Google، نكتشف الموديلات المتاحة حياً على مفتاح GEMINI_API_KEY ونجربها فوراً
+    for dyn_model in discover_gemini_models():
+        if dyn_model in tried:
+            continue
+        try:
+            resp = client.models.generate_content(
+                model=dyn_model,
+                contents=contents,
+                config=make_config(False, system, False, json_mode, model=dyn_model),
+            )
+            if resp and getattr(resp, "text", None):
+                return resp.text
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err or RuntimeError("كل موديلات Gemini فشلت")
 
 REVIEW_PROMPT = """راجع جوابك قبل ما ينرسل للمستخدم.
 سؤال المستخدم:
@@ -607,14 +666,18 @@ GROQ_BACKEND = {
 }
 GROQ_CODE_PREF = (
     "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b",
+    "openai/gpt-oss-20b",
     "qwen/qwen3-32b",
     "moonshotai/kimi-k2-instruct",
     "meta-llama/llama-4-maverick-17b-128e-instruct",
     "llama-3.3-70b-versatile",
-    "openai/gpt-oss-20b",
 )
 GROQ_FREE_DEFAULTS = (
     "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b",
     "openai/gpt-oss-20b",
     "qwen/qwen3-32b",
     "moonshotai/kimi-k2-instruct",

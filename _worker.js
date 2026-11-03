@@ -6,7 +6,7 @@ export default {
     const url = new URL(request.url);
     const myHost = url.host;
     url.protocol = "https:";
-    url.hostname = ORIGIN;
+    url.hostname = new URL(ORIGIN).hostname;
     url.port = "";
 
     const headers = new Headers(request.headers);
