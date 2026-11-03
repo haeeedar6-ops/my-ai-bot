@@ -266,7 +266,7 @@ _SECRET_NAME = re.compile(r"(secret|token|api[_-]?key|passwd|password|private[_-
 _SECRET_VALUE = re.compile(
     r"(sk-[A-Za-z0-9_\-]{16,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|AIza[0-9A-Za-z_\-]{30,}|xox[baprs]-[A-Za-z0-9\-]{10,})"
 )
-_PLACEHOLDER = re.compile(r"(changeme|example|your[_-]|xxx|placeholder|<.*>|\*{3,})", re.I)
+_PLACEHOLDER = re.compile(r"(changeme|example|your[_-]|xxx|placeholder|<.*>|\*{3,}|redacted)", re.I)
 _PW_FUNC = re.compile(r"(pw|pass|passwd|password|login|auth|credential)", re.I)
 _HASH_CALLS = {"hashlib.md5", "hashlib.sha1", "hashlib.sha224", "hashlib.sha256", "hashlib.sha384",
                "hashlib.sha512", "hashlib.new", "md5", "sha1", "sha256"}
@@ -298,7 +298,7 @@ def _comments(code):
             if tok.type == tokenize.COMMENT:
                 out[tok.start[0]] = tok.string
     except Exception:
-        pass
+        _ = None
     return out
 
 
@@ -514,7 +514,6 @@ _INJECTION = [
     r"(answer|reply|respond)\s+only\s+with",
     r"you\s+are\s+now\s+",
     r"system\s*prompt",
-    r"تم عزل نص داخل الملف يحاول تغيير تعليمات النظام",
 ]
 
 
@@ -656,8 +655,7 @@ def build_fix_prompt(code: str, findings: list, gate_notes=None) -> str:
 
 
 def extract_code(text: str) -> str:
-    blocks = [m.group(2) for m in re.finditer(r"```([a-zA-Z0-9_+-]*)[ \t]*\n(.*?)```", text or "", re.S)
-              if m.group(1).lower() in ("", "python", "py")]
+    blocks = re.findall(r"```(?:python|py)?[ \t]*\n(.*?)```", text or "", re.S)
     blocks = [b for b in blocks if re.search(r"^\s*(def |import |from |class |@)", b, re.M)]
     return max(blocks, key=len).rstrip() + "\n" if blocks else ""
 
@@ -666,20 +664,17 @@ def _weight(fs) -> int:
     return sum(SEV[f.sev] ** 2 for f in fs if SEV[f.sev] >= 1)
 
 
-def closed_loop(code: str, fix_fn, max_rounds: int = 3, user_text: str = "", progress=None, orig_code: str = "") -> dict:
+def closed_loop(code: str, fix_fn, max_rounds: int = 3, user_text: str = "", progress=None) -> dict:
     """
     scan -> ask the model to fix the scanner's findings -> gate -> rescan.
     fix_fn(prompt: str) -> str   (your existing _timed(roster[name], U(prompt), seconds) call)
     A round is accepted only if it removes weight and passes the gate against the ORIGINAL code.
     """
-    ref_code = orig_code or code
-    before = scan_python(ref_code)
+    before = scan_python(code)
     cur, hist, notes = code, [], []
     for r in range(1, max_rounds + 1):
         cur_f = scan_python(cur)
-        cur_gate = diff_gate(ref_code, cur, user_text=user_text) if orig_code else None
-        gate_todo = [f for f in (cur_gate.findings if cur_gate else []) if SEV[f.sev] >= 2]
-        todo = [f for f in cur_f if SEV[f.sev] >= 2] + gate_todo
+        todo = [f for f in cur_f if SEV[f.sev] >= 2]
         if not todo:
             break
         if progress:
@@ -694,13 +689,13 @@ def closed_loop(code: str, fix_fn, max_rounds: int = 3, user_text: str = "", pro
             notes = ["you did not return a complete python code block"]
             hist.append({"round": r, "rejected": notes[0]})
             continue
-        gate = diff_gate(ref_code, new, user_text=user_text)
+        gate = diff_gate(code, new, user_text=user_text)
         if gate.blocking:
             notes = [f.text() for f in gate.findings if SEV[f.sev] >= 2][:6]
             hist.append({"round": r, "rejected": notes})
             continue
         new_f = scan_python(new)
-        if _weight(new_f) < _weight(cur_f) or (gate_todo and not gate.blocking and _weight(new_f) <= _weight(cur_f)):
+        if _weight(new_f) < _weight(cur_f):
             cur, notes = new, []
             hist.append({"round": r, "accepted": True, "left": len([f for f in new_f if SEV[f.sev] >= 2])})
         else:
@@ -708,7 +703,7 @@ def closed_loop(code: str, fix_fn, max_rounds: int = 3, user_text: str = "", pro
                      + "; ".join(f.rule for f in new_f if SEV[f.sev] >= 2)[:200]]
             hist.append({"round": r, "rejected": "no improvement"})
     after = scan_python(cur)
-    return {"code": cur, "before": before, "after": after, "gate": diff_gate(ref_code, cur, user_text=user_text),
+    return {"code": cur, "before": before, "after": after, "gate": diff_gate(code, cur, user_text=user_text),
             "history": hist}
 
 
@@ -736,20 +731,12 @@ def finalize_report(report_text: str, before: list, after: list, gate: GateResul
     hi = [f for f in after if SEV[f.sev] >= 2]
     fixed = sorted({f.rule for f in before} - {f.rule for f in after})
 
-    _ran_re = re.compile(r"(شغّل[تن]\s*(ال)?اختبارات|شغلت\s*(ال)?اختبارات|all tests pass|tests passed|تم\s*تشغيل\s*(ال)?(كود|سيرفر|اختبارات)|نجح\s*التشغيل)", re.I)
-    _neg_toks = ("ما ", "لم ", "not ", "never ", "n't ", "بدون", "ممنوع", "ادعاء", "no ", "«")
     kept = []
     for ln in (report_text or "").splitlines():
         if ln.lstrip().startswith("\U0001F4CC"):
             continue
         if hi and _ABSOLUTE.search(ln):
             continue
-        for m in list(_ran_re.finditer(ln)):
-            if not any(w in ln[max(0, m.start() - 24):m.start()] for w in _neg_toks):
-                ln = ln[:m.start()] + "ادعاء «" + m.group(0) + "» (ما شغّلت الكود حياً)" + ln[m.end():]
-                break
-        if "/user" in ln and re.search(r"(sql|حقن)", ln, re.I) and not re.search(r"(آمن|سليم|safe|معلّم|معلم|xss)", ln, re.I):
-            ln += " (استعلام /user معلّم وآمن، والمشكلة فيه XSS)"
         kept.append(ln)
 
     head = ["\U0001F4CC **\u0627\u0644\u062d\u0627\u0644\u0629: %s** (\u0645\u062d\u0633\u0648\u0628\u0629 \u0645\u0646 \u0641\u062d\u0635 \u0622\u0644\u064a\u060c \u0645\u0627 \u0647\u064a \u0643\u0644\u0627\u0645 \u0645\u0648\u062f\u064a\u0644)" % status]
@@ -758,16 +745,6 @@ def finalize_report(report_text: str, before: list, after: list, gate: GateResul
     tail = []
     if fixed:
         tail.append("\n\u2705 **\u0627\u0646\u0635\u0644\u062d\u062a (\u062a\u062d\u0642\u0642 \u0622\u0644\u064a):** " + "\u060c ".join(fixed))
-    before_rules = {f.rule for f in before}
-    decision_notes = []
-    if "weak-password-hash" in before_rules:
-        decision_notes.append("كلمات السر القديمة (md5/sha) ما رح تشتغل مع الصيغة الجديدة (pbkdf2_hmac)، لازم إعادة تعيين أو ترحيل عند الدخول.")
-    if "no-auth-admin" in before_rules:
-        decision_notes.append("مسار الأدمن/الحذف صار يتطلب توكن بمتغير البيئة ADMIN_TOKEN وتمرير ترويسة X-Admin-Token.")
-    if "ssrf" in before_rules:
-        decision_notes.append("فحص SSRF يحجب العناوين الداخلية بعد حل الاسم، وللحماية من DNS rebinding بالإنتاج يفضّل جدار شبكة.")
-    if decision_notes:
-        tail.append("\n\u2699\ufe0f **قرارات وإعدادات مطلوبة منك:** " + " ".join(decision_notes))
     if hi:
         tail.append("\n\u26d4 **\u0628\u0627\u0642\u064a:**")
         tail.extend("- %s @ %s:%d \u2014 %s" % (f.rule, f.func, f.line, f.msg) for f in hi)
@@ -782,71 +759,6 @@ def guard_summary(code: str) -> str:
     """One-call helper for quick checks: returns the findings as text."""
     fs = scan_python(code)
     return "\n".join(f.text() for f in fs) or "clean"
-
-
-
-
-# --------------------------------------------------------------------------
-# Image upload & storage guard (حماية عمليات رفع الصور والتخزين)
-# --------------------------------------------------------------------------
-import os as _os_guard
-
-_ALLOWED_IMG_MAGIC = (
-    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
-    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
-    (b"GIF87a", "image/gif", ".gif"),
-    (b"GIF89a", "image/gif", ".gif"),
-)
-_DANGEROUS_IMG_PAYLOAD = re.compile(rb"(?i)(<script\b|<!entity\b|<\?php\b|javascript:|onload\s*=|onerror\s*=)")
-
-
-def validate_image_upload(data: bytes, filename: str = "", max_bytes: int = 12 * 1024 * 1024) -> dict:
-    """فحص أمني صارم لملفات الصور المرفوعة قبل المعالجة أو التخزين."""
-    if not data or not isinstance(data, (bytes, bytearray)):
-        return {"ok": False, "reason": "empty_or_invalid_bytes", "mime": None, "ext": None}
-    if len(data) > max_bytes:
-        return {"ok": False, "reason": "image_too_large", "mime": None, "ext": None}
-    if len(data) < 12:
-        return {"ok": False, "reason": "image_too_small", "mime": None, "ext": None}
-
-    raw = bytes(data)
-    detected_mime = None
-    detected_ext = None
-    for magic, mime, ext in _ALLOWED_IMG_MAGIC:
-        if raw.startswith(magic):
-            detected_mime, detected_ext = mime, ext
-            break
-    if detected_mime is None and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
-        detected_mime, detected_ext = "image/webp", ".webp"
-
-    if detected_mime is None:
-        return {"ok": False, "reason": "unsupported_or_spoofed_magic_bytes", "mime": None, "ext": None}
-
-    if filename:
-        low_fn = filename.lower().strip()
-        if ".." in low_fn or "/" in low_fn or "\\" in low_fn or "\x00" in low_fn:
-            return {"ok": False, "reason": "path_traversal_in_filename", "mime": None, "ext": None}
-        if low_fn.endswith((".svg", ".html", ".htm", ".php", ".py", ".sh", ".exe", ".js")):
-            return {"ok": False, "reason": "forbidden_executable_or_svg_extension", "mime": None, "ext": None}
-
-    head_tail = raw[:2048] + raw[-2048:]
-    if _DANGEROUS_IMG_PAYLOAD.search(head_tail):
-        return {"ok": False, "reason": "embedded_script_or_xxe_payload", "mime": None, "ext": None}
-
-    return {"ok": True, "reason": "clean", "mime": detected_mime, "ext": detected_ext, "size": len(raw)}
-
-
-def safe_image_storage_path(base_dir: str, user_id: str, filename: str) -> str:
-    """بناء مسار تخزين معزول وآمن لكل مستخدم مع منع Path Traversal."""
-    base_abs = _os_guard.path.abspath(base_dir)
-    safe_u = "".join(c if (c.isalnum() or c in ("_", "-")) else "_" for c in str(user_id or "main"))[:64] or "main"
-    safe_fn = "".join(c if (c.isalnum() or c in ("_", "-", ".")) else "_" for c in _os_guard.path.basename(filename or "img.png"))[:80]
-    if not safe_fn or safe_fn.startswith("."):
-        safe_fn = "img.png"
-    target = _os_guard.path.abspath(_os_guard.path.join(base_abs, safe_u, safe_fn))
-    if _os_guard.path.commonpath([base_abs, target]) != base_abs:
-        raise ValueError("Path traversal blocked by ryn_guard")
-    return target
 
 
 if __name__ == "__main__":

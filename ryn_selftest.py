@@ -327,117 +327,11 @@ def run_live(call_fn, min_score: float = 16.0) -> dict:
     return res
 
 
-def score_image_engine() -> dict:
-    """اختبار ذاتي شامل لمنظومة العقل البصري (Visual Brain) ونموذج timbrooks/instruct-pix2pix وبريميو الطلب ومراجع الجودة."""
-    import os as _os, sys as _sys, base64 as _b64, tempfile as _tf
-    root_d = _os.path.dirname(_os.path.abspath(__file__))
-    if root_d not in _sys.path:
-        _sys.path.insert(0, root_d)
-    import ryn_guard as _G
-    from visual_brain import VisualBrain
-    from visual_brain.visual_memory import VisualMemoryStore
-
-    rows = []
-    total = 0.0
-    tmp_mem = VisualMemoryStore(storage_dir=_tf.mkdtemp(prefix="ryn_st_vmem_"))
-    brain = VisualBrain(memory_store=tmp_mem)
-
-    # 1. تحليل النية والمشهد وإنشاء بريميو الطلب (Premium Brief) وحل التعارضات (2 نقطتان)
-    p1 = brain.build_plan("ارسم شاب بلحية خفيفة قاعد بمقهى وعم يشرب قهوة بكاسة زجاج في ليل دامس مع شمس ساطعة", user_id="u1")
-    ok1 = (
-        p1.intent == "generate"
-        and p1.scene.has_humans
-        and p1.scene.has_liquids_or_glass
-        and len(p1.conflicts_detected) >= 1
-        and "بريميو الطلب" in p1.premium_brief.brief_summary_ar
-    )
-    s1 = 2.0 if ok1 else 0.0
-    total += s1
-    rows.append(("visual: brief+conflict", s1, 2, "premium brief + conflict resolved" if ok1 else "failed"))
-
-    # 2. قفل الهوية وتوجيه timbrooks/instruct-pix2pix للتعديل (2 نقطتان)
-    p2 = brain.build_plan(
-        "غير الخلفية فقط لحديقة",
-        user_id="u1",
-        attached_images_bytes=[b"img"],
-        available_providers={"instruct_pix2pix": True, "gemini": True, "flux": True},
-    )
-    ok2 = (
-        p2.edit_plan.is_edit
-        and p2.edit_plan.operation_type == "background_only"
-        and p2.recommended_provider == "instruct_pix2pix"
-        and p2.identity_lock.enabled
-        and p2.identity_lock.preserve_face_structure
-        and not p2.identity_lock.preserve_background
-    )
-    s2 = 2.0 if ok2 else 0.0
-    total += s2
-    rows.append(("visual: pix2pix+edit", s2, 2, "routed timbrooks/instruct-pix2pix + locked face" if ok2 else "failed"))
-
-    # 3. مراجعة الصورة وكتابة ملاحظات تصحيحية لنموذج التوليد وإعادة المحاولة (2 نقطتان)
-    valid_png = _b64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
-    attempts = []
-    def _mock_prov(prompt_en, ref_parts=None):
-        attempts.append(prompt_en)
-        return (b"bad" if len(attempts) == 1 else valid_png), "image/png", "mock-flux"
-    exec_res = brain.execute_plan(p1, user_id="u1", provider_runners={"flux": _mock_prov}, max_quality_retries=2)
-    ok3 = (
-        exec_res["status"] == "done"
-        and len(attempts) == 2
-        and "CRITIC NOTES FOR IMAGE GENERATOR" in attempts[1]
-        and p1.recommended_provider == "flux"
-    )
-    s3 = 2.0 if ok3 else 0.0
-    total += s3
-    rows.append(("visual: critic+retry", s3, 2, "critic wrote notes to generator + retried" if ok3 else "failed"))
-
-    # 4. عزل ذاكرة المستخدمين والرجوع للإصدارات وحماية رفع الصور (2 نقطتان)
-    brain.execute_plan(
-        p2,
-        user_id="u1",
-        provider_runners={"instruct_pix2pix": lambda _p, _r=None: (valid_png, "image/png", "timbrooks/instruct-pix2pix")},
-    )
-    hist_u1 = tmp_mem.list_history("u1")
-    hist_u2 = tmp_mem.list_history("u2")
-    rev = tmp_mem.revert_version("u1", target="first")
-    up_good = _G.validate_image_upload(valid_png, "photo.png")
-    up_bad_svg = _G.validate_image_upload(b"<svg><script>alert(1)</script></svg>", "evil.svg")
-    up_bad_trav = _G.validate_image_upload(valid_png, "../../etc/passwd.png")
-    ok4 = (len(hist_u1) >= 2 and len(hist_u2) == 0 and rev.version_id == hist_u1[0]["version_id"]
-           and up_good["ok"] and not up_bad_svg["ok"] and not up_bad_trav["ok"])
-    s4 = 2.0 if ok4 else 0.0
-    total += s4
-    rows.append(("visual: memory+guard", s4, 2, "isolated + revert + upload guard" if ok4 else "failed"))
-
-    return {"score": round(total, 2), "max": 8, "passed": total == 8.0, "rows": rows}
-
-
 if __name__ == "__main__":
     a = sys.argv[1:] or ["--prompt"]
     if a[0] == "--prompt":
         print(TEST_PROMPT)
     elif a[0] == "--gold":
         show(score_answer(GOLD_ANSWER))
-    elif a[0] == "--all":
-        show(score_answer(GOLD_ANSWER))
-        print("=" * 44)
-        im_res = score_image_engine()
-        for lbl, got, mx, why in im_res["rows"]:
-            print("%-24s %5s / %-3s %s" % (lbl, got, mx, why))
-        print("-" * 44)
-        print("IMAGE ENGINE TOTAL %.2f / %d" % (im_res["score"], im_res["max"]))
-        print("=" * 44)
-        from ryn_ai_stack import run_full_stack_diagnostics
-        diag = run_full_stack_diagnostics()
-        for c in diag["checks"]:
-            print("%-34s %s (%s)" % (c["name"], "PASS" if c["ok"] else "FAIL", c["detail"]))
-        print("-" * 44)
-        print("AI STACK DIAGNOSTICS: %d / %d PASSED (%dms)" % (diag["passed_count"], diag["total"], diag["elapsed_ms"]))
-    elif a[0] == "--image":
-        im_res = score_image_engine()
-        for lbl, got, mx, why in im_res["rows"]:
-            print("%-24s %5s / %-3s %s" % (lbl, got, mx, why))
-        print("-" * 44)
-        print("IMAGE ENGINE TOTAL %.2f / %d" % (im_res["score"], im_res["max"]))
     else:
         show(score_answer(open(a[0], encoding="utf-8").read()))
