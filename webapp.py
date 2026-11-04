@@ -486,9 +486,9 @@ body{background-color:var(--bg1);background-image:none}
 /* --- الرسائل --- */
 #app main#msgs{gap:22px;padding:8px max(14px,calc((100% - 768px)/2)) 24px}
 #app .bubble{padding:0;border-radius:0;font-size:16px;line-height:1.85;backdrop-filter:none}
-#app .bubble.bot{align-self:stretch;max-width:100%;background:transparent;border:0;box-shadow:none;padding:2px 4px}
-#app .bubble.me{align-self:flex-start;background:var(--surf2);border:0;box-shadow:none;border-radius:22px;padding:10px 16px;max-width:80%}
-#app .acts.me{align-self:flex-start}
+#app .bubble.bot{align-self:flex-start;max-width:92%;background:transparent;border:0;box-shadow:none;padding:2px 4px}
+#app .bubble.me{align-self:flex-end;background:var(--surf2);border:0;box-shadow:none;border-radius:22px;padding:10px 16px;max-width:80%}
+#app .acts.me{align-self:flex-end}
 .bot::after,.me::after{display:none}
 #app .bubble.bot.err{padding:10px 14px;border:1px solid var(--red)!important;border-radius:14px;background:rgba(255,93,108,.08)}
 #app .bubble.me.err{border:1px solid var(--red)!important}
