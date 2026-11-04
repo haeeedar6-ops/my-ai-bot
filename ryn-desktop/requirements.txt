@@ -2,5 +2,9 @@ requests>=2.31.0
 mss>=9.0.1
 Pillow>=10.2.0
 PyAutoGUI>=0.9.54
-customtkinter>=5.2.2
+pyperclip>=1.8.2
+pynput>=1.7.6
 keyring>=24.3.0
+# اختياري للأوامر الصوتية:
+# SpeechRecognition>=3.10.0
+# PyAudio>=0.2.14
