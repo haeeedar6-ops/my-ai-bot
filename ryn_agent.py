@@ -77,7 +77,7 @@ ALLOWED_KEYS = {
     "enter", "return", "tab", "escape", "esc", "backspace", "delete", "space",
     "up", "down", "left", "right", "home", "end", "pageup", "pagedown",
     "ctrl+a", "ctrl+c", "ctrl+v", "ctrl+x", "ctrl+s", "ctrl+z", "ctrl+f",
-    "alt+tab", "f1", "f2", "f5", "f11", "f12",
+    "alt+tab", "f1", "f2", "f5", "f11", "f12", "back",
 }
 
 ALLOWED_ACTION_FIELDS = {
@@ -95,7 +95,7 @@ ALLOWED_ACTION_FIELDS = {
 
 # أنماط محظورة افتراضياً في الإصدار الأول (Section 2 & Section 8: Blocked by default)
 BLOCKED_CONTENT_RE = re.compile(
-    r"(?i)(\b(?:rm\s+-rf|del\s+/[fsq]|format\s+[a-z]:|powershell|cmd\.exe|regedit|bcdedit|"
+    r"(?i)(\b(?:rm\s+-rf|del\s+/[fsq]|format\s+[a-z](?=:)|powershell|cmd\.exe|regedit|bcdedit|"
     r"netsh\s+advfirewall|shutdown\s+/[sr]|taskkill\s+/f|sudo\s+rm|chmod\s+777|curl\s+.*\|\s*(?:sh|bash))\b|"
     r"\b(?:credit\s*card|cvv|iban|swift\s*code|bank\s*transfer|wire\s*transfer|password\s*manager|"
     r"bitwarden|1password|keepass|metamask|seed\s*phrase|private\s*key)\b|"
@@ -546,7 +546,7 @@ class RynAgentCoreManager:
                     (now, u),
                 )
                 conn.execute(
-                    "UPDATE commands SET approval_status = 'cancelled' WHERE approval_status IN ('pending', 'approved')",
+                    "UPDATE commands SET approval_status = 'cancelled' WHERE approval_status IN ('pending', 'pending_approval', 'approved')",
                 )
             self._log_event(conn, u, "kill_switch", f"Kill switch set to {active}")
         return {"ok": True, "kill_switch": self._kill_switch_global}
@@ -618,7 +618,7 @@ class RynAgentCoreManager:
                     (now, task_id, u),
                 )
                 conn.execute(
-                    "UPDATE commands SET approval_status = 'cancelled' WHERE task_id = ? AND approval_status IN ('pending', 'approved')",
+                    "UPDATE commands SET approval_status = 'cancelled' WHERE task_id = ? AND approval_status IN ('pending', 'pending_approval', 'approved')",
                     (task_id,),
                 )
                 self._log_event(conn, u, "task_stopped", f"Cancelled task {task_id}", task_id=task_id)

@@ -1,50 +1,25 @@
-# bot_bi
+# my-ai-bot (Craftland AI + Ryn)
 
-أول مستودع صغير في حزمة Ryn AI. استخدمه لتجربة إضافات Ryn، ومحركات الذكاء الاصطناعي البصرية، ومساعدين الذكاء الاصطناعي الذكيين.
+بوت تيليجرام وتطبيق ويب (Ryn) مع وكيل تحكم بالأجهزة (ويندوز + أندرويد).
 
-## كيفية البدء
+## الملفات
+- `bot.py`: بوت تيليجرام (Gemini + OpenRouter + Groq) — يقرأ `knowledge/` قبل كل جواب.
+- `webapp.py`: واجهة الويب و API الوكيل (`/api/v1/agent/*`).
+- `ryn_agent.py`: نواة الوكيل (إقران، مهام، أوامر، سياسات أمان).
+- `ryn-desktop/`: عميل ويندوز (`python run_desktop.py`).
+- `ryn-android/`: عميل أندرويد (Android Studio).
+- `visual_brain/`, `image_providers/`, `image_processing/`: توليد وتعديل الصور.
 
-1. قم بتهيئة بيئة افتراضية (اختياري ولكن يُنصح به)
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate   # Windows: .venv\Scripts\activate
-   ```
+## التشغيل
+```bash
+pip install -r requirements.txt
+export BOT_TOKEN=... GEMINI_API_KEY=...   # الباقي اختياري (OPENROUTER_API_KEY, GROQ_API_KEY ...)
+python bot.py
+```
 
-2. قم بتثبيت التبعيات
-   ```bash
-   pip install -r requirements.txt
-   ```
+## الاختبارات
+```bash
+python -m unittest discover -s tests
+```
 
-3. قم بتوفير الرموز الخاصة (من .env)
-   ```bash
-   source .env
-   ```
-
-4. قم بتشغيل البرنامج النصي الرئيسي
-   ```bash
-   python main.py
-   ```
-
-## الإعدادات
-
-| المتغير | الوصف | القيمة الافتراضية |
-|----------|-------------|---------------|
-| `BOT_TOKEN` | رمز المصادقة للبوت | مطلوب |
-| `BOT_NAME` | الاسم العام للبوت | `bot_bi` |
-| `LOG_LEVEL` | مستوى السجل (`DEBUG`، `INFO`، `WARNING`، `ERROR`) | `INFO` |
-
-## الرموز
-
-أضف الرموز الخاصة ومحاسبة البيئة في ملف `.env` **لا يتم تحميلها أبدًا إلى المستودع**.
-
-## المساهمات
-
-إذا كنت ترغب في المساهمة، يرجى:
-- قم بإنشاء فرع (`git checkout -b feature/awesome`)؛
-- قم بإضافة اختبار (إذا كان يتعلق بوظيفة جديدة)؛
-- اتبع نمط الكود الحالي؛
-- قم بإنشاء طلب سحب وسأقوم بمراجعته.
-
-## الترخيص
-
-*لم يتم تحديده بعد* – فكر في استخدام MIT أو Apache 2.0 لاحقًا.
+لا تضع المفاتيح بالكود أبداً — كلها متغيرات بيئة (على Render من Environment).
