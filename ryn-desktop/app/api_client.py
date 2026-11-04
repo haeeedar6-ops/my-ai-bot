@@ -30,9 +30,15 @@ class RynAgentApiClient:
                     json=payload,
                     timeout=self.timeout,
                 )
-                data = r.json() if r.content else {}
+                try:
+                    data = r.json() if r.content else {}
+                except ValueError:
+                    data = {}
+                if r.status_code >= 500:
+                    # أخطاء السيرفر المؤقتة (مثل 502 أثناء استيقاظ Render) نعيد المحاولة عليها
+                    raise requests.ConnectionError(f"HTTP {r.status_code}")
                 if r.status_code >= 400:
-                    raise RuntimeError(data.get("error") or f"HTTP {r.status_code}")
+                    raise RuntimeError((data or {}).get("error") or f"HTTP {r.status_code}")
                 return data
             except requests.RequestException as e:
                 last_err = e
@@ -57,6 +63,7 @@ class RynAgentApiClient:
         return self.request_json("POST", "/api/v1/agent/tasks", {"goal": goal}, retries=2)
 
     def request_next_step(self, task_id: str, sequence: int, shot: Dict[str, Any], observation: str = "") -> Dict[str, Any]:
+        has_img = bool(shot.get("screenshot_b64"))
         return self.request_json(
             "POST",
             "/api/v1/agent/step",
@@ -64,9 +71,12 @@ class RynAgentApiClient:
                 "task_id": task_id,
                 "sequence": sequence,
                 "screenshot_b64": shot.get("screenshot_b64", ""),
-                "screen_width": shot.get("screen_width", 1920),
-                "screen_height": shot.get("screen_height", 1080),
+                # نرسل أبعاد الصورة التي يراها النموذج فعلاً؛ العميل يحوّل الإحداثيات للشاشة الحقيقية
+                "screen_width": shot.get("image_width", shot.get("screen_width", 1920)),
+                "screen_height": shot.get("image_height", shot.get("screen_height", 1080)),
                 "observation": observation,
+                # بدونها السيرفر يستعمل المخطط الاحتياطي البسيط ولا يستعمل نموذج الرؤية أبداً
+                "use_vision_model": has_img,
             },
             retries=3,
         )

@@ -5,6 +5,13 @@ action_executor.py — منفذ الأوامر المحلي الصارم (Strict
 import time
 from typing import Any, Callable, Dict
 
+# أسماء مفاتيح السيرفر -> أسماء PyAutoGUI
+_KEY_MAP = {
+    "escape": "esc",
+    "return": "enter",
+    "back": "browserback",
+}
+
 
 class StrictActionDispatcher:
     def __init__(self, dry_run: bool = False):
@@ -36,6 +43,8 @@ class StrictActionDispatcher:
         handler = self._dispatch_table.get(action)
         if handler is None:
             raise ValueError(f"لا توجد دالة تنفيذ محلية للعملية: {action}")
+        if not self.dry_run and self._pyautogui is None and action in ("click", "double_click", "type_text", "key_press", "scroll"):
+            raise RuntimeError("PyAutoGUI غير مثبتة — نفّذ: pip install pyautogui")
         note = handler(cmd)
         return {"status": "succeeded", "verification_note": note}
 
@@ -56,20 +65,42 @@ class StrictActionDispatcher:
             self._pyautogui.doubleClick(x=x, y=y)
         return f"Double-clicked at ({x}, {y})"
 
+    def _paste_text(self, txt: str) -> None:
+        """pyautogui.write لا تكتب العربية/اليونيكود — نستعمل الحافظة ثم Ctrl+V."""
+        try:
+            import pyperclip
+        except Exception:
+            raise RuntimeError("لكتابة نص غير إنجليزي ثبّت: pip install pyperclip")
+        try:
+            old = pyperclip.paste()
+        except Exception:
+            old = ""
+        pyperclip.copy(txt)
+        time.sleep(0.1)
+        self._pyautogui.hotkey("ctrl", "v")
+        time.sleep(0.2)
+        try:
+            pyperclip.copy(old)
+        except Exception:
+            pass
+
     def _do_type_text(self, cmd: Dict[str, Any]) -> str:
         txt = str(cmd.get("text") or "")
         if self._pyautogui and not self.dry_run:
-            self._pyautogui.write(txt, interval=0.02)
+            if txt.isascii():
+                self._pyautogui.write(txt, interval=0.02)
+            else:
+                self._paste_text(txt)
         return f"Typed text ({len(txt)} chars)"
 
     def _do_key_press(self, cmd: Dict[str, Any]) -> str:
         key = str(cmd.get("key") or "").lower()
         if self._pyautogui and not self.dry_run:
             if "+" in key:
-                parts = [p.strip() for p in key.split("+") if p.strip()]
+                parts = [_KEY_MAP.get(p.strip(), p.strip()) for p in key.split("+") if p.strip()]
                 self._pyautogui.hotkey(*parts)
             else:
-                self._pyautogui.press(key)
+                self._pyautogui.press(_KEY_MAP.get(key, key))
         return f"Pressed key '{key}'"
 
     def _do_scroll(self, cmd: Dict[str, Any]) -> str:
