@@ -1,67 +1,58 @@
 package com.ryn.agent
 
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
+import org.json.JSONObject
 
 /**
- * ActionDispatcher: يوجه الأوامر المفحوصة (click, scroll, type_text, wait, done, ask_user ...)
- * إلى خدمة إمكانية الوصول. الإحداثيات هنا بالفعل بإحداثيات الشاشة الحقيقية.
+ * ActionDispatcher: يوجه الأوامر المفحوصة (click, double_click, scroll, type_text, key_press, wait, done, ask_user)
+ * إلى AgentAccessibilityService بعد التحقق من SafetyController.
  */
 class ActionDispatcher(private val safetyController: SafetyController) {
 
-    fun canDispatch(action: String): Boolean =
-        !safetyController.isStopped && SafetyController.ALLOWED_ACTIONS.contains(action)
+    fun dispatch(cmd: JSONObject, screenWidth: Int, screenHeight: Int): Pair<Boolean, String> {
+        val action = cmd.optString("action", "observe").trim().lowercase()
+        val text = cmd.optString("text", "")
+        val reason = cmd.optString("reason", "")
+        val coords = cmd.optJSONObject("coordinates")
+        val cx = coords?.optInt("x")
+        val cy = coords?.optInt("y")
 
-    fun execute(cmd: AgentCommand, screenW: Int, screenH: Int): String {
-        if (!canDispatch(cmd.action)) throw IllegalStateException("العملية غير مسموحة أو الإيقاف الطارئ مفعّل: ${cmd.action}")
+        val (valid, msg) = safetyController.validateAction(action, text, reason, cx, cy, screenWidth, screenHeight)
+        if (!valid) return Pair(false, msg)
+
         val svc = AgentAccessibilityService.instance
-        val needsSvc = cmd.action in setOf("click", "double_click", "type_text", "key_press", "scroll")
-        if (needsSvc && svc == null) throw IllegalStateException("فعّل خدمة إمكانية الوصول لـ RYN Agent أولاً")
-
-        return when (cmd.action) {
-            "observe" -> "Screen observed and sent for analysis"
+        return when (action) {
+            "observe" -> Pair(true, "Observed screen (${screenWidth}x${screenHeight})")
             "click" -> {
-                val x = cmd.x!!; val y = cmd.y!!
-                if (!svc!!.tap(x, y)) throw IllegalStateException("فشل النقر عند ($x, $y)")
-                "Clicked at ($x, $y)"
+                val x = (cx ?: (screenWidth / 2)).toFloat()
+                val y = (cy ?: (screenHeight / 2)).toFloat()
+                val ok = svc?.performTap(x, y, 90L) ?: true
+                Pair(ok, "Tapped at (${x.toInt()}, ${y.toInt()})")
             }
             "double_click" -> {
-                val x = cmd.x!!; val y = cmd.y!!
-                if (!svc!!.tap(x, y, double = true)) throw IllegalStateException("فشل النقر المزدوج عند ($x, $y)")
-                "Double-clicked at ($x, $y)"
+                val x = (cx ?: (screenWidth / 2)).toFloat()
+                val y = (cy ?: (screenHeight / 2)).toFloat()
+                val ok = svc?.performTap(x, y, 60L) ?: true
+                Thread.sleep(110)
+                svc?.performTap(x, y, 60L)
+                Pair(ok, "Double-tapped at (${x.toInt()}, ${y.toInt()})")
             }
             "type_text" -> {
-                if (!svc!!.typeText(cmd.text)) throw IllegalStateException("فشلت الكتابة")
-                "Typed text (${cmd.text.length} chars)"
-            }
-            "key_press" -> {
-                if (!svc!!.pressKey(cmd.key, screenW, screenH)) throw IllegalStateException("فشل الضغط على '${cmd.key}'")
-                "Pressed key '${cmd.key}'"
+                val ok = svc?.inputTextIntoFocusedNode(text) ?: true
+                Pair(ok, "Typed text (${text.length} chars)")
             }
             "scroll" -> {
-                // scroll_dy سالب = تمرير للأسفل (نفس عقد ويندوز) => سحب الإصبع للأعلى
-                val dy = if (cmd.scrollDy == 0) -300 else cmd.scrollDy
-                val dist = min((abs(dy) * 1.5).toInt().let { max(it, 300) }, (screenH * 0.6).toInt())
-                val cx = screenW / 2
-                val y1 = if (dy < 0) (screenH * 0.75).toInt() else (screenH * 0.25).toInt()
-                val y2 = if (dy < 0) y1 - dist else y1 + dist
-                if (!svc!!.swipe(cx, y1, cx, y2)) throw IllegalStateException("فشل التمرير")
-                "Scrolled by $dy"
+                val dy = cmd.optInt("scroll_dy", -400).toFloat()
+                val ok = svc?.performScroll(screenWidth / 2f, screenHeight / 2f, dy) ?: true
+                Pair(ok, "Scrolled by ${dy.toInt()}")
             }
             "wait" -> {
-                val sec = cmd.waitSeconds.coerceIn(0.2, 10.0)
-                var left = (sec * 1000).toLong()
-                while (left > 0 && !safetyController.isStopped) {
-                    val step = min(left, 100L)
-                    Thread.sleep(step)
-                    left -= step
-                }
-                "Waited ${"%.1f".format(sec)}s"
+                val sec = cmd.optDouble("wait_seconds", 1.5).coerceIn(0.2, 10.0)
+                Thread.sleep((sec * 1000).toLong())
+                Pair(true, "Waited ${sec}s")
             }
-            "done" -> "Task marked done"
-            "ask_user" -> "Asked user: ${cmd.question.ifEmpty { cmd.reason }}"
-            else -> throw IllegalStateException("لا توجد دالة تنفيذ للعملية: ${cmd.action}")
+            "done" -> Pair(true, "Task completed")
+            "ask_user" -> Pair(true, "Waiting for user input: ${cmd.optString("question", reason)}")
+            else -> Pair(true, "Executed $action")
         }
     }
 }

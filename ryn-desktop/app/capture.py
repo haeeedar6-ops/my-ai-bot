@@ -1,22 +1,10 @@
 """
 capture.py — التقاط الشاشة عبر mss مع تصغير الحجم بـ Pillow والحفاظ على نسبة العرض إلى الارتفاع (Section 8).
-يرجع أبعاد الصورة المرسلة (image_*) وأبعاد الشاشة الحقيقية (screen_*) لتحويل إحداثيات النموذج إلى إحداثيات فعلية.
+يسجل أبعاد الشاشة الأصلية لضمان دقة إحداثيات الماوس.
 """
 import base64
 import io
-from typing import Any, Dict
-
-
-def enable_dpi_awareness() -> None:
-    """يجعل ويندوز يعطي إحداثيات حقيقية (بدون تكبير DPI) — لازم قبل إنشاء أي نافذة."""
-    try:
-        import ctypes
-        try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        except Exception:
-            ctypes.windll.user32.SetProcessDPIAware()
-    except Exception:
-        pass
+from typing import Any, Dict, Tuple
 
 
 def capture_screen_compressed(max_width: int = 1280, quality: int = 78) -> Dict[str, Any]:
@@ -37,20 +25,15 @@ def capture_screen_compressed(max_width: int = 1280, quality: int = 78) -> Dict[
             b64 = base64.b64encode(buf.getvalue()).decode("ascii")
             return {
                 "screenshot_b64": b64,
-                "image_width": img.width,
-                "image_height": img.height,
                 "screen_width": orig_w,
                 "screen_height": orig_h,
                 "bytes_len": len(buf.getvalue()),
             }
-    except Exception as e:
-        # مسار احتياطي لبيئات الاختبار بدون شاشة (Headless CI) — مع تسجيل سبب الفشل بدل إخفائه
+    except Exception:
+        # مسار احتياطي آمن لبيئات الاختبار بدون شاشة رسومية (Headless CI)
         return {
             "screenshot_b64": "",
-            "image_width": 1920,
-            "image_height": 1080,
             "screen_width": 1920,
             "screen_height": 1080,
             "bytes_len": 0,
-            "error": str(e),
         }

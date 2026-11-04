@@ -1,110 +1,94 @@
 package com.ryn.agent
 
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.io.IOException
-import java.util.concurrent.TimeUnit
-
-class ApiException(message: String, val httpCode: Int = 0) : Exception(message)
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
- * ApiClient: يتصل بمسارات /api/v1/agent/* عبر HTTPS مع ترويسة Authorization: Bearer <device_token>،
- * مهلة زمنية، وإعادة محاولة بتراجع أسي على أخطاء الشبكة وأخطاء 5xx (مثل استيقاظ Render).
+ * ApiClient: يتصل بمسارات /api/v1/agent/* على Render مع ترويسة Authorization: Bearer <device_token>.
  */
-class ApiClient(baseUrl: String, private val tokenProvider: () -> String?) {
-    private val base = baseUrl.trim().trimEnd('/')
-    private val jsonType = "application/json; charset=utf-8".toMediaType()
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
-        .build()
+class ApiClient(private val pairingManager: PairingManager) {
 
-    fun endpoint(path: String): String = base + path
+    fun endpoint(path: String): String = pairingManager.getServerUrl().trimEnd('/') + path
 
-    fun request(method: String, path: String, payload: JSONObject? = null, retries: Int = 3): JSONObject {
-        var last: Exception? = null
-        for (attempt in 0 until retries) {
-            try {
-                val builder = Request.Builder().url(endpoint(path))
-                tokenProvider()?.takeIf { it.isNotBlank() }?.let { builder.header("Authorization", "Bearer $it") }
-                if (method.equals("GET", true)) builder.get()
-                else builder.method(method.uppercase(), (payload ?: JSONObject()).toString().toRequestBody(jsonType))
-
-                http.newCall(builder.build()).execute().use { resp ->
-                    val text = resp.body?.string().orEmpty()
-                    val json = try { JSONObject(text) } catch (e: Exception) { JSONObject() }
-                    if (resp.code >= 500) throw IOException("HTTP ${resp.code}")
-                    if (resp.code >= 400) {
-                        throw ApiException(json.optString("error").ifEmpty { "HTTP ${resp.code}" }, resp.code)
-                    }
-                    return json
-                }
-            } catch (e: ApiException) {
-                throw e
-            } catch (e: IOException) {
-                last = e
-                if (attempt < retries - 1) {
-                    try { Thread.sleep(800L * (1L shl attempt)) } catch (_: InterruptedException) { break }
+    fun postJson(path: String, body: JSONObject): JSONObject {
+        val url = URL(endpoint(path))
+        val conn = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 20000
+            readTimeout = 25000
+            doInput = true
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            setRequestProperty("X-Requested-With", "astra")
+            pairingManager.getDeviceToken()?.let { tok ->
+                if (tok.isNotBlank()) {
+                    setRequestProperty("Authorization", "Bearer $tok")
                 }
             }
         }
-        throw ApiException("انقطع الاتصال بالسيرفر (Offline): ${last?.message}")
+        OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
+            writer.write(body.toString())
+            writer.flush()
+        }
+        val code = conn.responseCode
+        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+        val text = stream?.let {
+            BufferedReader(InputStreamReader(it, Charsets.UTF_8)).use { r -> r.readText() }
+        } ?: "{}"
+        return try {
+            JSONObject(text).put("_http_code", code)
+        } catch (_: Exception) {
+            JSONObject().put("ok", false).put("error", "HTTP $code").put("_http_code", code)
+        }
     }
 
-    fun completePairing(code: String, deviceName: String): JSONObject =
-        request(
-            "POST", "/api/v1/agent/pair/complete",
-            JSONObject().put("code", code).put("device_name", deviceName).put("platform", "android"),
-            retries = 2
-        )
+    fun completePairing(code: String, deviceName: String): JSONObject {
+        val payload = JSONObject()
+            .put("code", code.trim())
+            .put("device_name", deviceName)
+            .put("platform", "android")
+        return postJson("/api/v1/agent/pair/complete", payload)
+    }
 
-    fun createTask(goal: String): JSONObject =
-        request("POST", "/api/v1/agent/tasks", JSONObject().put("goal", goal), retries = 2)
+    fun createTask(goal: String): JSONObject {
+        val payload = JSONObject().put("goal", goal.trim())
+        return postJson("/api/v1/agent/tasks", payload)
+    }
 
-    fun requestNextStep(taskId: String, sequence: Int, shot: Shot, observation: String): JSONObject =
-        request(
-            "POST", "/api/v1/agent/step",
-            JSONObject()
-                .put("task_id", taskId)
-                .put("sequence", sequence)
-                .put("screenshot_b64", shot.b64)
-                // نرسل أبعاد الصورة التي يراها النموذج؛ والتطبيق يحوّل الإحداثيات للشاشة الحقيقية
-                .put("screen_width", shot.imageW)
-                .put("screen_height", shot.imageH)
-                .put("observation", observation)
-                // بدونها السيرفر يستعمل مخططاً بسيطاً ولا يستعمل نموذج الرؤية
-                .put("use_vision_model", shot.b64.isNotEmpty()),
-            retries = 3
-        )
+    fun sendVoiceGoal(transcript: String): JSONObject {
+        val payload = JSONObject()
+            .put("transcript", transcript.trim())
+            .put("start_task", true)
+        return postJson("/api/v1/agent/voice", payload)
+    }
 
-    fun reportResult(
-        taskId: String, commandId: String, sequence: Int, status: String,
-        note: String = "", error: String = "", shot: Shot? = null
-    ): JSONObject =
-        request(
-            "POST", "/api/v1/agent/result",
-            JSONObject()
-                .put("task_id", taskId)
-                .put("command_id", commandId)
-                .put("sequence", sequence)
-                .put("status", status)
-                .put("verification_note", note)
-                .put("error", error)
-                .put("screenshot", shot?.b64 ?: ""),
-            retries = 2
-        )
+    fun requestNextStep(taskId: String, sequence: Int, screenshotB64: String, width: Int, height: Int, observation: String): JSONObject {
+        val payload = JSONObject()
+            .put("task_id", taskId)
+            .put("sequence", sequence)
+            .put("screenshot_b64", screenshotB64)
+            .put("screen_width", width)
+            .put("screen_height", height)
+            .put("observation", observation)
+        return postJson("/api/v1/agent/step", payload)
+    }
 
-    fun stopTask(taskId: String = ""): JSONObject =
-        request("POST", "/api/v1/agent/stop", JSONObject().put("task_id", taskId), retries = 1)
+    fun reportResult(taskId: String, commandId: String, sequence: Int, status: String, verificationNote: String): JSONObject {
+        val payload = JSONObject()
+            .put("task_id", taskId)
+            .put("command_id", commandId)
+            .put("sequence", sequence)
+            .put("status", status)
+            .put("verification_note", verificationNote)
+        return postJson("/api/v1/agent/result", payload)
+    }
 
-    fun sendVoice(transcript: String): JSONObject =
-        request(
-            "POST", "/api/v1/agent/voice",
-            JSONObject().put("transcript", transcript).put("start_task", true),
-            retries = 2
-        )
+    fun stopTask(taskId: String = ""): JSONObject {
+        val payload = JSONObject().put("task_id", taskId)
+        return postJson("/api/v1/agent/stop", payload)
+    }
 }
