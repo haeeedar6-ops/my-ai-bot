@@ -454,6 +454,142 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
 
 .ch-btns{display:inline-flex;gap:6px;align-items:center}
 
+/* ===== سكن جديد: شكل Gemini / ChatGPT (الروبوت والخلفية المتحركة محفوظين) ===== */
+:root,[data-theme]{--bg1:#131314;--bg2:#1a1b1d;--surf:rgba(255,255,255,.06);--surf2:rgba(255,255,255,.1);--line:rgba(255,255,255,.1);--pop:#252628;--sub:rgba(236,236,242,.62);--txt:#ececf1}
+body{background-color:var(--bg1);background-image:none}
+#app{max-width:none;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;padding:calc(env(safe-area-inset-top,0px) + 6px) 0 0;
+ background:radial-gradient(circle at 12% 0%,rgba(var(--acc-rgb),.14),transparent 45%),radial-gradient(circle at 90% 100%,rgba(var(--g-rgb),.06),transparent 45%),var(--bg1)}
+@media(min-width:600px){
+ #app{height:100vh;height:100dvh;border-radius:0;border:0;box-shadow:none;padding:6px 0 0}
+ html[data-layout="mobile"] #app{max-width:520px;height:min(880px,96vh);border:1px solid var(--line);border-radius:28px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+}
+.grid3d{opacity:.4}
+#fx{opacity:.65}
+
+/* --- الرأس + الروبوت --- */
+.top{background:none;padding-bottom:4px;gap:0}
+.mini{width:40px;height:40px;top:8px;border-radius:50%;background:transparent;border:0;color:var(--txt)}
+#histBtn{right:8px}#menuBtn{left:8px}
+#app .mini:hover{background:var(--surf);border:0;box-shadow:none}
+.botwrap{width:84px;height:84px;transition:width .3s ease,height .3s ease}
+#app:has(#msgs .hint) .botwrap{width:112px;height:112px}
+.botwrap::before{border:1.5px dashed rgba(var(--acc-rgb),.32)}
+.botwrap::after{box-shadow:0 0 26px rgba(var(--acc-rgb),.22),inset 0 0 18px rgba(var(--g-rgb),.08)}
+#say{color:var(--sub);text-shadow:none;font-size:13px}
+#mname{background:transparent;border:0;font-size:15px;font-weight:600;padding:3px 10px;border-radius:12px}
+#mname::after{content:" ⌄";opacity:.6}
+#app #mname:hover{background:var(--surf);border:0;box-shadow:none}
+#memBtn{color:var(--sub);background:var(--surf);border:1px solid var(--line)}
+#memBtn.off{color:var(--sub);background:transparent;border-color:var(--line)}
+#app #memBtn:hover{border-color:var(--acc);box-shadow:none}
+
+/* --- الرسائل --- */
+#app main#msgs{gap:22px;padding:8px max(14px,calc((100% - 768px)/2)) 24px}
+#app .bubble{padding:0;border-radius:0;font-size:16px;line-height:1.85;backdrop-filter:none}
+#app .bubble.bot{align-self:stretch;max-width:100%;background:transparent;border:0;box-shadow:none;padding:2px 4px}
+#app .bubble.me{align-self:flex-start;background:var(--surf2);border:0;box-shadow:none;border-radius:22px;padding:10px 16px;max-width:80%}
+#app .acts.me{align-self:flex-start}
+.bot::after,.me::after{display:none}
+#app .bubble.bot.err{padding:10px 14px;border:1px solid var(--red)!important;border-radius:14px;background:rgba(255,93,108,.08)}
+#app .bubble.me.err{border:1px solid var(--red)!important}
+.sys{color:var(--sub);text-shadow:none}
+.note{margin:-14px 6px 0}
+.acts{margin:-12px 4px 0}
+.acts.me{margin:-12px 4px 0}
+.h{color:var(--txt);text-shadow:none}
+.bubble code{background:var(--surf2);border:0;color:var(--txt)}
+.code{background:#0d0d0e;border:1px solid var(--line);border-radius:14px}
+.ch{background:#2a2b2d;color:var(--sub);padding:8px 14px}
+.ch .cp{background:transparent;border:0;color:var(--sub)}
+.ch .cp:hover{color:var(--txt)}
+.code pre code{color:#e6e6ea}
+.pic{border:1px solid var(--line)}
+.fcard{background:var(--surf);border:1px solid var(--line)}
+.fcard .fico{background:var(--surf2);border:0;color:var(--txt)}
+.fcard.dl:hover{border-color:var(--acc);box-shadow:none}
+.typing i{background:var(--sub)}
+mark{background:rgba(var(--acc-rgb),.3);color:var(--txt)}
+.hint{color:var(--sub);font-size:15px}
+.hint b{color:var(--txt);font-size:20px}
+
+/* --- شريط الكتابة (حبة وحدة مثل ChatGPT) --- */
+#app footer{width:calc(100% - 24px);max-width:768px;margin:0 auto calc(env(safe-area-inset-bottom,0px) + 12px);padding:6px 8px;gap:6px;
+ background:var(--pop);border:1px solid var(--line);border-radius:30px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.dbtn{transform:none;width:40px;height:40px;border:0;border-radius:50%;background:var(--surf);box-shadow:none}
+.dbtn:hover{background:var(--surf2)}
+.dbtn svg{transform:none;width:20px;height:20px;stroke:var(--txt);filter:none}
+#app #send{background:var(--acc);border:0;box-shadow:none}
+#app #send svg{stroke:#fff;filter:none}
+#app #send.stop{background:var(--red);border:0;box-shadow:none}
+#app #send.stop svg{fill:#fff;stroke:#fff;filter:none}
+.pill{background:transparent;border:0;box-shadow:none;min-height:44px}
+.pill:focus-within{border:0;box-shadow:none}
+textarea{font-size:16px}
+textarea::placeholder{color:var(--sub)}
+.ib svg{stroke:var(--sub);filter:none}
+.ib:hover svg{stroke:var(--txt)}
+#chip{background:var(--pop);border:1px solid var(--line);width:calc(100% - 24px);max-width:768px;margin:0 auto 8px}
+.tob{background:var(--pop);border:1px solid var(--line);color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.4);bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
+
+/* --- الدرج الجانبي والقوائم --- */
+#app .drawer{background:#171718;border-left:1px solid var(--line)}
+.dh{color:var(--txt);font-size:15px;font-weight:700}
+.dnew{background:transparent;border:1px solid var(--line);color:var(--txt);box-shadow:none;border-radius:12px;font-weight:600}
+.dnew:hover{background:var(--surf)}
+.dsearch{background:var(--surf);border:0}
+.dcnt{background:var(--surf2);color:var(--sub)}
+.ci{border:0;background:transparent;border-radius:12px;padding:10px 12px}
+.ci:hover{background:var(--surf)}
+.ci.on{background:var(--surf2)}
+.dquota-btn,.dquota-btn:hover{background:transparent;border:1px solid var(--line);color:var(--txt);box-shadow:none;transform:none;font-weight:600}
+.dquota-btn:hover{background:var(--surf)}
+#menu{background:var(--pop);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#menu button:hover,#menu a:hover{background:var(--surf)}
+.themes{border-top:1px solid var(--line)}
+.themes i.on{box-shadow:none}
+#sheet{background:var(--pop);border:1px solid var(--line);border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.5);bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
+#sheet button:hover,#sheet button.on{background:var(--surf);color:var(--txt)}
+#sheet button.on small,#sheet button:hover small{color:var(--sub)}
+.dia{transform:none;border-radius:50%;background:var(--pop);border:1px solid var(--line);box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.dia span{transform:none}
+.dia:hover,.dia.on{background:var(--surf2);border-color:var(--acc);box-shadow:none}
+.floating{gap:14px}
+
+/* --- النوافذ وشاشة الدخول --- */
+#memModal,#aboutModal,#quotaModal,#agentModal{background:rgba(0,0,0,.6)}
+.mbox{background:var(--pop);border:1px solid var(--line);border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.mh,.msec label{color:var(--txt)}
+.msec,.mitem,.qm-item,.alist li{background:var(--surf);border:1px solid var(--line)}
+.minp,.mtxt,.sys-box{background:rgba(0,0,0,.25);border:1px solid var(--line)}
+.minp:focus,.mtxt:focus{border-color:var(--acc)}
+.madd button,#app .msave{background:var(--acc);color:#fff;box-shadow:none;border:0}
+.mbtns button{border:1px solid var(--line);background:var(--surf);color:var(--txt)}
+.mbtns button:hover{border-color:var(--acc);color:var(--txt)}
+.qm-top small,.stack-pills span{color:var(--sub);background:var(--surf2);border:0}
+.syscheck-btn{border:1px solid var(--line);background:var(--surf);color:var(--txt);box-shadow:none}
+.syscheck-btn:hover{background:var(--acc);color:#fff;box-shadow:none}
+.sys-row span{color:var(--sub)}
+.alist li b,.about p b,.aby a{color:var(--txt)}
+.chips span{background:var(--surf);border:1px solid var(--line)}
+.overlay{background-image:radial-gradient(circle at 50% 22%,rgba(var(--acc-rgb),.18),transparent 55%)}
+.box{background:var(--pop);border:1px solid var(--line);border-radius:28px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.box h2{color:var(--txt);text-shadow:none}
+.box input{background:rgba(0,0,0,.25);border:1px solid var(--line)}
+.box input:focus{border-color:var(--acc)}
+.box button{background:var(--acc);color:#fff;box-shadow:none}
+#toast{background:var(--pop);border:1px solid var(--line);color:var(--txt)}
+#lbSave{background:var(--acc);color:#fff;box-shadow:none}
+
+/* --- شاشة الكمبيوتر: درج جانبي ثابت + محتوى بالنص --- */
+@media(min-width:960px){
+ html:not([data-layout="mobile"]) #app{max-width:none;width:100%;height:100vh;height:100dvh;border-radius:0;border:0;box-shadow:none;padding:6px 280px 0 0}
+ html:not([data-layout="mobile"]) #app #drawer{width:280px;background:#171718;backdrop-filter:none;border-left:1px solid var(--line);box-shadow:none}
+ html:not([data-layout="mobile"]) #app .floating{right:296px;bottom:96px}
+ html:not([data-layout="mobile"]) #app #sheet{right:296px;left:16px;max-width:560px}
+ html:not([data-layout="mobile"]) #app #pcLayoutBtn{right:8px}
+ html:not([data-layout="mobile"]) #app footer{padding:6px 8px}
+}
+
 </style>
 </head>
 <body>
@@ -574,7 +710,7 @@ textarea::placeholder{color:rgba(238,240,255,.42)}
       <input type="file" id="docFile" hidden multiple>
     </div>
     <button class="dbtn" id="send" aria-label="إرسال" title="إرسال">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
     </button>
   </footer>
 
