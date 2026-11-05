@@ -18,10 +18,13 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@v3
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.5"
       - name: Build Debug APK
         working-directory: ./ryn-android
-        run: gradle assembleDebug
+        run: gradle assembleDebug --no-daemon --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: RYN-Agent-Phone-APK
@@ -39,7 +42,7 @@ jobs:
         working-directory: ./ryn-desktop
         run: |
           pip install -r requirements.txt pyinstaller
-          pyinstaller --noconfirm --onefile --windowed --name RYN-Agent-PC run_desktop.py
+          pyinstaller --noconfirm --onefile --windowed --name RYN-Agent-PC --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 --hidden-import pyperclip run_desktop.py
       - uses: actions/upload-artifact@v4
         with:
           name: RYN-Agent-Windows-PC-EXE
