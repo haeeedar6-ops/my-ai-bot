@@ -144,5 +144,52 @@ class TestRegexFixes(unittest.TestCase):
             self.assertNotIn("pending_approval", st)
 
 
+class TestChatCommands(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.core = ryn_agent.RynAgentCoreManager(db_path=os.path.join(self.tmp.name, "c.db"))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _pair(self, uid="u9", platform="android"):
+        code = self.core.start_pairing(uid)["pairing_code"]
+        return self.core.complete_pairing(code, "phone", platform)["device_token"]
+
+    def test_no_device_means_normal_chat(self):
+        self.assertIsNone(self.core.handle_chat_agent_command("u9", "افتح واتساب وارسل لأمي مرحبا"))
+
+    def test_natural_command_creates_pending_task(self):
+        tok = self._pair()
+        self.core.authenticate_device(tok)  # يحدّث last_seen فيصير متصل
+        reply = self.core.handle_chat_agent_command("u9", "افتح واتساب وارسل لأمي مرحبا")
+        self.assertIn("🚀", reply)
+        pend = self.core.get_pending_task(tok)
+        self.assertTrue(pend["pending"])
+        self.assertIn("واتساب", pend["goal"])
+
+    def test_regular_chat_not_hijacked(self):
+        tok = self._pair()
+        self.core.authenticate_device(tok)
+        for txt in ("ارسل لي الكود بالتفصيل", "افتح ملف الاختبار واشرحلي", "اكتب لي قصيدة", "شغل هالكود بايثون"):
+            self.assertIsNone(self.core.handle_chat_agent_command("u9", txt), txt)
+
+    def test_offline_device_message(self):
+        tok = self._pair()
+        with self.core._conn() as conn:
+            conn.execute("UPDATE devices SET last_seen_at = ?", (1.0,))
+        reply = self.core.handle_chat_agent_command("u9", "افتح تطبيق الصور")
+        self.assertIn("مو متصل", reply)
+        self.assertFalse(self.core.get_pending_task(tok)["pending"])
+
+    def test_pending_cleared_after_step(self):
+        tok = self._pair()
+        self.core.authenticate_device(tok)
+        self.core.handle_chat_agent_command("u9", "افتح تطبيق الصور")
+        pend = self.core.get_pending_task(tok)
+        self.core.propose_next_step(tok, pend["task_id"], 1, "", 1080, 2400, "")
+        self.assertFalse(self.core.get_pending_task(tok)["pending"])
+
+
 if __name__ == "__main__":
     unittest.main()
