@@ -26,16 +26,17 @@ jobs:
       - name: Build Debug APK
         working-directory: ./ryn-android
         run: |
-          set -o pipefail
-          gradle assembleDebug --no-daemon --console=plain 2>&1 | tee build.log
-      - name: Show real errors
-        if: failure()
-        working-directory: ./ryn-android
-        run: |
-          grep -E "^e: |What went wrong|Execution failed|Could not|AAPT|Manifest merger|error:" -A3 build.log | head -60 > errors.txt || true
-          echo "=========== الأخطاء الحقيقية ==========="
-          cat errors.txt
-          { echo '### ❌ أخطاء بناء الأندرويد'; echo '```'; cat errors.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          set +e
+          gradle assembleDebug --no-daemon --console=plain > build.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "################ الأخطاء الحقيقية (آخر الصفحة) ################"
+            grep -E "^e: " build.log | sed 's#file:///home/runner/work/my-ai-bot/my-ai-bot/ryn-android/app/src/main/java/com/ryn/agent/##' | head -40
+            grep -E "What went wrong" -A6 build.log | head -30
+            echo "###############################################################"
+            grep -E "^e: " build.log | head -10 | while read -r line; do echo "::error::$line"; done
+          fi
+          exit $code
       - uses: actions/upload-artifact@v4
         with:
           name: RYN-Agent-Phone-APK
