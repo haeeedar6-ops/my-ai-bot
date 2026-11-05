@@ -77,7 +77,7 @@ ALLOWED_KEYS = {
     "enter", "return", "tab", "escape", "esc", "backspace", "delete", "space",
     "up", "down", "left", "right", "home", "end", "pageup", "pagedown",
     "ctrl+a", "ctrl+c", "ctrl+v", "ctrl+x", "ctrl+s", "ctrl+z", "ctrl+f",
-    "alt+tab", "f1", "f2", "f5", "f11", "f12",
+    "alt+tab", "f1", "f2", "f5", "f11", "f12", "back",
 }
 
 ALLOWED_ACTION_FIELDS = {
@@ -95,7 +95,7 @@ ALLOWED_ACTION_FIELDS = {
 
 # أنماط محظورة افتراضياً في الإصدار الأول (Section 2 & Section 8: Blocked by default)
 BLOCKED_CONTENT_RE = re.compile(
-    r"(?i)(\b(?:rm\s+-rf|del\s+/[fsq]|format\s+[a-z]:|powershell|cmd\.exe|regedit|bcdedit|"
+    r"(?i)(\b(?:rm\s+-rf|del\s+/[fsq]|format\s+[a-z](?=:)|powershell|cmd\.exe|regedit|bcdedit|"
     r"netsh\s+advfirewall|shutdown\s+/[sr]|taskkill\s+/f|sudo\s+rm|chmod\s+777|curl\s+.*\|\s*(?:sh|bash))\b|"
     r"\b(?:credit\s*card|cvv|iban|swift\s*code|bank\s*transfer|wire\s*transfer|password\s*manager|"
     r"bitwarden|1password|keepass|metamask|seed\s*phrase|private\s*key)\b|"
@@ -546,7 +546,7 @@ class RynAgentCoreManager:
                     (now, u),
                 )
                 conn.execute(
-                    "UPDATE commands SET approval_status = 'cancelled' WHERE approval_status IN ('pending', 'approved')",
+                    "UPDATE commands SET approval_status = 'cancelled' WHERE approval_status IN ('pending', 'pending_approval', 'approved')",
                 )
             self._log_event(conn, u, "kill_switch", f"Kill switch set to {active}")
         return {"ok": True, "kill_switch": self._kill_switch_global}
@@ -618,7 +618,7 @@ class RynAgentCoreManager:
                     (now, task_id, u),
                 )
                 conn.execute(
-                    "UPDATE commands SET approval_status = 'cancelled' WHERE task_id = ? AND approval_status IN ('pending', 'approved')",
+                    "UPDATE commands SET approval_status = 'cancelled' WHERE task_id = ? AND approval_status IN ('pending', 'pending_approval', 'approved')",
                     (task_id,),
                 )
                 self._log_event(conn, u, "task_stopped", f"Cancelled task {task_id}", task_id=task_id)
@@ -1033,6 +1033,19 @@ class RynAgentCoreManager:
         r"^(?:نفذ\s+على\s+(?:الكمبيوتر|الجهاز|ويندوز|الهاتف|أندرويد)|يا\s*وكيل\s+نفذ|شغل\s+الوكيل\s*:?)\s*(.+)$",
         re.I | re.S,
     )
+    _APP_CUES = (
+        r"(?:تطبيق|برنامج|واتس(?:اب)?|whatsapp|تيليجرام|تلغرام|telegram|ماسنجر|فيسبوك|انستغرام|إنستغرام|انستا|سناب|"
+        r"تيك\s*توك|يوتيوب|كروم|الكاميرا|الصور|المعرض|الاستوديو|الإعدادات|الاعدادات|الحاسبة|الساعة|الخرائط|"
+        r"جيميل|gmail|الرسائل|الهاتف|الجوال)"
+    )
+    # أوامر طبيعية: "افتح واتساب وارسل لأمي مرحبا" — تُحوَّل لمهمة جهاز فقط لو فيها اسم تطبيق وفي جهاز متصل
+    _AGENT_INTENT_RE = re.compile(
+        r"^(?:يا\s*وكيل\s+)?(?:افتح|افتحلي|شغل|ارسل|أرسل|ابعت|بعت|اتصل|كلم)\b.*?" + _APP_CUES,
+        re.I | re.S,
+    )
+    _PHONE_HINT_RE = re.compile(r"(?:الهاتف|الجوال|أندرويد|اندرويد|واتس|تيك\s*توك|سناب|انستا|الكاميرا|المعرض)", re.I)
+    _PC_HINT_RE = re.compile(r"(?:الكمبيوتر|الحاسوب|اللابتوب|ويندوز|كروم)", re.I)
+    ONLINE_WINDOW_S = 90
     _AGENT_STATUS_CHAT_RE = re.compile(
         r"^(?:حالة\s+الوكيل|حالة\s+الأجهزة|أجهزتي\s+المتصلة|سجل\s+الوكيل|agent\s+status)\s*[.!؟?]*$",
         re.I,
@@ -1075,7 +1088,62 @@ class RynAgentCoreManager:
             for tk in st["tasks"][:4]:
                 lines.append(f"  - 📋 مهمة `{tk['id']}`: **{tk['goal'][:60]}** ← `{tk['status']}` (الخطوة {tk['current_step']})")
             return "\n".join(lines)
+        if len(t) <= 300 and self._AGENT_INTENT_RE.match(t):
+            return self._natural_device_command(user_id, t)
         return None
+
+    def _pick_online_device(self, user_id: str, text: str):
+        """يرجع (جهاز متصل أو None، هل في أجهزة مقترنة أصلاً)."""
+        u = str(user_id or "main").strip() or "main"
+        with self._lock, self._conn() as conn:
+            rows = conn.execute(
+                "SELECT id, name, platform, last_seen_at FROM devices WHERE user_id = ? AND revoked_at IS NULL ORDER BY last_seen_at DESC",
+                (u,),
+            ).fetchall()
+        if not rows:
+            return None, False
+        now = time.time()
+        online = [r for r in rows if r["last_seen_at"] and now - float(r["last_seen_at"]) <= self.ONLINE_WINDOW_S]
+        if not online:
+            return None, True
+        want = "windows" if self._PC_HINT_RE.search(text) and not self._PHONE_HINT_RE.search(text) else (
+            "android" if self._PHONE_HINT_RE.search(text) else ""
+        )
+        if want:
+            for r in online:
+                if r["platform"] == want:
+                    return r, True
+        return online[0], True
+
+    def _natural_device_command(self, user_id: str, text: str) -> Optional[str]:
+        dev, has_any = self._pick_online_device(user_id, text)
+        if not has_any:
+            return None  # ما في جهاز مقترن: خلّيها دردشة عادية
+        if dev is None:
+            return "⚠️ جهازك مو متصل هلأ. افتح تطبيق RYN على الجهاز وفعّل «استقبال الأوامر من الدردشة» وجرّب مرة ثانية."
+        goal = re.sub(r"^يا\s*وكيل\s+", "", text).strip()
+        try:
+            tr = self.create_task(user_id, goal=goal, device_id=dev["id"])
+        except Exception as e:
+            return f"⛔ تعذر إرسال الأمر للجهاز: {e}"
+        return (
+            f"🚀 تمام، عم نفّذ على **{dev['name']}** ({dev['platform']}): {tr['goal']}\n"
+            f"رح يطلب منك تأكيد على الجهاز قبل أي إرسال أو كتابة. زر ⏹ العائم بيوقف كل شي فوراً."
+        )
+
+    def get_pending_task(self, raw_token: str) -> Dict[str, Any]:
+        """مهمة منتظرة لهذا الجهاز (أُنشئت من الدردشة) — استعلام خفيف بدون استهلاك حصة الطلبات."""
+        dev = self.authenticate_device(raw_token)
+        cutoff = time.time() - 600
+        with self._lock, self._conn() as conn:
+            row = conn.execute(
+                "SELECT id, goal FROM tasks WHERE user_id = ? AND device_id = ? AND status = 'WAITING_FOR_DEVICE' "
+                "AND created_at > ? ORDER BY created_at ASC LIMIT 1",
+                (dev["user_id"], dev["id"], cutoff),
+            ).fetchone()
+        if not row:
+            return {"pending": False}
+        return {"pending": True, "task_id": row["id"], "goal": row["goal"]}
 
 
 _GLOBAL_AGENT_CORE: Optional[RynAgentCoreManager] = None

@@ -1,13 +1,16 @@
 """
-ui.py — واجهة المستخدم الرسومية لعميل ويندوز (CustomTkinter / Tkinter — Section 8 & 10).
-تدعم التحكم الكتابي والصوتي مع الرد الصوتي المسموع ومفتاح الإيقاف الفوري F12.
+ui.py — واجهة المستخدم الرسومية لعميل ويندوز (Tkinter).
+تتضمن حالة الاقتران، إقران الجهاز، بدء/إيقاف المهمة، زر الصوت، زر الطوارئ F12 (عام)، وسجل النشاط.
+كل تحديثات الواجهة تتم من الخيط الرئيسي فقط عبر طابور (Tkinter غير آمن بين الخيوط).
 """
+import queue
 import threading
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox
 
 from .action_executor import StrictActionDispatcher
 from .api_client import RynAgentApiClient
+from .capture import enable_dpi_awareness
 from .local_config import load_config
 from .pairing import load_device_token, store_device_token
 from .safety import LocalSafetyGate
@@ -16,43 +19,79 @@ from .voice import PushToTalkController
 
 
 def launch_desktop_ui() -> None:
+    enable_dpi_awareness()
     cfg = load_config()
     tok = load_device_token()
     api = RynAgentApiClient(cfg["server_url"], device_token=tok)
-    voice_ctrl = PushToTalkController(api)
 
     root = tk.Tk()
-    root.title("RYN Agent · Windows Execution Client (Voice & Text)")
-    root.geometry("560x650")
+    root.title("RYN Agent · Windows Execution Client")
+    root.geometry("540x660")
     root.configure(bg="#070816")
 
-    def confirm_dialog(cmd):
-        return messagebox.askyesno(
-            "تأكيد أمان RYN Agent",
-            f"هل توافق على تنفيذ العملية التالية؟\n\nالعملية: {cmd.get('action')}\nالسبب: {cmd.get('reason')}\nالخطورة: {cmd.get('risk')}",
-        )
+    ui_q: "queue.Queue" = queue.Queue()
+
+    def append_log(msg: str) -> None:  # آمنة للاستدعاء من أي خيط
+        ui_q.put(("log", msg))
+
+    def confirm_dialog(cmd) -> bool:  # تُستدعى من خيط المهمة
+        ev = threading.Event()
+        box = {"ok": False}
+        ui_q.put(("confirm", cmd, ev, box))
+        ev.wait(timeout=60)
+        return box["ok"]
 
     safety = LocalSafetyGate(confirm_callback=confirm_dialog)
     dispatcher = StrictActionDispatcher(dry_run=False)
+    runner = DesktopTaskRunner(
+        api, safety, dispatcher, log_cb=append_log,
+        max_width=int(cfg.get("max_image_width", 1280)), jpeg_quality=int(cfg.get("jpeg_quality", 78)),
+    )
+    ptt = PushToTalkController(api)
+    busy = {"v": False}
 
     log_box = tk.Text(root, height=14, bg="#0d0a26", fg="#eef0ff", font=("Consolas", 10))
-    def append_log(msg: str) -> None:
-        log_box.insert(tk.END, msg + "\n")
-        log_box.see(tk.END)
 
-    runner = DesktopTaskRunner(api, safety, dispatcher, log_cb=append_log)
+    def pump() -> None:
+        try:
+            while True:
+                item = ui_q.get_nowait()
+                if item[0] == "log":
+                    log_box.insert(tk.END, item[1] + "\n")
+                    log_box.see(tk.END)
+                elif item[0] == "status":
+                    status_lbl.config(text=item[1])
+                elif item[0] == "confirm":
+                    _, cmd, ev, box = item
+                    box["ok"] = messagebox.askyesno(
+                        "تأكيد أمان RYN Agent",
+                        f"هل توافق على تنفيذ العملية التالية؟\n\nالعملية: {cmd.get('action')}\nالسبب: {cmd.get('reason')}\nالخطورة: {cmd.get('risk')}",
+                    )
+                    ev.set()
+        except queue.Empty:
+            pass
+        root.after(100, pump)
 
-    root.bind("<F12>", lambda _e: (safety.trigger_emergency_stop(), append_log("🛑 [F12] تم تفعيل الإيقاف الطارئ!")))
+    def emergency() -> None:
+        safety.trigger_emergency_stop()
+        append_log("🛑 تم تفعيل الإيقاف الطارئ!")
 
-    header = tk.Label(root, text="🤖 RYN Desktop Agent (صوت وكتابة)", bg="#070816", fg="#00ff9d", font=("Segoe UI", 16, "bold"))
-    header.pack(pady=8)
+    root.bind("<F12>", lambda _e: emergency())
+    # F12 عام (يشتغل حتى لو النافذة بالخلفية) — يحتاج pynput، وإن لم يتوفر يبقى F12 داخل النافذة فقط
+    try:
+        from pynput import keyboard as _kb
+        _hk = _kb.GlobalHotKeys({"<f12>": emergency})
+        _hk.daemon = True
+        _hk.start()
+    except Exception:
+        pass
+
+    tk.Label(root, text="🤖 RYN Desktop Agent", bg="#070816", fg="#00ff9d", font=("Segoe UI", 16, "bold")).pack(pady=8)
 
     status_lbl = tk.Label(
         root,
         text="🟢 متصل ومقترن" if tok else "⚪ غير مقترن — أدخل كود الإقران السداسي",
-        bg="#070816",
-        fg="#eef0ff",
-        font=("Segoe UI", 10),
+        bg="#070816", fg="#eef0ff", font=("Segoe UI", 10),
     )
     status_lbl.pack(pady=2)
 
@@ -61,16 +100,18 @@ def launch_desktop_ui() -> None:
     code_entry = tk.Entry(pair_frame, width=14, font=("Consolas", 13), justify="center")
     code_entry.pack(side=tk.LEFT, padx=4)
 
-    def do_pair():
+    def do_pair() -> None:
         c = code_entry.get().strip()
-        try:
-            res = api.complete_pairing(c, cfg["device_name"], "windows")
-            store_device_token(res["device_id"], res["device_token"])
-            status_lbl.config(text=f"🟢 مقترن كـ {res['device_id']}")
-            append_log(f"✅ تم إقران الجهاز بنجاح ({res['device_id']})")
-            voice_ctrl.speak("تم إقران جهاز الكمبيوتر بنجاح")
-        except Exception as e:
-            append_log(f"⛔ فشل الإقران: {e}")
+
+        def _work():
+            try:
+                res = api.complete_pairing(c, cfg["device_name"], "windows")
+                store_device_token(res["device_id"], res["device_token"])
+                ui_q.put(("status", f"🟢 مقترن كـ {res['device_id']}"))
+                append_log(f"✅ تم إقران الجهاز بنجاح ({res['device_id']})")
+            except Exception as e:
+                append_log(f"⛔ فشل الإقران: {e}")
+        threading.Thread(target=_work, daemon=True).start()
 
     tk.Button(pair_frame, text="🔗 إقران الجهاز", bg="#8b5cf6", fg="#ffffff", command=do_pair).pack(side=tk.LEFT, padx=4)
 
@@ -81,50 +122,82 @@ def launch_desktop_ui() -> None:
     btn_frame = tk.Frame(root, bg="#070816")
     btn_frame.pack(pady=6)
 
-    def start_task_thread():
+    def run_in_thread(make_task_id) -> None:
+        if busy["v"]:
+            append_log("⚠️ في مهمة شغالة حالياً.")
+            return
+        busy["v"] = True
+
+        def _work():
+            try:
+                task_id = make_task_id()
+                if task_id:
+                    res = runner.run_task_to_completion(task_id)
+                    append_log(f"🏁 النتيجة: {res.get('status')}")
+            except Exception as e:
+                append_log(f"⛔ خطأ: {e}")
+            finally:
+                busy["v"] = False
+        threading.Thread(target=_work, daemon=True).start()
+
+    def start_task() -> None:
         g = goal_entry.get().strip()
         if not g:
             return
-        def _work():
+
+        def _make():
+            tr = api.create_task(g)
+            append_log(f"🚀 بدأت المهمة {tr['task_id']}: {g}")
+            return tr["task_id"]
+        run_in_thread(_make)
+
+    def talk() -> None:
+        def _make():
+            append_log("🎤 احكي هلأ...")
+            res = ptt.listen_and_send()
+            append_log(f"🎤 سمعتك: {res.get('transcription')}")
+            return (res.get("task") or {}).get("task_id")
+        run_in_thread(_make)
+
+    tk.Button(btn_frame, text="▶ بدء المهمة", bg="#00ff9d", fg="#031a10", font=("Segoe UI", 10, "bold"), command=start_task).pack(side=tk.LEFT, padx=6)
+    tk.Button(btn_frame, text="🎤 تكلم", bg="#3b82f6", fg="#ffffff", font=("Segoe UI", 10, "bold"), command=talk).pack(side=tk.LEFT, padx=6)
+    tk.Button(btn_frame, text="🛑 إيقاف طوارئ (F12)", bg="#ff5d6c", fg="#ffffff", font=("Segoe UI", 10, "bold"), command=emergency).pack(side=tk.LEFT, padx=6)
+
+    listen = {"on": True}
+    listen_var = tk.BooleanVar(value=True)
+
+    def on_listen_toggle() -> None:
+        listen["on"] = bool(listen_var.get())
+        append_log("📡 استقبال أوامر الدردشة: " + ("مفعّل" if listen["on"] else "مغلق"))
+
+    tk.Checkbutton(
+        root, text="📡 استقبال الأوامر من الدردشة (مثال: افتح واتساب وارسل لأمي مرحبا)", variable=listen_var,
+        command=on_listen_toggle, bg="#070816", fg="#eef0ff", selectcolor="#0d0a26", activebackground="#070816",
+        activeforeground="#eef0ff",
+    ).pack(pady=2)
+
+    def poll_chat_commands() -> None:
+        import time as _t
+        while True:
+            _t.sleep(4)
             try:
-                tr = api.create_task(g)
-                append_log(f"🚀 بدأت المهمة الكتابية {tr['task_id']}: {g}")
-                voice_ctrl.speak("بدأت تنفيذ المهمة على سطح المكتب")
-                res = runner.run_task_to_completion(tr["task_id"])
-                if res.get("status") == "COMPLETED":
-                    voice_ctrl.speak("اكتملت المهمة بنجاح")
-            except Exception as e:
-                append_log(f"⛔ خطأ: {e}")
-        threading.Thread(target=_work, daemon=True).start()
+                if busy["v"] or not listen["on"] or not api.device_token:
+                    continue
+                res = api.get_pending()
+                if not res.get("pending"):
+                    continue
+                busy["v"] = True
+                append_log(f"📥 وصل أمر من الدردشة: {res.get('goal')}")
+                try:
+                    out = runner.run_task_to_completion(res["task_id"])
+                    append_log(f"🏁 النتيجة: {out.get('status')}")
+                finally:
+                    busy["v"] = False
+            except Exception:
+                pass  # شبكة/سيرفر: نعيد المحاولة بالدورة الجاية
 
-    def start_voice_task():
-        spoken = simpledialog.askstring("🎤 أمر صوتي لـ RYN Agent", "تحدث (أو أمْلِ صوتياً Win+H) بالأمر المطلوب تنفيذه:")
-        if not spoken or not spoken.strip():
-            return
-        goal_entry.delete(0, tk.END)
-        goal_entry.insert(0, spoken.strip())
-        def _vwork():
-            try:
-                vr = voice_ctrl.send_voice_goal(spoken.strip(), start_task=True)
-                tid = (vr.get("task") or {}).get("task_id") or ""
-                append_log(f"🎙️ أمر صوتي: {spoken.strip()} -> {tid}")
-                if tid:
-                    runner.run_task_to_completion(tid)
-            except Exception as e:
-                append_log(f"⛔ خطأ بالأمر الصوتي: {e}")
-        threading.Thread(target=_vwork, daemon=True).start()
+    threading.Thread(target=poll_chat_commands, daemon=True).start()
 
-    tk.Button(btn_frame, text="▶ تنفيذ كتابي", bg="#00ff9d", fg="#031a10", font=("Segoe UI", 10, "bold"), command=start_task_thread).pack(side=tk.LEFT, padx=5)
-    tk.Button(btn_frame, text="🎤 أمر صوتي (Push-to-Talk)", bg="#a855f7", fg="#ffffff", font=("Segoe UI", 10, "bold"), command=start_voice_task).pack(side=tk.LEFT, padx=5)
-    tk.Button(
-        btn_frame,
-        text="🛑 إيقاف طوارئ (F12)",
-        bg="#ff5d6c",
-        fg="#ffffff",
-        font=("Segoe UI", 10, "bold"),
-        command=lambda: (safety.trigger_emergency_stop(), append_log("🛑 تم إيقاف المهمة فوراً!")),
-    ).pack(side=tk.LEFT, padx=5)
-
-    log_box.pack(padx=14, pady=10, fill=tk.BOTH, expand=True)
-    append_log("💡 اضغط F12 في أي لحظة لإيقاف الوكيل فوراً.")
+    log_box.pack(fill=tk.BOTH, expand=True, padx=12, pady=10)
+    pump()
     root.mainloop()
