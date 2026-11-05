@@ -32,8 +32,10 @@ jobs:
         if: failure()
         working-directory: ./ryn-android
         run: |
+          grep -E "^e: |What went wrong|Execution failed|Could not|AAPT|Manifest merger|error:" -A3 build.log | head -60 > errors.txt || true
           echo "=========== الأخطاء الحقيقية ==========="
-          grep -nE "^e: |^w: .*error|error:|What went wrong|Execution failed|Could not|AAPT|Manifest merger" -A4 build.log | head -80
+          cat errors.txt
+          { echo '### ❌ أخطاء بناء الأندرويد'; echo '```'; cat errors.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: RYN-Agent-Phone-APK
