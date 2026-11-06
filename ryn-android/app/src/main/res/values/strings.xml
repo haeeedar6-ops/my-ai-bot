@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RYN Agent</string>
+    <string name="accessibility_description">يسمح لـ RYN Agent بتنفيذ النقر والتمرير والكتابة على الشاشة فقط بعد إقران جهازك وموافقتك، مع زر إيقاف طارئ ظاهر دائماً.</string>
+</resources>
