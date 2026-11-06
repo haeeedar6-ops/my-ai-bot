@@ -726,6 +726,11 @@ textarea::placeholder{color:var(--sub)}
     </div>
     <div id="dList"></div>
     <div class="d-actions">
+      <button type="button" class="dquota-btn" id="dDlConvBtn">💾 تنزيل المحادثة الحالية (JSON/MD)</button>
+      <button type="button" class="dquota-btn" id="dExpAllBtn">📦 تصدير كل المحادثات (Export All)</button>
+      <button type="button" class="dquota-btn" id="dImpConvBtn">📂 استيراد / استعادة محادثة</button>
+      <input type="file" id="dImpConvFile" hidden accept=".json,application/json">
+      <button type="button" class="dquota-btn" id="dVoiceReadBtn">🔊 قراءة المحادثة صوتياً (TTS)</button>
       <button type="button" class="dquota-btn" id="dAgentBtn">🤖 وكيل الأجهزة (Windows / Android)</button>
       <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود النماذج وفحص النظام</button>
     </div>
@@ -1063,7 +1068,64 @@ function saveStore(){
     catch(e){if(chats.length<=2)return;const k=chats.length>12?Math.max(1,Math.ceil(chats.length*.15)):1;chats.splice(chats.length-k,k)}
   }
 }
-function touch(){const c=curChat();c.ts=Date.now();c.title=titleOf(c.msgs);store.chats=[c].concat(store.chats.filter(x=>x!==c))}
+function touch(){const c=curChat();c.ts=Date.now();c.title=titleOf(c.msgs);store.chats=[c].concat(store.chats.filter(x=>x!==c));if(c)saveToIndexedDB(c.id,c)}
+
+/* ===== الترقية المتكاملة: IndexedDB Cache + تصدير/استيراد المحادثات + القراءة الصوتية (One RYN v2) ===== */
+const RYN_IDB_NAME='RYN_Conversations_IDB',RYN_IDB_STORE='conversations';
+function saveToIndexedDB(convId,chatData){
+  try{
+    if(!window.indexedDB)return;
+    const req=indexedDB.open(RYN_IDB_NAME,1);
+    req.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains(RYN_IDB_STORE))db.createObjectStore(RYN_IDB_STORE,{keyPath:'id'})};
+    req.onsuccess=e=>{
+      const db=e.target.result;
+      const tx=db.transaction(RYN_IDB_STORE,'readwrite');
+      tx.objectStore(RYN_IDB_STORE).put({id:convId,updatedAt:Date.now(),data:chatData});
+      tx.oncomplete=()=>{
+        api('/api/v2/conversations/'+encodeURIComponent(convId)+'/sync-confirm',{method:'POST',body:JSON.stringify({device_id:'browser_indexeddb'})}).catch(()=>{});
+      };
+    };
+  }catch(e){}
+}
+if($('#dDlConvBtn'))$('#dDlConvBtn').onclick=async()=>{
+  const cid=store.cur||'default';
+  window.open('/api/v2/conversations/'+encodeURIComponent(cid)+'/export?format=md','_blank');
+  toast('💾 جاري تنزيل المحادثة الحالية...');
+};
+if($('#dExpAllBtn'))$('#dExpAllBtn').onclick=()=>{
+  window.open('/api/v2/conversations/export-all','_blank');
+  toast('📦 جاري تصدير أرشيف RYN_Conversations.zip...');
+};
+if($('#dImpConvBtn'))$('#dImpConvBtn').onclick=()=>$('#dImpConvFile').click();
+if($('#dImpConvFile'))$('#dImpConvFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const txt=await f.text();const j=JSON.parse(txt);
+    const r=await api('/api/v2/conversations/import',{method:'POST',body:JSON.stringify(j)});
+    const d=await r.json();
+    if(r.ok&&d.ok){toast('✅ تم استيراد المحادثة والتحقق منها ('+d.total_messages+' رسالة)');}
+    else{toast('⚠️ '+(d.error||'فشل استيراد المحادثة'));}
+  }catch(err){toast('❌ ملف المحادثة غير صالح');}
+};
+let rynTtsAudio=null;
+if($('#dVoiceReadBtn'))$('#dVoiceReadBtn').onclick=async()=>{
+  try{
+    if(rynTtsAudio&&!rynTtsAudio.paused){rynTtsAudio.pause();rynTtsAudio=null;await api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({action:'stop'})});toast('⏹️ تم إيقاف القراءة الصوتية');return;}
+    const ms=M();const lastBot=[...ms].reverse().find(m=>m.role==='model');
+    const txtToRead=lastBot?lastBot.text:(ms.length?ms[ms.length-1].text:'أهلاً بك في رين');
+    toast('🔊 جاري توليد الصوت...');
+    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:txtToRead,conversation_id:store.cur})});
+    const d=await r.json();
+    if(r.ok&&d.audio_b64){
+      rynTtsAudio=new Audio('data:'+(d.mime_type||'audio/wav')+';base64,'+d.audio_b64);
+      rynTtsAudio.play().catch(()=>{});
+      toast('🔊 جاري القراءة الصوتية...');
+    }else if(window.speechSynthesis){
+      const ut=new SpeechSynthesisUtterance(txtToRead);ut.lang='ar-SA';window.speechSynthesis.speak(ut);
+    }
+  }catch(e){toast('⚠️ تعذر تشغيل القراءة الصوتية');}
+};
+
 function newChat(silent){
   const c=curChat&&store.cur?curChat():null;
   if(c&&!c.msgs.length&&!silent){closeDrawer();return}
@@ -1384,7 +1446,7 @@ async function send(){
     let r=null,d=null;
     for(let postTry=0;postTry<3&&!aborted;postTry++){
       try{
-        r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,history:hist,memory:mem,emo:emo})});
+        r=await api(isImg?'/api/image':'/api/chat',{method:'POST',body:JSON.stringify(isImg?{prompt:text}:{message:text,conversation_id:store.cur,history:hist,memory:mem,emo:emo})});
         d=await r.json();
         break;
       }catch(postErr){
@@ -6275,7 +6337,7 @@ def register(app, b):
             if j and j.get("status") == "running":
                 j["progress"] = str(t)[:80]
 
-    def run_job(job_id, text, history, mem_prompt="", emo=False, u="main", net=False):
+    def run_job(job_id, text, history, mem_prompt="", emo=False, u="main", net=False, conv_id=None, idem_key=""):
         try:
             T = b.types
             W = wid(u)
@@ -6345,6 +6407,17 @@ def register(app, b):
                     chroma_ctx = AIStack.get_chroma_memory().query_relevant_context(u, text, top_k=3)
                     if chroma_ctx:
                         mem_prompt = chroma_ctx + mem_prompt
+                except Exception:
+                    _ = None
+                try:
+                    ms = AIStack.get_memory_service()
+                    if ms is not None:
+                        ltm_ctx = ms.build_bounded_context_pack(u, text)
+                        if ltm_ctx:
+                            mem_prompt = ltm_ctx + mem_prompt
+                    pol = AIStack.get_response_policy()
+                    if pol is not None:
+                        mem_prompt = pol.build_policy_instruction(text) + mem_prompt
                 except Exception:
                     _ = None
             fix_intent = bool(_FIX_RE.search(text))
@@ -6506,14 +6579,41 @@ def register(app, b):
                     AIStack.get_quota_tracker().record_usage(u, bucket_used, requests_delta=1, tokens_delta=est_tok)
                 except Exception:
                     _ = None
+            if AIStack is not None and answer:
+                try:
+                    pol = AIStack.get_response_policy()
+                    if pol is not None and not has_gh_action_tags:
+                        answer = pol.clean_natural_response(answer, user_question=text)
+                except Exception:
+                    _ = None
+                try:
+                    cs = AIStack.get_conversation_service()
+                    if cs is not None:
+                        cs.append_message(
+                            user_id=u,
+                            role="assistant",
+                            content=answer,
+                            conversation_id=conv_id or f"conv_{u}_default",
+                            modality="text",
+                            status="succeeded",
+                            model_id=str(note or "gemini"),
+                            idempotency_key=(f"{idem_key}_reply" if idem_key else f"job_{job_id}_reply"),
+                        )
+                    ms = AIStack.get_memory_service()
+                    if ms is not None and new_mems:
+                        for nm in new_mems:
+                            ms.add_memory(user_id=u, content=nm, layer="user_profile", provenance="user_fact", confidence=0.95)
+                except Exception:
+                    _ = None
             res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
+                   "conversation_id": (conv_id or f"conv_{u}_default"),
                    "file": (files_out[0] if files_out else None), "files": files_out, "gh_pending": gh_pending_flag}
         except Exception as e:
             log.exception("web chat error")
             msg = b.friendly_error(e)
             if getattr(e, "code", None) == 402:
                 msg = "💳 رصيد OpenRouter ما بيكفي لهالموديل (مدفوع). اشحن رصيد أو اختار موديل تاني."
-            res = {"status": "error", "text": msg}
+            res = {"status": "error", "text": msg, "conversation_id": (conv_id or f"conv_{u}_default")}
         finish(job_id, res)
 
     @app.post("/api/chat")
@@ -6534,6 +6634,24 @@ def register(app, b):
             md().update(state="normal", reason="", since=0.0)
         now = time.time()
         cur_u = uid()
+        conv_id = str(data.get("conversation_id") or "").strip() or f"conv_{cur_u}_default"
+        idem_key = str(data.get("idempotency_key") or "").strip()
+        user_msg_rec = None
+        if AIStack is not None:
+            try:
+                cs = AIStack.get_conversation_service()
+                if cs is not None:
+                    user_msg_rec = cs.append_message(
+                        user_id=cur_u,
+                        role="user",
+                        content=text[:400000],
+                        conversation_id=conv_id,
+                        modality=str(data.get("modality") or "text"),
+                        status="succeeded",
+                        idempotency_key=idem_key,
+                    )
+            except Exception as _cse:
+                log.warning("ConversationService append warning: %s", str(_cse)[:120])
         with jlock:
             for k in [k for k, v in jobs.items() if now - v["ts"] > 3600]:
                 jobs.pop(k, None)
@@ -6541,10 +6659,10 @@ def register(app, b):
             if len(running_for_u) >= 3:
                 return jsonify(error="في عدة طلبات شغّالة بالخلفية، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
-            jobs[job_id] = {"status": "running", "ts": now, "uid": cur_u, "prompt": text[:160]}
-        threading.Thread(target=run_job, args=(job_id, text[:400000], clean_history(data.get("history")), mem_prompt, emo_on, cur_u),
+            jobs[job_id] = {"status": "running", "ts": now, "uid": cur_u, "prompt": text[:160], "conversation_id": conv_id}
+        threading.Thread(target=run_job, args=(job_id, text[:400000], clean_history(data.get("history")), mem_prompt, emo_on, cur_u, False, conv_id, idem_key),
                          daemon=True).start()
-        return jsonify(job=job_id)
+        return jsonify(job=job_id, conversation_id=conv_id, message_id=(user_msg_rec.get("message_id") if user_msg_rec else ""))
 
     @app.get("/api/job/latest")
     def api_job_latest():
@@ -7578,6 +7696,482 @@ def register(app, b):
             return jsonify(error="وحدة RYN Agent غير متاحة"), 503
         body = request.get_json(silent=True) or {}
         return jsonify(RynAgent.get_agent_core().set_kill_switch(uid(), active=bool(body.get("active", True))))
+
+
+    # ---------- مسارات الترقية المتكاملة المرقّمة (/api/v2/* — One RYN — One Brain — One Memory) ----------
+    @app.get("/api/v2/conversations")
+    def api_v2_list_conversations():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        cs = AIStack.get_conversation_service()
+        inc_del = request.args.get("include_deleted", "0") == "1"
+        return jsonify(ok=True, user_id=uid(), conversations=cs.list_conversations(uid(), include_deleted=inc_del))
+
+    @app.post("/api/v2/conversations/messages")
+    def api_v2_append_message():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            msg = AIStack.get_conversation_service().append_message(
+                user_id=uid(),
+                role=str(body.get("role") or "user"),
+                content=str(body.get("content") or ""),
+                conversation_id=str(body.get("conversation_id") or "").strip() or None,
+                modality=str(body.get("modality") or "text"),
+                status=str(body.get("status") or "succeeded"),
+                model_id=str(body.get("model_id") or "gemini"),
+                metadata=body.get("metadata") if isinstance(body.get("metadata"), dict) else None,
+                attachment_refs=body.get("attachment_refs") if isinstance(body.get("attachment_refs"), list) else None,
+                idempotency_key=str(body.get("idempotency_key") or ""),
+            )
+            return jsonify(ok=True, message=msg)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.get("/api/v2/conversations/<conversation_id>/messages")
+    def api_v2_get_messages(conversation_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        try:
+            lim = int(request.args.get("limit") or 100)
+            after_seq = int(request.args.get("after_sequence") or 0)
+            msgs = AIStack.get_conversation_service().get_messages(uid(), conversation_id, limit=lim, after_sequence=after_seq)
+            return jsonify(ok=True, conversation_id=conversation_id, messages=msgs, count=len(msgs))
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.get("/api/v2/conversations/<conversation_id>/export")
+    def api_v2_export_conversation(conversation_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        try:
+            cs = AIStack.get_conversation_service()
+            ms = AIStack.get_memory_service()
+            sums = ms.list_summaries(uid(), conversation_id=conversation_id) if ms else []
+            mems = ms.export_memories(uid()) if ms else []
+            exp = cs.export_conversation(uid(), conversation_id, summaries=sums, memories=mems)
+            fmt = (request.args.get("format") or "json").lower()
+            if fmt == "md":
+                resp = Response(exp["conversation_md"], mimetype="text/markdown; charset=utf-8")
+                resp.headers["Content-Disposition"] = f"attachment; filename=conversation_{conversation_id}.md"
+                return resp
+            return jsonify(ok=True, **exp)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.get("/api/v2/conversations/export-all")
+    def api_v2_export_all_conversations():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        try:
+            cs = AIStack.get_conversation_service()
+            ms = AIStack.get_memory_service()
+            mems = ms.export_memories(uid()) if ms else []
+            zip_b = cs.export_all_zip_bytes(uid(), memories=mems)
+            resp = Response(zip_b, mimetype="application/zip")
+            resp.headers["Content-Disposition"] = "attachment; filename=RYN_Conversations.zip"
+            return resp
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/conversations/import")
+    def api_v2_import_conversation():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            res = AIStack.get_conversation_service().import_conversation(
+                user_id=uid(),
+                payload=body,
+                device_id=str(body.get("device_id") or "browser_client"),
+            )
+            return jsonify(**res)
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/conversations/<conversation_id>/sync-confirm")
+    def api_v2_confirm_sync(conversation_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            res = AIStack.get_conversation_service().confirm_client_local_save(
+                uid(), conversation_id, device_id=str(body.get("device_id") or "browser_indexeddb")
+            )
+            return jsonify(ok=True, conversation=res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/conversations/<conversation_id>/restore")
+    def api_v2_restore_conversation(conversation_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        try:
+            return jsonify(AIStack.get_conversation_service().restore_conversation(uid(), conversation_id))
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.delete("/api/v2/conversations/<conversation_id>")
+    def api_v2_delete_conversation(conversation_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة المحادثات غير متاحة"), 503
+        try:
+            hard = request.args.get("hard", "0") == "1"
+            return jsonify(AIStack.get_conversation_service().delete_conversation(uid(), conversation_id, hard_delete=hard))
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    # ---------- مسارات الملخصات والذاكرة طويلة المدى (/api/v2/memory/* & /api/v2/summaries/*) ----------
+    @app.get("/api/v2/summaries")
+    def api_v2_list_summaries():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_memory_service() is None:
+            return jsonify(error="خدمة الذاكرة غير متاحة"), 503
+        cid = str(request.args.get("conversation_id") or "").strip() or None
+        ms = AIStack.get_memory_service()
+        return jsonify(
+            ok=True,
+            summaries=ms.list_summaries(uid(), conversation_id=cid),
+            queue=ms.get_summary_queue_status(uid()),
+        )
+
+    @app.post("/api/v2/summaries/retry")
+    def api_v2_retry_summaries():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_memory_service() is None or AIStack.get_conversation_service() is None:
+            return jsonify(error="خدمة الذاكرة غير متاحة"), 503
+        ms = AIStack.get_memory_service()
+        cs = AIStack.get_conversation_service()
+        def _fetch_win(u_id, c_id, st_seq, en_seq):
+            all_m = cs.get_messages(u_id, c_id, limit=500)
+            return [m for m in all_m if st_seq <= int(m["sequence"]) <= en_seq]
+        retried = ms.retry_failed_summaries(uid(), _fetch_win)
+        return jsonify(ok=True, retried_count=len(retried), summaries=retried)
+
+    @app.get("/api/v2/memory")
+    def api_v2_retrieve_memory():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_memory_service() is None:
+            return jsonify(error="خدمة الذاكرة غير متاحة"), 503
+        q = str(request.args.get("query") or "").strip()
+        scope = str(request.args.get("project_scope") or "default").strip()
+        ms = AIStack.get_memory_service()
+        if q:
+            items = ms.retrieve(uid(), q, project_scope=scope, top_k=int(request.args.get("top_k") or 10))
+        else:
+            items = ms.export_memories(uid(), project_scope=scope)
+        return jsonify(ok=True, user_id=uid(), items=items, count=len(items))
+
+    @app.post("/api/v2/memory")
+    def api_v2_add_memory():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_memory_service() is None:
+            return jsonify(error="خدمة الذاكرة غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            item = AIStack.get_memory_service().add_memory(
+                user_id=uid(),
+                content=str(body.get("content") or ""),
+                layer=str(body.get("layer") or "knowledge_memory"),
+                provenance=str(body.get("provenance") or "user_fact"),
+                project_scope=str(body.get("project_scope") or "default"),
+                confidence=float(body.get("confidence") or 0.95),
+                source_refs=body.get("source_refs") if isinstance(body.get("source_refs"), list) else None,
+                pinned=bool(body.get("pinned", False)),
+            )
+            return jsonify(ok=True, item=item)
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/memory/<memory_id>/correct")
+    def api_v2_correct_memory(memory_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_memory_service() is None:
+            return jsonify(error="خدمة الذاكرة غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            item = AIStack.get_memory_service().correct_memory(
+                user_id=uid(),
+                old_memory_id=memory_id,
+                corrected_content=str(body.get("content") or ""),
+                source_refs=body.get("source_refs") if isinstance(body.get("source_refs"), list) else None,
+            )
+            return jsonify(ok=True, item=item)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/memory/<memory_id>/pin")
+    def api_v2_pin_memory(memory_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_memory_service() is None:
+            return jsonify(error="خدمة الذاكرة غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            item = AIStack.get_memory_service().pin_memory(uid(), memory_id, pinned=bool(body.get("pinned", True)))
+            return jsonify(ok=True, item=item)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.delete("/api/v2/memory/<memory_id>")
+    def api_v2_delete_memory(memory_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_memory_service() is None:
+            return jsonify(error="خدمة الذاكرة غير متاحة"), 503
+        try:
+            return jsonify(AIStack.get_memory_service().delete_memory(uid(), memory_id))
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    # ---------- مسارات العقل الصوتي الموحّد (/api/v2/voice/* — Section 7) ----------
+    @app.post("/api/v2/voice/sessions")
+    def api_v2_voice_create_session():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_voice_service() is None:
+            return jsonify(error="خدمة الصوت غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            sess = AIStack.get_voice_service().create_session(
+                user_id=uid(),
+                conversation_id=str(body.get("conversation_id") or "").strip() or None,
+                voice_id=str(body.get("voice_id") or "").strip() or None,
+                speed=float(body.get("speed") or 1.0),
+                mic_permission_granted=bool(body.get("mic_permission_granted", True)),
+                retain_raw_audio=bool(body.get("retain_raw_audio", False)),
+            )
+            return jsonify(ok=True, session=sess)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/voice/transcribe")
+    def api_v2_voice_transcribe():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_voice_service() is None:
+            return jsonify(error="خدمة الصوت غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        f = request.files.get("audio")
+        audio_b = f.read() if f else b""
+        mime_t = (f.mimetype if f else str(body.get("mime_type") or "audio/webm"))
+        try:
+            res = AIStack.get_voice_service().transcribe_upload(
+                user_id=uid(),
+                audio_bytes=audio_b,
+                mime_type=mime_t,
+                session_id=str(body.get("session_id") or request.form.get("session_id") or "").strip() or None,
+                conversation_id=str(body.get("conversation_id") or request.form.get("conversation_id") or "").strip() or None,
+                corrected_transcript=body.get("corrected_transcript") or request.form.get("corrected_transcript"),
+                auto_send_to_chat=bool(body.get("auto_send_to_chat", False)),
+                idempotency_key=str(body.get("idempotency_key") or request.form.get("idempotency_key") or ""),
+            )
+            return jsonify(**res)
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/voice/stream")
+    def api_v2_voice_stream():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_voice_service() is None:
+            return jsonify(error="خدمة الصوت غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            res = AIStack.get_voice_service().process_stream_event(
+                user_id=uid(),
+                session_id=str(body.get("session_id") or ""),
+                event_type=str(body.get("event") or body.get("event_type") or ""),
+                payload=body,
+            )
+            return jsonify(**res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/voice/speak")
+    def api_v2_voice_speak():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_voice_service() is None:
+            return jsonify(error="خدمة الصوت غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            res = AIStack.get_voice_service().speak(
+                user_id=uid(),
+                text=str(body.get("text") or ""),
+                conversation_id=str(body.get("conversation_id") or "").strip() or None,
+                message_id=str(body.get("message_id") or "").strip() or None,
+                read_full_conversation=bool(body.get("read_full_conversation", False)),
+                session_id=str(body.get("session_id") or "").strip() or None,
+                voice_id=str(body.get("voice_id") or "").strip() or None,
+                speed=float(body.get("speed")) if body.get("speed") is not None else None,
+            )
+            return jsonify(**res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/voice/stop")
+    def api_v2_voice_stop():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_voice_service() is None:
+            return jsonify(error="خدمة الصوت غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            res = AIStack.get_voice_service().stop_or_interrupt(
+                user_id=uid(),
+                session_id=str(body.get("session_id") or "").strip() or None,
+                barge_in=bool(body.get("barge_in", False)),
+                playback_action=str(body.get("action") or "stop"),
+            )
+            return jsonify(**res)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.route("/api/v2/voice/settings", methods=["GET", "POST"])
+    def api_v2_voice_settings():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_voice_service() is None:
+            return jsonify(error="خدمة الصوت غير متاحة"), 503
+        vs = AIStack.get_voice_service()
+        if request.method == "GET":
+            return jsonify(vs.get_settings(uid()))
+        body = request.get_json(silent=True) or {}
+        return jsonify(vs.update_settings(
+            uid(),
+            voice_id=body.get("voice_id"),
+            speed=body.get("speed"),
+            asr_language=body.get("asr_language"),
+            retain_raw_audio=body.get("retain_raw_audio"),
+            retention_days=body.get("retention_days"),
+        ))
+
+    # ---------- مسارات هندسة GitHub الموثوقة والمراجعة متعددة المراحل (/api/v2/github/changes/* — Section 8) ----------
+    @app.get("/api/v2/github/changes")
+    def api_v2_github_list_changes():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_github_engineering_service() is None:
+            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
+        return jsonify(ok=True, changes=AIStack.get_github_engineering_service().list_change_requests(uid()))
+
+    @app.post("/api/v2/github/changes")
+    def api_v2_github_create_change():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_github_engineering_service() is None:
+            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            ccr = AIStack.get_github_engineering_service().create_change_request(
+                user_id=uid(),
+                repo=str(body.get("repo") or ""),
+                file_path=str(body.get("file_path") or body.get("path") or ""),
+                original_content=str(body.get("original_content") or ""),
+                proposed_content=str(body.get("proposed_content") or ""),
+                original_file_sha=str(body.get("original_file_sha") or body.get("sha") or ""),
+                base_branch=str(body.get("base_branch") or "main"),
+                base_sha=str(body.get("base_sha") or ""),
+                request_text=str(body.get("request_text") or ""),
+                work_branch=str(body.get("work_branch") or ""),
+                idempotency_key=str(body.get("idempotency_key") or ""),
+            )
+            return jsonify(ok=True, change_request=ccr)
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/github/changes/<request_id>/approve")
+    def api_v2_github_approve_change(request_id):
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_github_engineering_service() is None:
+            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
+        body = request.get_json(silent=True) or {}
+        try:
+            ccr = AIStack.get_github_engineering_service().approve_change_request(
+                uid(), request_id, approve=bool(body.get("approve", True))
+            )
+            return jsonify(ok=True, change_request=ccr)
+        except PermissionError as pe:
+            return jsonify(error=str(pe)), 403
+        except Exception as e:
+            return jsonify(error=str(e)), 400
 
     log.info("Web UI enabled (password %s)", "set" if password else "NOT set")
 

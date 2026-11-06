@@ -345,6 +345,12 @@ class ChromaSemanticMemory:
             if len(col) > self.max_docs:
                 self._collections[u] = col[-self.max_docs:]
             self._save_unlocked()
+        try:
+            ms = get_memory_service()
+            if ms is not None and not self.storage_path.endswith(('chroma.json', 'ryn_diag_chroma.json')):
+                ms.add_memory(user_id=u, content=combined, layer='conversation_memory', provenance='model_inference', confidence=0.85)
+        except Exception:
+            _ = None
 
     def query_relevant_context(self, user_id: str, query_text: str, top_k: int = 3, min_score: float = 0.24) -> str:
         u = str(user_id or "main").strip() or "main"
@@ -1095,10 +1101,12 @@ class GitHubFileManager:
 
         url = f"https://api.github.com/repos/{repo}/contents/{clean_p}"
         cur_sha = (sha or "").strip()
-        if not cur_sha:
-            chk = requests.get(url, headers=self._headers(tok), params={"ref": branch}, timeout=15)
-            if chk.status_code == 200:
-                cur_sha = (chk.json() or {}).get("sha", "")
+        chk = requests.get(url, headers=self._headers(tok), params={"ref": branch}, timeout=15)
+        remote_sha = (chk.json() or {}).get("sha", "") if chk.status_code == 200 else ""
+        if cur_sha and remote_sha and cur_sha != remote_sha:
+            raise RuntimeError(f"GitHub Conflict (Stale SHA): الملف {clean_p} تغيّر على المستودع (المتوقع {cur_sha[:8]}، الحالي {remote_sha[:8]}). أعد قراءة الملف أولاً لمنع الكتابة فوق التعديلات.")
+        if not cur_sha and remote_sha:
+            cur_sha = remote_sha
 
         b64_new = base64.b64encode((content or "").encode("utf-8")).decode("ascii")
         payload: Dict[str, Any] = {
@@ -2900,3 +2908,84 @@ def get_agent_core():
     if _RynAgentMod is not None:
         return _RynAgentMod.get_agent_core()
     return None
+
+
+# ==============================================================================
+# القسم 15: منظومة الترقية المتكاملة (One RYN — One Brain — One Memory)
+# ==============================================================================
+try:
+    from conversations import ConversationService
+    from memory import MemoryService, HybridEmbeddingEngine
+    from core import RynResponsePolicy, CollaborationLedger, run_natural_ryn_mix_evaluation_suite
+    from code_intelligence import GitHubEngineeringService, StaleSHAConflictError, ApprovalRequiredError
+    from voice import VoiceService
+except Exception as _upg_err:
+    ConversationService = None  # type: ignore
+    MemoryService = None  # type: ignore
+    HybridEmbeddingEngine = None  # type: ignore
+    RynResponsePolicy = None  # type: ignore
+    CollaborationLedger = None  # type: ignore
+    run_natural_ryn_mix_evaluation_suite = None  # type: ignore
+    GitHubEngineeringService = None  # type: ignore
+    StaleSHAConflictError = RuntimeError  # type: ignore
+    ApprovalRequiredError = PermissionError  # type: ignore
+    VoiceService = None  # type: ignore
+
+_GLOBAL_CONVERSATION_SERVICE: Optional[Any] = None
+_GLOBAL_MEMORY_SERVICE: Optional[Any] = None
+_GLOBAL_RESPONSE_POLICY: Optional[Any] = None
+_GLOBAL_COLLAB_LEDGER: Optional[Any] = None
+_GLOBAL_GH_ENGINEERING: Optional[Any] = None
+_GLOBAL_VOICE_SERVICE: Optional[Any] = None
+
+
+def get_memory_service() -> Optional[Any]:
+    global _GLOBAL_MEMORY_SERVICE
+    if _GLOBAL_MEMORY_SERVICE is None and MemoryService is not None:
+        _GLOBAL_MEMORY_SERVICE = MemoryService()
+    return _GLOBAL_MEMORY_SERVICE
+
+
+def get_conversation_service() -> Optional[Any]:
+    global _GLOBAL_CONVERSATION_SERVICE
+    if _GLOBAL_CONVERSATION_SERVICE is None and ConversationService is not None:
+        ms = get_memory_service()
+        def _on_ten_cb(u_id: str, c_id: str, w_idx: int, msgs: List[Dict[str, Any]]) -> None:
+            if ms is not None:
+                ms.process_ten_message_window(u_id, c_id, w_idx, msgs)
+        _GLOBAL_CONVERSATION_SERVICE = ConversationService(on_ten_user_messages_cb=_on_ten_cb)
+    return _GLOBAL_CONVERSATION_SERVICE
+
+
+def get_response_policy() -> Optional[Any]:
+    global _GLOBAL_RESPONSE_POLICY
+    if _GLOBAL_RESPONSE_POLICY is None and RynResponsePolicy is not None:
+        _GLOBAL_RESPONSE_POLICY = RynResponsePolicy()
+    return _GLOBAL_RESPONSE_POLICY
+
+
+def get_collaboration_ledger() -> Optional[Any]:
+    global _GLOBAL_COLLAB_LEDGER
+    if _GLOBAL_COLLAB_LEDGER is None and CollaborationLedger is not None:
+        _GLOBAL_COLLAB_LEDGER = CollaborationLedger()
+    return _GLOBAL_COLLAB_LEDGER
+
+
+def get_github_engineering_service() -> Optional[Any]:
+    global _GLOBAL_GH_ENGINEERING
+    if _GLOBAL_GH_ENGINEERING is None and GitHubEngineeringService is not None:
+        _GLOBAL_GH_ENGINEERING = GitHubEngineeringService(
+            github_manager=get_github_manager(),
+            memory_service=get_memory_service(),
+        )
+    return _GLOBAL_GH_ENGINEERING
+
+
+def get_voice_service() -> Optional[Any]:
+    global _GLOBAL_VOICE_SERVICE
+    if _GLOBAL_VOICE_SERVICE is None and VoiceService is not None:
+        _GLOBAL_VOICE_SERVICE = VoiceService(
+            conversation_service=get_conversation_service(),
+            memory_service=get_memory_service(),
+        )
+    return _GLOBAL_VOICE_SERVICE
