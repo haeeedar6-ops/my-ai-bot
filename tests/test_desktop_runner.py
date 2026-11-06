@@ -191,5 +191,8 @@ class TestChatCommands(unittest.TestCase):
         self.assertFalse(self.core.get_pending_task(tok)["pending"])
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestKeyAliases(unittest.TestCase):
+    def test_android_key_names_are_normalized(self):
+        for raw, want in (("keycode_home", "home"), ("KEYCODE_BACK", "back"), ("App_Switch", "recents"), ("Return", "enter")):
+            self.assertEqual(ryn_agent.normalize_key_name(raw), want, raw)
+            self.assertIn(want, ryn_agent.ALLOWED_KEYS)
