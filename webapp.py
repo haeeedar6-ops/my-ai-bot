@@ -657,14 +657,12 @@ textarea::placeholder{color:var(--sub)}
     <div class="toprow">
       <div id="mname" title="تبديل الموديل">Gemini</div>
       <button id="memBtn" type="button" title="ملف التخصيص وذاكرة الجهاز">🧠 ذاكرتي <span id="memCnt">0</span></button>
-      <button id="liveVoiceTopBtn" type="button" title="استوديو الصوت والمحادثة الصوتية الحية" style="background:rgba(0,255,157,.12);border:1px solid rgba(0,255,157,.38);color:var(--g);border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer">🎙️ صوت مباشر</button>
     </div>
   </div>
 
   <div id="menu" hidden>
     <button id="mNew">✨ محادثة جديدة</button>
-    <button id="mVoiceStudio">🎙️ استوديو الصوت والقراءة (TTS / صوت مباشر)</button>
-    <button id="mDlConv">💾 تنزيل المحادثة كملف</button>
+    <button id="mVoiceStudio">🗣️ اختيار الصوت العربي (نبرة الكلمات)</button>
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mFix">🐞 تصحيح كود</button>
     <button id="mAdl">⬇️ تنزيل الكود تلقائياً: شغّال</button>
@@ -733,7 +731,6 @@ textarea::placeholder{color:var(--sub)}
       <button type="button" class="dquota-btn" id="dExpAllBtn">📦 تصدير كل المحادثات (Export All)</button>
       <button type="button" class="dquota-btn" id="dImpConvBtn">📂 استيراد / استعادة محادثة</button>
       <input type="file" id="dImpConvFile" hidden accept=".json,application/json">
-      <button type="button" class="dquota-btn" id="dVoiceReadBtn">🔊 قراءة المحادثة صوتياً (TTS)</button>
       <button type="button" class="dquota-btn" id="dAgentBtn">🤖 وكيل الأجهزة (Windows / Android)</button>
       <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود النماذج وفحص النظام</button>
     </div>
@@ -819,37 +816,48 @@ textarea::placeholder{color:var(--sub)}
   </div>
 </div>
 <div id="voiceModal" hidden>
-  <div class="mbox" style="max-width:460px">
-    <div class="mh"><span>🎙️ استوديو الصوت والقراءة المسموعة (RYN Voice Brain)</span><button id="voiceModalClose" aria-label="إغلاق">✕</button></div>
+  <div class="mbox" style="max-width:430px">
+    <div class="mh"><span>🗣️ اختيار الصوت العربي وسرعة النطق</span><button id="voiceModalClose" aria-label="إغلاق">✕</button></div>
     <div class="mbody">
       <div class="msec">
-        <label><span>حالة الجلسة الصوتية</span><span id="vStateBadge" style="color:var(--g);font-weight:700">جاهز (idle)</span></label>
-        <small>تحدث مع Ryn صوتياً أو استمع لأي رد أو للمحادثة كاملة مع إمكانية الإيقاف المؤقت والمقاطعة الفورية.</small>
-      </div>
-      <div class="msec">
-        <label>🗣️ اختيار الصوت والسرعة</label>
-        <select class="minp" id="vVoiceSelect" style="margin-bottom:6px">
-          <option value="ar-SY-RynNatural">RYN Arabic (شامي / فصحى طبيعي)</option>
-          <option value="ar-XA-Standard">RYN MSA (عربي فصيح واضح)</option>
-          <option value="en-US-RynClear">RYN English (Technical)</option>
-          <option value="vibevoice-realtime-exp">VibeVoice Realtime (Experimental)</option>
+        <label>🎙️ اختر شخصية وصوت Ryn المفضل</label>
+        <small>يُستخدم هذا الصوت عند الضغط على <b>🔊 استماع</b> تحت أي رسالة وفي وضع <b>Live Voice Chat</b>:</small>
+        <select class="minp" id="vVoiceSelect" style="margin-top:6px;margin-bottom:8px;font-weight:600">
+          <option value="ar-SY-RynNatural">🎙️ رين شامي طبيعي (سوري دافئ وطلق)</option>
+          <option value="ar-SA-HamedStrong">🦁 حامد — عربي فصيح جهوري قوي</option>
+          <option value="ar-EG-SalmaExpressive">🌸 سلمى — عربي ناعم ومعبّر جداً</option>
+          <option value="ar-AE-FarisTech">⚡ فارس — عربي/إنجليزي تقني سريع</option>
+          <option value="ar-XA-Standard">📖 الراوي — عربي فصيح كلاسيكي هادئ</option>
+          <option value="en-US-RynClear">🌐 RYN English (Native Clear)</option>
         </select>
-        <label style="font-size:12px"><span>السرعة: <b id="vSpeedVal">1.0x</b></span><input type="range" id="vSpeedRange" min="0.5" max="2.0" step="0.1" value="1.0" style="width:140px"></label>
+        <label style="font-size:12.5px"><span>سرعة القراءة: <b id="vSpeedVal" style="color:var(--g)">1.0x</b></span><input type="range" id="vSpeedRange" min="0.7" max="1.6" step="0.05" value="1.0" style="width:150px;accent-color:var(--g)"></label>
       </div>
-      <div class="msec">
-        <label>🔊 التحكم بالقراءة الصوتية (TTS)</label>
-        <div class="mbtns" style="display:flex;gap:6px;flex-wrap:wrap">
-          <button type="button" id="vReadLastBtn">🔊 قراءة آخر رد</button>
-          <button type="button" id="vReadAllBtn">📖 قراءة المحادثة كاملة</button>
-          <button type="button" id="vPauseResumeBtn">⏸️ إيقاف مؤقت / استئناف</button>
-          <button type="button" id="vStopBtn">⏹️ إيقاف الصوت</button>
-        </div>
-      </div>
-      <div class="msec">
-        <label>🎙️ محادثة صوتية حية (تحدث واسمع الرد تلقائياً)</label>
-        <button type="button" class="syscheck-btn" id="vLiveTurnBtn" style="border-color:var(--g);color:var(--g)">🎙️ اضغط للتحدث المباشر مع Ryn (Live Voice)</button>
-      </div>
+      <button type="button" class="syscheck-btn" id="vTestVoiceBtn" style="border-color:var(--g);color:var(--g)">🔊 تجربة الصوت المختار الآن</button>
     </div>
+  </div>
+</div>
+
+<div id="liveVoiceOverlay" hidden style="position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 50% 35%,rgba(139,92,246,.26),rgba(7,8,22,.98) 70%);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:28px 20px 36px;user-select:none">
+  <div style="width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:6px 14px;border-radius:999px;font-size:12.5px;color:#eef0ff">
+      <span id="lvDot" style="width:9px;height:9px;border-radius:50%;background:#00ff9d;box-shadow:0 0 10px #00ff9d;display:inline-block"></span>
+      <b id="lvVoiceLabel">Live Voice Chat</b>
+    </div>
+    <button type="button" id="lvPickVoiceBtn" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#eef0ff;padding:6px 12px;border-radius:999px;font-size:12px;cursor:pointer">🗣️ تغيير الصوت</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;max-width:500px;text-align:center">
+    <div id="lvAura" style="position:relative;width:230px;height:230px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle,rgba(0,255,157,.16),transparent 70%);transition:transform .3s ease,box-shadow .3s ease">
+      <div id="lvBotBox" style="width:195px;height:195px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 14px 36px rgba(0,255,157,.28))"></div>
+    </div>
+    <div id="lvStatusTitle" style="margin-top:18px;font-size:19px;font-weight:800;color:#ffffff;letter-spacing:.3px">عم أسمعك... احكي براحتك 🎙️</div>
+    <div id="lvTranscriptBox" style="margin-top:10px;min-height:48px;max-height:130px;overflow-y:auto;font-size:14.5px;line-height:1.6;color:rgba(238,240,255,.88);padding:8px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);max-width:440px;width:100%">تحدث مباشرة وكأنك تحكي مع صديقك...</div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:center;gap:22px;width:100%;max-width:420px">
+    <button type="button" id="lvMuteBtn" title="كتم / تشغيل الميكروفون" style="width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center">🎤</button>
+    <button type="button" id="lvInterruptBtn" title="اضغط للتحدث الآن أو مقاطعة الرد" style="width:78px;height:78px;border-radius:50%;border:2px solid #00ff9d;background:linear-gradient(135deg,rgba(0,255,157,.25),rgba(139,92,246,.35));color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 28px rgba(0,255,157,.35)">🗣️</button>
+    <button type="button" id="lvCloseBtn" title="إنهاء المكالمة الصوتية والعودة للدردشة" style="width:58px;height:58px;border-radius:50%;border:0;background:#ff5d6c;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(255,93,108,.45)">✕</button>
   </div>
 </div>
 <div id="quotaModal" hidden>
@@ -939,6 +947,7 @@ const bot=$('#botBox .robot');
 let botT=null,sayT=null,idleI=null;
 function setBot(state,ms){
   clearTimeout(botT);bot.setAttribute('class','robot '+state);
+  const lvB=$('#lvBotBox .robot');if(lvB)lvB.setAttribute('class','robot '+state);
   if(ms)botT=setTimeout(()=>setBot('idle'),ms);
 }
 function say(t){
@@ -959,7 +968,8 @@ document.addEventListener('pointermove',e=>{
 let moodT=null,fxKeyNow='';
 function setMood(m,ms){
   clearTimeout(moodT);bot.dataset.mood=m;
-  if(ms)moodT=setTimeout(()=>{bot.dataset.mood='neutral'},ms);
+  const lvB=$('#lvBotBox .robot');if(lvB)lvB.dataset.mood=m;
+  if(ms)moodT=setTimeout(()=>{bot.dataset.mood='neutral';if(lvB)lvB.dataset.mood='neutral';},ms);
 }
 function moodFromNote(n){
   n=String(n||'');
@@ -1144,50 +1154,101 @@ if($('#dImpConvFile'))$('#dImpConvFile').onchange=async e=>{
     else{toast('⚠️ '+(d.error||'فشل استيراد المحادثة'));}
   }catch(err){toast('❌ ملف المحادثة غير صالح');}
 };
-let rynTtsAudio=null;
-
-let rynTtsPaused=false,rynActiveSessionId='';
-async function speakTextWithRyn(txt,btnEl){
-  const cleanTxt=String(txt||'').replace(/```[\s\S]*?```/g,' كود برمجي ').replace(/[*#_`~]/g,'').trim();
-  if(!cleanTxt){toast('لا يوجد نص لقراءته');return;}
-  if(rynTtsAudio&&!rynTtsAudio.paused){
-    rynTtsAudio.pause();rynTtsAudio=null;
-    if(window.speechSynthesis)window.speechSynthesis.cancel();
-    if(btnEl)btnEl.textContent='🔊 استماع';
-    if($('#vStateBadge'))$('#vStateBadge').textContent='متوقف (idle)';
-    toast('⏹️ تم إيقاف القراءة الصوتية');
+let rynTtsAudio=null,rynTtsPaused=false,rynActiveSessionId='';
+const VOICE_PROFILES={
+  'ar-SY-RynNatural':{lang:'ar-SY',pitch:1.02,rate:1.0,preferMale:true,label:'رين شامي طبيعي'},
+  'ar-SA-HamedStrong':{lang:'ar-SA',pitch:0.88,rate:0.98,preferMale:true,label:'حامد — فصيح قوي'},
+  'ar-EG-SalmaExpressive':{lang:'ar-EG',pitch:1.12,rate:1.02,preferMale:false,label:'سلمى — عربي معبّر'},
+  'ar-AE-FarisTech':{lang:'ar-AE',pitch:0.96,rate:1.08,preferMale:true,label:'فارس — تقني سريع'},
+  'ar-XA-Standard':{lang:'ar-SA',pitch:0.93,rate:0.94,preferMale:true,label:'الراوي — فصيح هادئ'},
+  'en-US-RynClear':{lang:'en-US',pitch:1.0,rate:1.0,preferMale:false,label:'RYN English'}
+};
+try{
+  const sv=localStorage.getItem('ryn_voice_id');
+  if(sv&&$('#vVoiceSelect'))$('#vVoiceSelect').value=sv;
+  const ss=localStorage.getItem('ryn_voice_spd');
+  if(ss&&$('#vSpeedRange')){$('#vSpeedRange').value=ss;if($('#vSpeedVal'))$('#vSpeedVal').textContent=parseFloat(ss).toFixed(2)+'x';}
+}catch(e){}
+function pickBestBrowserVoice(vid){
+  if(!window.speechSynthesis)return null;
+  const vs=window.speechSynthesis.getVoices()||[];
+  if(!vs.length)return null;
+  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-RynNatural'];
+  const isEn=prof.lang.startsWith('en');
+  const langMatches=vs.filter(v=>isEn?v.lang.toLowerCase().startsWith('en'):v.lang.toLowerCase().startsWith('ar'));
+  if(!langMatches.length)return vs[0];
+  /* نفضّل أصوات Microsoft Natural / Google / Apple Siri العربية عالية الجودة */
+  const scored=langMatches.map(v=>{
+    let s=0;const n=(v.name+' '+v.lang).toLowerCase();
+    if(n.includes('natural')||n.includes('neural')||n.includes('online'))s+=30;
+    if(n.includes('microsoft')||n.includes('google')||n.includes('maged')||n.includes('tarik')||n.includes('hamed')||n.includes('salma')||n.includes('mariam')||n.includes('laila'))s+=15;
+    if(n.includes(prof.lang.toLowerCase()))s+=12;
+    if(prof.preferMale&&(n.includes('hamed')||n.includes('maged')||n.includes('tarik')||n.includes('naayf')||n.includes('male')||n.includes('shakir')))s+=10;
+    if(!prof.preferMale&&(n.includes('salma')||n.includes('zariyah')||n.includes('mariam')||n.includes('laila')||n.includes('female')||n.includes('amany')))s+=10;
+    return {v,s};
+  }).sort((a,b)=>b.s-a.s);
+  return scored[0].v;
+}
+if(window.speechSynthesis&&window.speechSynthesis.onvoiceschanged!==undefined){
+  window.speechSynthesis.onvoiceschanged=()=>{pickBestBrowserVoice('ar-SY-RynNatural')};
+}
+function stopAllRynSpeech(){
+  if(window.speechSynthesis){try{window.speechSynthesis.cancel()}catch(e){}}
+  if(rynTtsAudio){try{rynTtsAudio.pause();rynTtsAudio=null}catch(e){}}
+  document.querySelectorAll('[data-speak]').forEach(b=>{b.textContent='🔊 استماع'});
+  setBot('idle');
+}
+async function speakTextWithRyn(txt,btnEl,onDoneCb){
+  const cleanTxt=String(txt||'').replace(/```[\s\S]*?```/g,' كود برمجي جاهز بالشات. ').replace(/[*#_`~>]/g,' ').replace(/\s+/g,' ').trim();
+  if(!cleanTxt){if(onDoneCb)onDoneCb();return;}
+  if(btnEl&&btnEl.dataset.speaking==='1'){
+    stopAllRynSpeech();
+    btnEl.dataset.speaking='0';
+    btnEl.textContent='🔊 استماع';
     return;
   }
+  stopAllRynSpeech();
   const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-RynNatural';
-  const spd=parseFloat(($('#vSpeedRange')&&$('#vSpeedRange').value)||'1.0')||1.0;
-  if(btnEl)btnEl.textContent='⏳ جاري النطق...';
-  if($('#vStateBadge'))$('#vStateBadge').textContent='يتحدث الآن (speaking)...';
-  say('🔊 عم أقرا بصوت مسموع...');
+  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-RynNatural'];
+  const userSpd=parseFloat(($('#vSpeedRange')&&$('#vSpeedRange').value)||'1.0')||1.0;
+  const finalRate=Math.max(0.6,Math.min(1.8,userSpd*(prof.rate||1.0)));
+  if(btnEl){btnEl.dataset.speaking='1';btnEl.textContent='⏹️ إيقاف';}
   setBot('speaking');
-  /* نستخدم نطق المتصفح العربي الفوري إن توفر ليعطي صوتاً بشرياً واضحاً فوراً، بالتوازي مع توثيق الجلسة على السيرفر /api/v2/voice/speak */
+  if($('#lvAura'))$('#lvAura').style.transform='scale(1.08)';
+  let finished=false;
+  const finishOnce=()=>{
+    if(finished)return;finished=true;
+    if(btnEl){btnEl.dataset.speaking='0';btnEl.textContent='🔊 استماع';}
+    if($('#lvAura'))$('#lvAura').style.transform='scale(1)';
+    setBot('idle');
+    if(onDoneCb)onDoneCb();
+  };
   if(window.speechSynthesis){
     try{
-      window.speechSynthesis.cancel();
       const ut=new SpeechSynthesisUtterance(cleanTxt);
-      ut.lang=vid.startsWith('en')?'en-US':'ar-SA';
-      ut.rate=spd;
-      ut.onend=()=>{if(btnEl)btnEl.textContent='🔊 استماع';if($('#vStateBadge'))$('#vStateBadge').textContent='جاهز (idle)';setBot('idle');};
+      const chosenV=pickBestBrowserVoice(vid);
+      if(chosenV)ut.voice=chosenV;
+      ut.lang=prof.lang||'ar-SA';
+      ut.pitch=prof.pitch||1.0;
+      ut.rate=finalRate;
+      ut.onend=finishOnce;
+      ut.onerror=finishOnce;
       window.speechSynthesis.speak(ut);
+      api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:cleanTxt.slice(0,500),conversation_id:store.cur,voice_id:vid,speed:finalRate,session_id:rynActiveSessionId})}).catch(()=>{});
+      return;
     }catch(e){}
   }
   try{
-    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:cleanTxt,conversation_id:store.cur,voice_id:vid,speed:spd,session_id:rynActiveSessionId})});
+    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:cleanTxt,conversation_id:store.cur,voice_id:vid,speed:finalRate,session_id:rynActiveSessionId})});
     const d=await r.json();
-    if(r.ok&&d.audio_b64&&!window.speechSynthesis){
+    if(r.ok&&d.audio_b64){
       rynTtsAudio=new Audio('data:'+(d.mime_type||'audio/wav')+';base64,'+d.audio_b64);
-      rynTtsAudio.playbackRate=spd;
-      rynTtsAudio.onended=()=>{if(btnEl)btnEl.textContent='🔊 استماع';if($('#vStateBadge'))$('#vStateBadge').textContent='جاهز (idle)';setBot('idle');};
+      rynTtsAudio.playbackRate=finalRate;
+      rynTtsAudio.onended=finishOnce;
+      rynTtsAudio.onerror=finishOnce;
       await rynTtsAudio.play();
-    }
-  }catch(e){
-    if(btnEl)btnEl.textContent='🔊 استماع';
-    setBot('idle');
-  }
+    }else{finishOnce();}
+  }catch(e){finishOnce();}
 }
 function speakMessageByIndex(idx,btnEl){
   const ms=M();
@@ -1197,52 +1258,235 @@ function speakMessageByIndex(idx,btnEl){
 function openVoiceModal(){
   if($('#voiceModal'))$('#voiceModal').hidden=false;
   $('#menu').hidden=true;
-  if(!rynActiveSessionId){
-    api('/api/v2/voice/sessions',{method:'POST',body:JSON.stringify({conversation_id:store.cur,mic_permission_granted:true})})
-      .then(r=>r.json()).then(d=>{if(d&&d.session)rynActiveSessionId=d.session.session_id;}).catch(()=>{});
+}
+if($('#mVoiceStudio'))$('#mVoiceStudio').onclick=openVoiceModal;
+if($('#voiceModalClose'))$('#voiceModalClose').onclick=()=>{$('#voiceModal').hidden=true;};
+if($('#vVoiceSelect'))$('#vVoiceSelect').onchange=e=>{
+  const v=e.target.value;
+  try{localStorage.setItem('ryn_voice_id',v)}catch(err){}
+  api('/api/v2/voice/settings',{method:'POST',body:JSON.stringify({voice_id:v})}).catch(()=>{});
+  const prof=VOICE_PROFILES[v];
+  if(prof&&$('#lvVoiceLabel'))$('#lvVoiceLabel').textContent='Live Voice · '+prof.label;
+  toast('✅ تم اختيار الصوت: '+(prof?prof.label:v));
+};
+if($('#vSpeedRange'))$('#vSpeedRange').oninput=e=>{
+  const s=parseFloat(e.target.value).toFixed(2);
+  if($('#vSpeedVal'))$('#vSpeedVal').textContent=s+'x';
+  try{localStorage.setItem('ryn_voice_spd',s)}catch(err){}
+};
+if($('#vTestVoiceBtn'))$('#vTestVoiceBtn').onclick=()=>{
+  speakTextWithRyn('أهلاً بك يا صديقي، أنا رين، جاهز لنحكي مع بعض بصوت عربي واضح وطبيعي.');
+};
+
+/* ===== وضع المحادثة الصوتية الحية بشاشة كاملة مع الروبوت وتفاعلاته (Full-Screen Live Voice Chat) ===== */
+let liveVoiceActive=false,liveMuted=false,liveRecog=null,liveMediaRec=null,liveChunks=[];
+function ensureLvRobotCloned(){
+  const box=$('#lvBotBox');
+  if(box&&!box.querySelector('.robot')&&botEl_tpl){
+    box.appendChild(botEl_tpl.content.cloneNode(true));
+    const r=box.querySelector('.robot');
+    if(r&&bot){r.setAttribute('class',bot.getAttribute('class'));r.dataset.mood=bot.dataset.mood||'neutral';}
   }
 }
-if($('#liveVoiceTopBtn'))$('#liveVoiceTopBtn').onclick=openVoiceModal;
-if($('#mVoiceStudio'))$('#mVoiceStudio').onclick=openVoiceModal;
-if($('#mDlConv'))$('#mDlConv').onclick=()=>{$('#menu').hidden=true;if($('#dDlConvBtn'))$('#dDlConvBtn').click();};
-if($('#voiceModalClose'))$('#voiceModalClose').onclick=()=>{$('#voiceModal').hidden=true;};
-if($('#vSpeedRange'))$('#vSpeedRange').oninput=e=>{if($('#vSpeedVal'))$('#vSpeedVal').textContent=parseFloat(e.target.value).toFixed(1)+'x';};
-if($('#vReadLastBtn'))$('#vReadLastBtn').onclick=()=>{
-  const ms=M();const lastBot=[...ms].reverse().find(m=>m.role==='model');
-  speakTextWithRyn(lastBot?lastBot.text:(ms.length?ms[ms.length-1].text:'أهلاً بك في رين، اكتب أو تحدث معي للبدء.'));
-};
-if($('#vReadAllBtn'))$('#vReadAllBtn').onclick=()=>{
-  const ms=M();
-  if(!ms.length){toast('المحادثة فارغة حالياً');return;}
-  const allTxt=ms.map(m=>(m.role==='user'?'أنت: ':'رين: ')+m.text).join(' . ');
-  speakTextWithRyn(allTxt);
-};
-if($('#vPauseResumeBtn'))$('#vPauseResumeBtn').onclick=async()=>{
-  if(window.speechSynthesis){
-    if(window.speechSynthesis.paused){window.speechSynthesis.resume();rynTtsPaused=false;toast('▶️ تم استئناف القراءة');}
-    else if(window.speechSynthesis.speaking){window.speechSynthesis.pause();rynTtsPaused=true;toast('⏸️ إيقاف مؤقت');}
+function setLvUiState(st,subText){
+  const tEl=$('#lvStatusTitle'),bEl=$('#lvTranscriptBox'),dot=$('#lvDot'),aura=$('#lvAura');
+  if(!liveVoiceActive)return;
+  if(st==='listening'){
+    setBot('listening');
+    if(tEl)tEl.textContent='عم أسمعك... احكي براحتك 🎙️';
+    if(dot){dot.style.background='#00ff9d';dot.style.boxShadow='0 0 12px #00ff9d';}
+    if(aura)aura.style.transform='scale(1.05)';
+  }else if(st==='thinking'){
+    setBot('thinking');
+    if(tEl)tEl.textContent='عم أفكّر بجوابك... 🧠';
+    if(dot){dot.style.background='#a855f7';dot.style.boxShadow='0 0 12px #a855f7';}
+    if(aura)aura.style.transform='scale(0.96)';
+  }else if(st==='speaking'){
+    setBot('speaking');
+    if(tEl)tEl.textContent='رين يحكي معك الآن... (احكي أو اضغط 🗣️ للمقاطعة)';
+    if(dot){dot.style.background='#38bdf8';dot.style.boxShadow='0 0 14px #38bdf8';}
+    if(aura)aura.style.transform='scale(1.12)';
+  }else if(st==='muted'){
+    setBot('idle');
+    if(tEl)tEl.textContent='الميكروفون مكتوم 🔇';
+    if(dot){dot.style.background='#ff5d6c';dot.style.boxShadow='none';}
+    if(aura)aura.style.transform='scale(1)';
   }
-  if(rynTtsAudio){
-    if(rynTtsAudio.paused){rynTtsAudio.play().catch(()=>{});rynTtsPaused=false;}
-    else{rynTtsAudio.pause();rynTtsPaused=true;}
-  }
-  await api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,action:rynTtsPaused?'pause':'resume'})}).catch(()=>{});
-};
-if($('#vStopBtn'))$('#vStopBtn').onclick=async()=>{
-  if(window.speechSynthesis)window.speechSynthesis.cancel();
-  if(rynTtsAudio){rynTtsAudio.pause();rynTtsAudio=null;}
-  if($('#vStateBadge'))$('#vStateBadge').textContent='متوقف (idle)';
+  if(subText!==undefined&&bEl)bEl.textContent=subText;
+}
+async function startLiveVoiceChat(){
+  ensureLvRobotCloned();
+  liveVoiceActive=true;liveMuted=false;
+  if($('#lvMuteBtn'))$('#lvMuteBtn').textContent='🎤';
+  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-RynNatural';
+  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-RynNatural'];
+  if($('#lvVoiceLabel'))$('#lvVoiceLabel').textContent='Live Voice · '+prof.label;
+  $('#liveVoiceOverlay').hidden=false;
+  acquireWakeLock();
+  try{
+    const r=await api('/api/v2/voice/sessions',{method:'POST',body:JSON.stringify({conversation_id:store.cur,voice_id:vid,mic_permission_granted:true})});
+    const d=await r.json();
+    if(d&&d.session)rynActiveSessionId=d.session.session_id;
+  }catch(e){}
+  setLvUiState('listening','تحدث الآن... أنا أسمعك مباشرة 👋');
+  startLiveListeningTurn();
+}
+function stopLiveVoiceChat(){
+  liveVoiceActive=false;
+  stopAllRynSpeech();
+  if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}liveRecog=null;}
+  if(liveMediaRec&&liveMediaRec.state!=='inactive'){try{liveMediaRec.stop()}catch(e){}liveMediaRec=null;}
+  $('#liveVoiceOverlay').hidden=true;
   setBot('idle');
-  await api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,action:'stop'})}).catch(()=>{});
-  toast('⏹️ تم إيقاف الصوت');
+  api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,action:'stop'})}).catch(()=>{});
+}
+async function handleLiveUserUtterance(userText){
+  const clean=String(userText||'').trim();
+  if(!clean||!liveVoiceActive)return;
+  stopAllRynSpeech();
+  setLvUiState('thinking','أنت: «'+clean+'»');
+  const hist=M().filter(m=>m.role!=='sys').slice(-14).map(m=>({role:m.role,text:m.text}));
+  M().push({role:'user',text:clean});touch();render();saveStore();
+  try{
+    const r=await api('/api/chat',{method:'POST',body:JSON.stringify({
+      message:clean,
+      conversation_id:store.cur,
+      modality:'voice',
+      history:hist,
+      memory:mem,
+      emo:emo
+    })});
+    const d=await r.json();
+    if(!r.ok||!d.job){
+      setLvUiState('listening','⚠️ تعذر الاتصال، احكي مرة ثانية...');
+      if(liveVoiceActive&&!liveMuted)setTimeout(startLiveListeningTurn,800);
+      return;
+    }
+    /* نتابع مهمة الرد بالخلفية حتى تجهز ثم ننطقها فوراً بالروبوت وريأكشناته */
+    let replyText='',replyNote='';
+    for(let i=0;i<300&&liveVoiceActive;i++){
+      await sleep(750);
+      const jr=await api('/api/job/'+d.job);
+      const jd=await jr.json();
+      if(jd.status==='running')continue;
+      if(jd.status==='done'){
+        replyText=jd.text||'';replyNote=jd.note||'';
+        await applyCompletedJobPayload(jd,store.cur);
+        touch();render();saveStore();
+      }else{
+        replyText=jd.text||'صار خطأ بسيط، احكيلي مرة ثانية.';
+      }
+      break;
+    }
+    if(!liveVoiceActive)return;
+    moodFromNote(replyNote);
+    setLvUiState('speaking',replyText);
+    await speakTextWithRyn(replyText,null,()=>{
+      if(liveVoiceActive&&!liveMuted){
+        setLvUiState('listening','تحدث الآن... عم أسمعك 🎙️');
+        startLiveListeningTurn();
+      }
+    });
+  }catch(e){
+    if(liveVoiceActive&&!liveMuted){
+      setLvUiState('listening','احكي مرة ثانية... 🎙️');
+      setTimeout(startLiveListeningTurn,1000);
+    }
+  }
+}
+function startLiveListeningTurn(){
+  if(!liveVoiceActive||liveMuted)return;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(SR){
+    try{
+      if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}}
+      const recog=new SR();
+      liveRecog=recog;
+      const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-RynNatural';
+      recog.lang=(vid.startsWith('en')?'en-US':'ar-SA');
+      recog.continuous=false;
+      recog.interimResults=true;
+      let finalBuf='';
+      recog.onresult=e=>{
+        let interim='';
+        for(let i=e.resultIndex;i<e.results.length;i++){
+          const tr=e.results[i][0].transcript;
+          if(e.results[i].isFinal)finalBuf+=tr+' ';
+          else interim+=tr;
+        }
+        const shown=(finalBuf+' '+interim).trim();
+        if(shown){
+          /* إذا كان الروبوت عم يحكي والمستخدم بلّش يحكي، نقاطع الصوت فوراً (Barge-in) */
+          if(window.speechSynthesis&&window.speechSynthesis.speaking)stopAllRynSpeech();
+          setLvUiState('listening','«'+shown+'»');
+        }
+      };
+      recog.onend=()=>{
+        if(!liveVoiceActive||liveMuted)return;
+        if(finalBuf.trim()){
+          handleLiveUserUtterance(finalBuf.trim());
+        }else{
+          /* إذا ما التقط كلام، يرجع يستمع بهدوء طالما المستخدم بوضع الاتصال */
+          if(!window.speechSynthesis||!window.speechSynthesis.speaking){
+            setTimeout(()=>{if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();},350);
+          }
+        }
+      };
+      recog.onerror=()=>{};
+      recog.start();
+      return;
+    }catch(e){}
+  }
+  /* مسار احتياطي للمتصفحات التي لا تدعم Web Speech Recognition: يسجل مقطعاً صوتياً ويفرغه عبر /api/transcribe */
+  if(navigator.mediaDevices&&window.MediaRecorder){
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+      if(!liveVoiceActive||liveMuted){stream.getTracks().forEach(t=>t.stop());return;}
+      const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+      const mr=new MediaRecorder(stream,mt?{mimeType:mt}:{});
+      liveMediaRec=mr;liveChunks=[];
+      mr.ondataavailable=e=>{if(e.data&&e.data.size)liveChunks.push(e.data)};
+      mr.onstop=async()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        if(!liveVoiceActive||liveMuted)return;
+        const blob=new Blob(liveChunks,{type:mr.mimeType||mt||'audio/webm'});
+        if(blob.size<1500){if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();return;}
+        setLvUiState('thinking','جاري فهم كلامك...');
+        const ext=blob.type.indexOf('mp4')>=0?'m4a':'webm';
+        const fd=new FormData();fd.append('audio',blob,'voice.'+ext);
+        try{
+          const r=await api('/api/transcribe',{method:'POST',body:fd});
+          const d=await r.json();
+          if(r.ok&&d.text)handleLiveUserUtterance(d.text);
+          else if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();
+        }catch(e){if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();}
+      };
+      mr.start();
+      setTimeout(()=>{if(mr.state==='recording')mr.stop()},5500);
+    }).catch(()=>{toast('يرجى السماح بإذن الميكروفون للمحادثة الصوتية')});
+  }
+}
+if($('#lvCloseBtn'))$('#lvCloseBtn').onclick=stopLiveVoiceChat;
+if($('#lvPickVoiceBtn'))$('#lvPickVoiceBtn').onclick=()=>{if($('#voiceModal'))$('#voiceModal').hidden=false;};
+if($('#lvMuteBtn'))$('#lvMuteBtn').onclick=()=>{
+  liveMuted=!liveMuted;
+  $('#lvMuteBtn').textContent=liveMuted?'🔇':'🎤';
+  $('#lvMuteBtn').style.background=liveMuted?'rgba(255,93,108,.28)':'rgba(255,255,255,.08)';
+  if(liveMuted){
+    if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}}
+    if(liveMediaRec&&liveMediaRec.state==='recording'){try{liveMediaRec.stop()}catch(e){}}
+    setLvUiState('muted','تم كتم الميكروفون مؤقتاً — اضغط 🔇 لإعادة تشغيله');
+  }else{
+    setLvUiState('listening','عم أسمعك... احكي براحتك 🎙️');
+    startLiveListeningTurn();
+  }
 };
-if($('#vLiveTurnBtn'))$('#vLiveTurnBtn').onclick=()=>{
-  if(window.speechSynthesis)window.speechSynthesis.cancel();
-  if(rynTtsAudio){rynTtsAudio.pause();rynTtsAudio=null;}
-  $('#voiceModal').hidden=true;
-  window._autoSpeakNextReply=true;
-  window._autoSendAfterTranscribe=true;
-  micToggle();
+if($('#lvInterruptBtn'))$('#lvInterruptBtn').onclick=()=>{
+  /* مقاطعة فورية (Barge-in) أو إنهاء جملة التسجيل الحالية والبدء بالاستماع */
+  stopAllRynSpeech();
+  if(liveMediaRec&&liveMediaRec.state==='recording'){try{liveMediaRec.stop();return}catch(e){}}
+  liveMuted=false;if($('#lvMuteBtn'))$('#lvMuteBtn').textContent='🎤';
+  setLvUiState('listening','قاطعت الصوت — تفضّل احكي أنا عم أسمعك 🎙️');
+  startLiveListeningTurn();
 };
 
 if($('#dVoiceReadBtn'))$('#dVoiceReadBtn').onclick=async()=>{
@@ -1768,6 +2012,7 @@ function drawFloating(){
   if(img)h+=f(img)+'<span>رسم<br>🎨</span></button>';
   if(gem)h+=f(gem)+'<span>Gemini</span></button>';
   if(qw)h+=f(qw)+'<span>Ryn<br>mix</span></button>';
+  h+='<button class="dia" data-m="__live_voice" title="محادثة صوتية حية مع الروبوت"><span>Live<br>Voice 🎙️</span></button>';
   if(models.length>2)h+='<button class="dia" data-m="__all"><span>كل<br>الموديلات</span></button>';
   if(hasGroq)h+='<button class="dia'+(codeAuto?' on':'')+'" data-m="__code"><span>كود<br>'+(codeAuto?'ON':'OFF')+'</span></button>';
   $('#floating').innerHTML=h;
@@ -1776,6 +2021,7 @@ function setPh(){inp.placeholder=current==='img:flux'?'RYN Visual Brain: أنش�
 $('#floating').addEventListener('click',async e=>{
   const b=e.target.closest('.dia');if(!b)return;e.stopPropagation();
   const m=b.dataset.m;
+  if(m==='__live_voice'){$('#floating').classList.add('off');startLiveVoiceChat();return}
   if(m==='__all'){$('#floating').classList.add('off');openSheet();return}
   if(m==='__code'){
     try{await api('/api/code',{method:'POST',body:JSON.stringify({on:!codeAuto})});codeAuto=!codeAuto;drawFloating();toast('توجيه الكود: '+(codeAuto?'شغّال':'مطفّي'))}catch(x){}
