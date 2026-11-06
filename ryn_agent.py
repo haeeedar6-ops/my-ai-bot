@@ -77,8 +77,24 @@ ALLOWED_KEYS = {
     "enter", "return", "tab", "escape", "esc", "backspace", "delete", "space",
     "up", "down", "left", "right", "home", "end", "pageup", "pagedown",
     "ctrl+a", "ctrl+c", "ctrl+v", "ctrl+x", "ctrl+s", "ctrl+z", "ctrl+f",
-    "alt+tab", "f1", "f2", "f5", "f11", "f12", "back",
+    "alt+tab", "f1", "f2", "f5", "f11", "f12", "back", "recents",
 }
+
+# أسماء مفاتيح يقترحها النموذج بصيغ مختلفة (أندرويد/ويندوز) نحوّلها للأسماء الآمنة المعتمدة
+KEY_ALIASES = {
+    "home_button": "home", "homescreen": "home", "home_screen": "home", "go_home": "home",
+    "app_switch": "recents", "overview": "recents", "recent_apps": "recents", "recent": "recents",
+    "go_back": "back", "back_button": "back", "navigate_back": "back",
+    "return": "enter", "enter_key": "enter", "ok": "enter", "search": "enter",
+    "del": "backspace", "delete_char": "backspace", "escape": "esc", "spacebar": "space",
+    "page_up": "pageup", "page_down": "pagedown", "arrow_up": "up", "arrow_down": "down",
+}
+
+
+def normalize_key_name(raw: str) -> str:
+    k = str(raw or "").strip().lower().replace(" ", "").replace("-", "_")
+    k = re.sub(r"^keycode_?", "", k)
+    return KEY_ALIASES.get(k, k)
 
 ALLOWED_ACTION_FIELDS = {
     "action",
@@ -169,7 +185,7 @@ class ActionSchemaValidator:
 
         reason = str(raw_proposal.get("reason") or "").strip()[:300] or f"Execute {action}"
         text_val = str(raw_proposal.get("text") or "")
-        key_val = str(raw_proposal.get("key") or "").strip().lower()
+        key_val = normalize_key_name(raw_proposal.get("key"))
 
         # فحص الأنماط المحظورة أمنياً (Blocked by default)
         combined_txt = f"{reason} {text_val} {key_val} {user_goal}"
@@ -767,7 +783,12 @@ class RynAgentCoreManager:
             raw_prop: Optional[Dict[str, Any]] = None
             if callable(vision_planner_fn):
                 try:
-                    raw_prop = vision_planner_fn(t_row["goal"], img_bytes, mem, screen_width, screen_height)
+                    plan_mem = dict(mem)
+                    try:
+                        plan_mem["_platform"] = str(dev["platform"] or "")
+                    except Exception:
+                        plan_mem["_platform"] = ""
+                    raw_prop = vision_planner_fn(t_row["goal"], img_bytes, plan_mem, screen_width, screen_height)
                 except Exception as _ve:
                     log.warning("Vision planner fallback to safe heuristic: %s", _ve)
             if not raw_prop:

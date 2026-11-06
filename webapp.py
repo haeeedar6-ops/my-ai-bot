@@ -7289,10 +7289,32 @@ def register(app, b):
         mime_t = sniff_image(img_bytes) or "image/jpeg"
         recent_actions = (memory_dict or {}).get("actions_attempted", [])[-4:]
         recent_results = (memory_dict or {}).get("action_results", [])[-4:]
+        platform = str((memory_dict or {}).get("_platform") or "").lower()
+        allowed_keys = ", ".join(sorted(RynAgent.ALLOWED_KEYS))
+        if platform == "android":
+            plat_p = (
+                "The device is an ANDROID PHONE (portrait touch screen, no mouse, no keyboard shortcuts). "
+                "To open an app: first key_press 'home' if you are not on the home screen, then tap the app icon. "
+                "If the icon is not visible, scroll the home screen (scroll_dy negative = move down the page) or open the app drawer, "
+                "tap the search field, type_text the app name, then tap the result. "
+                "Android keys you may use: home, back, enter, backspace, space, recents. "
+            )
+        elif platform == "windows":
+            plat_p = (
+                "The device is a WINDOWS PC with mouse and keyboard. To open an app use the Start menu or taskbar icons, "
+                "or key_press the Windows key, then type_text the app name and press enter. "
+            )
+        else:
+            plat_p = ""
         sys_p = (
             "You are RYN Agent Planner. Inspect the device screenshot and propose EXACTLY ONE next action as strict JSON. "
             "Allowed actions ONLY: observe, click, double_click, type_text, key_press, scroll, wait, done, ask_user. "
-            f"Screen dimensions: {screen_w}x{screen_h}. Coordinates must be within [0..{screen_w}, 0..{screen_h}]. "
+            f"Screen dimensions: {screen_w}x{screen_h}. Coordinates are pixels of THIS screenshot and must be within [0..{screen_w}, 0..{screen_h}]; "
+            "aim at the CENTER of the target element. "
+            + plat_p +
+            f"For key_press the 'key' MUST be one of: {allowed_keys}. Never write names like 'keycode_home'. "
+            "If the goal is already achieved on screen, return action 'done'. "
+            "If the previous action did not change the screen, do NOT repeat it; try a different approach. "
             "Never propose shell commands, arbitrary Python, banking, or password entry. "
             "Return JSON with keys: {\"action\": \"...\", \"coordinates\": {\"x\": 0, \"y\": 0}, \"text\": \"\", \"key\": \"\", "
             "\"scroll_dy\": 0, \"reason\": \"...\", \"risk\": \"low|medium|high\", \"requires_confirmation\": false}."
