@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
 class ApiException(message: String, val httpCode: Int = 0) : Exception(message)
 
 /**
- * ApiClient: يتصل بمسارات /api/v1/agent/* عبر HTTPS مع ترويسة Authorization: Bearer <device_token>،
+ * ApiClient: يتصل بمسارات api/v1/agent عبر HTTPS مع ترويسة Authorization: Bearer <device_token>،
  * مهلة زمنية، وإعادة محاولة بتراجع أسي على أخطاء الشبكة وأخطاء 5xx (مثل استيقاظ Render).
  */
 class ApiClient(baseUrl: String, private val tokenProvider: () -> String?) {

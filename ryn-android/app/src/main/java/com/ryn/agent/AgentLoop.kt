@@ -34,7 +34,7 @@ object AgentLoop {
         val app = context.applicationContext
         AgentRuntime.taskRunning = true
         main.post {
-            FloatingControlsService.start(app)
+            app.startService(Intent(app, FloatingControlsService::class.java))
             main.postDelayed({ minimizeHandler?.invoke() }, 1200)
         }
         try {
@@ -49,7 +49,7 @@ object AgentLoop {
             return res
         } finally {
             AgentRuntime.taskRunning = false
-            main.post { FloatingControlsService.stop(app) }
+            main.post { app.stopService(Intent(app, FloatingControlsService::class.java)) }
         }
     }
 }

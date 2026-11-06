@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var serverInput: EditText
     private lateinit var codeInput: EditText
     private lateinit var goalInput: EditText
-    private val voice by lazy { VoiceController(this) }
+    private val voice: VoiceController by lazy { VoiceController(this) }
     private val ui = Handler(Looper.getMainLooper())
 
     private val projectionLauncher =
