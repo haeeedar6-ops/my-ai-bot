@@ -657,11 +657,14 @@ textarea::placeholder{color:var(--sub)}
     <div class="toprow">
       <div id="mname" title="تبديل الموديل">Gemini</div>
       <button id="memBtn" type="button" title="ملف التخصيص وذاكرة الجهاز">🧠 ذاكرتي <span id="memCnt">0</span></button>
+      <button id="liveVoiceTopBtn" type="button" title="استوديو الصوت والمحادثة الصوتية الحية" style="background:rgba(0,255,157,.12);border:1px solid rgba(0,255,157,.38);color:var(--g);border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer">🎙️ صوت مباشر</button>
     </div>
   </div>
 
   <div id="menu" hidden>
     <button id="mNew">✨ محادثة جديدة</button>
+    <button id="mVoiceStudio">🎙️ استوديو الصوت والقراءة (TTS / صوت مباشر)</button>
+    <button id="mDlConv">💾 تنزيل المحادثة كملف</button>
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mFix">🐞 تصحيح كود</button>
     <button id="mAdl">⬇️ تنزيل الكود تلقائياً: شغّال</button>
@@ -813,6 +816,40 @@ textarea::placeholder{color:var(--sub)}
       </div>
     </div>
     <button type="button" class="msave" id="memSave">حفظ التخصيص على الجهاز ✅</button>
+  </div>
+</div>
+<div id="voiceModal" hidden>
+  <div class="mbox" style="max-width:460px">
+    <div class="mh"><span>🎙️ استوديو الصوت والقراءة المسموعة (RYN Voice Brain)</span><button id="voiceModalClose" aria-label="إغلاق">✕</button></div>
+    <div class="mbody">
+      <div class="msec">
+        <label><span>حالة الجلسة الصوتية</span><span id="vStateBadge" style="color:var(--g);font-weight:700">جاهز (idle)</span></label>
+        <small>تحدث مع Ryn صوتياً أو استمع لأي رد أو للمحادثة كاملة مع إمكانية الإيقاف المؤقت والمقاطعة الفورية.</small>
+      </div>
+      <div class="msec">
+        <label>🗣️ اختيار الصوت والسرعة</label>
+        <select class="minp" id="vVoiceSelect" style="margin-bottom:6px">
+          <option value="ar-SY-RynNatural">RYN Arabic (شامي / فصحى طبيعي)</option>
+          <option value="ar-XA-Standard">RYN MSA (عربي فصيح واضح)</option>
+          <option value="en-US-RynClear">RYN English (Technical)</option>
+          <option value="vibevoice-realtime-exp">VibeVoice Realtime (Experimental)</option>
+        </select>
+        <label style="font-size:12px"><span>السرعة: <b id="vSpeedVal">1.0x</b></span><input type="range" id="vSpeedRange" min="0.5" max="2.0" step="0.1" value="1.0" style="width:140px"></label>
+      </div>
+      <div class="msec">
+        <label>🔊 التحكم بالقراءة الصوتية (TTS)</label>
+        <div class="mbtns" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" id="vReadLastBtn">🔊 قراءة آخر رد</button>
+          <button type="button" id="vReadAllBtn">📖 قراءة المحادثة كاملة</button>
+          <button type="button" id="vPauseResumeBtn">⏸️ إيقاف مؤقت / استئناف</button>
+          <button type="button" id="vStopBtn">⏹️ إيقاف الصوت</button>
+        </div>
+      </div>
+      <div class="msec">
+        <label>🎙️ محادثة صوتية حية (تحدث واسمع الرد تلقائياً)</label>
+        <button type="button" class="syscheck-btn" id="vLiveTurnBtn" style="border-color:var(--g);color:var(--g)">🎙️ اضغط للتحدث المباشر مع Ryn (Live Voice)</button>
+      </div>
+    </div>
   </div>
 </div>
 <div id="quotaModal" hidden>
@@ -1108,6 +1145,106 @@ if($('#dImpConvFile'))$('#dImpConvFile').onchange=async e=>{
   }catch(err){toast('❌ ملف المحادثة غير صالح');}
 };
 let rynTtsAudio=null;
+
+let rynTtsPaused=false,rynActiveSessionId='';
+async function speakTextWithRyn(txt,btnEl){
+  const cleanTxt=String(txt||'').replace(/```[\s\S]*?```/g,' كود برمجي ').replace(/[*#_`~]/g,'').trim();
+  if(!cleanTxt){toast('لا يوجد نص لقراءته');return;}
+  if(rynTtsAudio&&!rynTtsAudio.paused){
+    rynTtsAudio.pause();rynTtsAudio=null;
+    if(window.speechSynthesis)window.speechSynthesis.cancel();
+    if(btnEl)btnEl.textContent='🔊 استماع';
+    if($('#vStateBadge'))$('#vStateBadge').textContent='متوقف (idle)';
+    toast('⏹️ تم إيقاف القراءة الصوتية');
+    return;
+  }
+  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-RynNatural';
+  const spd=parseFloat(($('#vSpeedRange')&&$('#vSpeedRange').value)||'1.0')||1.0;
+  if(btnEl)btnEl.textContent='⏳ جاري النطق...';
+  if($('#vStateBadge'))$('#vStateBadge').textContent='يتحدث الآن (speaking)...';
+  say('🔊 عم أقرا بصوت مسموع...');
+  setBot('speaking');
+  /* نستخدم نطق المتصفح العربي الفوري إن توفر ليعطي صوتاً بشرياً واضحاً فوراً، بالتوازي مع توثيق الجلسة على السيرفر /api/v2/voice/speak */
+  if(window.speechSynthesis){
+    try{
+      window.speechSynthesis.cancel();
+      const ut=new SpeechSynthesisUtterance(cleanTxt);
+      ut.lang=vid.startsWith('en')?'en-US':'ar-SA';
+      ut.rate=spd;
+      ut.onend=()=>{if(btnEl)btnEl.textContent='🔊 استماع';if($('#vStateBadge'))$('#vStateBadge').textContent='جاهز (idle)';setBot('idle');};
+      window.speechSynthesis.speak(ut);
+    }catch(e){}
+  }
+  try{
+    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:cleanTxt,conversation_id:store.cur,voice_id:vid,speed:spd,session_id:rynActiveSessionId})});
+    const d=await r.json();
+    if(r.ok&&d.audio_b64&&!window.speechSynthesis){
+      rynTtsAudio=new Audio('data:'+(d.mime_type||'audio/wav')+';base64,'+d.audio_b64);
+      rynTtsAudio.playbackRate=spd;
+      rynTtsAudio.onended=()=>{if(btnEl)btnEl.textContent='🔊 استماع';if($('#vStateBadge'))$('#vStateBadge').textContent='جاهز (idle)';setBot('idle');};
+      await rynTtsAudio.play();
+    }
+  }catch(e){
+    if(btnEl)btnEl.textContent='🔊 استماع';
+    setBot('idle');
+  }
+}
+function speakMessageByIndex(idx,btnEl){
+  const ms=M();
+  if(!ms[idx])return;
+  speakTextWithRyn(ms[idx].text,btnEl);
+}
+function openVoiceModal(){
+  if($('#voiceModal'))$('#voiceModal').hidden=false;
+  $('#menu').hidden=true;
+  if(!rynActiveSessionId){
+    api('/api/v2/voice/sessions',{method:'POST',body:JSON.stringify({conversation_id:store.cur,mic_permission_granted:true})})
+      .then(r=>r.json()).then(d=>{if(d&&d.session)rynActiveSessionId=d.session.session_id;}).catch(()=>{});
+  }
+}
+if($('#liveVoiceTopBtn'))$('#liveVoiceTopBtn').onclick=openVoiceModal;
+if($('#mVoiceStudio'))$('#mVoiceStudio').onclick=openVoiceModal;
+if($('#mDlConv'))$('#mDlConv').onclick=()=>{$('#menu').hidden=true;if($('#dDlConvBtn'))$('#dDlConvBtn').click();};
+if($('#voiceModalClose'))$('#voiceModalClose').onclick=()=>{$('#voiceModal').hidden=true;};
+if($('#vSpeedRange'))$('#vSpeedRange').oninput=e=>{if($('#vSpeedVal'))$('#vSpeedVal').textContent=parseFloat(e.target.value).toFixed(1)+'x';};
+if($('#vReadLastBtn'))$('#vReadLastBtn').onclick=()=>{
+  const ms=M();const lastBot=[...ms].reverse().find(m=>m.role==='model');
+  speakTextWithRyn(lastBot?lastBot.text:(ms.length?ms[ms.length-1].text:'أهلاً بك في رين، اكتب أو تحدث معي للبدء.'));
+};
+if($('#vReadAllBtn'))$('#vReadAllBtn').onclick=()=>{
+  const ms=M();
+  if(!ms.length){toast('المحادثة فارغة حالياً');return;}
+  const allTxt=ms.map(m=>(m.role==='user'?'أنت: ':'رين: ')+m.text).join(' . ');
+  speakTextWithRyn(allTxt);
+};
+if($('#vPauseResumeBtn'))$('#vPauseResumeBtn').onclick=async()=>{
+  if(window.speechSynthesis){
+    if(window.speechSynthesis.paused){window.speechSynthesis.resume();rynTtsPaused=false;toast('▶️ تم استئناف القراءة');}
+    else if(window.speechSynthesis.speaking){window.speechSynthesis.pause();rynTtsPaused=true;toast('⏸️ إيقاف مؤقت');}
+  }
+  if(rynTtsAudio){
+    if(rynTtsAudio.paused){rynTtsAudio.play().catch(()=>{});rynTtsPaused=false;}
+    else{rynTtsAudio.pause();rynTtsPaused=true;}
+  }
+  await api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,action:rynTtsPaused?'pause':'resume'})}).catch(()=>{});
+};
+if($('#vStopBtn'))$('#vStopBtn').onclick=async()=>{
+  if(window.speechSynthesis)window.speechSynthesis.cancel();
+  if(rynTtsAudio){rynTtsAudio.pause();rynTtsAudio=null;}
+  if($('#vStateBadge'))$('#vStateBadge').textContent='متوقف (idle)';
+  setBot('idle');
+  await api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,action:'stop'})}).catch(()=>{});
+  toast('⏹️ تم إيقاف الصوت');
+};
+if($('#vLiveTurnBtn'))$('#vLiveTurnBtn').onclick=()=>{
+  if(window.speechSynthesis)window.speechSynthesis.cancel();
+  if(rynTtsAudio){rynTtsAudio.pause();rynTtsAudio=null;}
+  $('#voiceModal').hidden=true;
+  window._autoSpeakNextReply=true;
+  window._autoSendAfterTranscribe=true;
+  micToggle();
+};
+
 if($('#dVoiceReadBtn'))$('#dVoiceReadBtn').onclick=async()=>{
   try{
     if(rynTtsAudio&&!rynTtsAudio.paused){rynTtsAudio.pause();rynTtsAudio=null;await api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({action:'stop'})});toast('⏹️ تم إيقاف القراءة الصوتية');return;}
@@ -1237,7 +1374,7 @@ function render(){
     const body=pic+fbox+dbox+(m.reveal?'':md(shown));
     return '<div class="bubble '+(me?'me':'bot')+(m.err?' err':'')+'"'+(m.reveal?' data-rev="1"':'')+'>'+body+'</div>'+
       (m.note?'<div class="note">'+esc(m.note)+'</div>':'')+
-      (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button></div>');
+      (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button><button data-speak="'+i+'">🔊 استماع</button></div>');
   }).join('')+(busy?'<div class="bubble bot"><span class="typing"><i></i><i></i><i></i></span></div>':'');
   msgs.scrollTop=msgs.scrollHeight;
   const rv=ms.findIndex(m=>m.reveal);if(rv>=0)startReveal(rv);
@@ -1269,7 +1406,9 @@ msgs.addEventListener('click',e=>{
   const cp=e.target.closest('.cp');
   if(cp){copy(cp.closest('.code').querySelector('code').innerText);return}
   const c=e.target.closest('[data-copy]');
-  if(c){copy(M()[+c.dataset.copy].text)}
+  if(c){copy(M()[+c.dataset.copy].text);return}
+  const sp=e.target.closest('[data-speak]');
+  if(sp){speakMessageByIndex(+sp.dataset.speak,sp);return}
 });
 async function copy(t){
   try{await navigator.clipboard.writeText(t)}catch(e){
@@ -1351,6 +1490,7 @@ async function applyCompletedJobPayload(j,targetChatId){
     const dfs=(j.files&&j.files.length?j.files:(j.file?[j.file]:[])).map(f=>({name:f.name,url:'/api/download/'+f.id,ext:f.ext,size:f.size,auto:!!f.auto}));
     if(dfs.length)say(dfs.some(f=>f.auto)?'نزّلتلك الكود بملف 💾':'جهزتلك ملف التحميل 💾');
     ms.push({role:'model',text:full,note:j.note,reveal:(!document.hidden&&full.length<6000&&!dfs.length),dfiles:dfs});
+    if(window._autoSpeakNextReply){window._autoSpeakNextReply=false;setTimeout(()=>speakTextWithRyn(full),300);}
     if(autoDl)dfs.filter(f=>f.auto).forEach((f,i)=>setTimeout(()=>autoDownload(f),500+800*i));
   }
 }
@@ -1575,7 +1715,9 @@ async function sendAudio(blob){
   try{
     const r=await api('/api/transcribe',{method:'POST',body:fd});let d={};try{d=await r.json()}catch(e){}
     if(!r.ok){toast(d.error||'ما قدرت أفرّغ الصوت');setBot('error',1800);return}
-    inp.value=(inp.value?inp.value+' ':'')+d.text;grow();inp.focus();setBot('happy',1200);say('سمعتك 🎧 راجع النص وابعتو');
+    inp.value=(inp.value?inp.value+' ':'')+d.text;grow();inp.focus();setBot('happy',1200);
+    if(window._autoSendAfterTranscribe){window._autoSendAfterTranscribe=false;say('سمعتك 🎧 عم أجاوبك بصوت مباشر...');send();}
+    else{say('سمعتك 🎧 راجع النص وابعتو');}
   }catch(e){if(e.message!=='auth'){toast('فشل إرسال الصوت');setBot('error',1800)}}
 }
 async function micToggle(){
