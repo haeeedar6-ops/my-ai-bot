@@ -1159,6 +1159,29 @@ if($('#dImpConvFile'))$('#dImpConvFile').onchange=async e=>{
   }catch(err){toast('❌ ملف المحادثة غير صالح');}
 };
 let rynTtsAudio=null,rynTtsPaused=false,rynActiveSessionId='',rynSpeakToken=0;
+let rynAudioEl=null,rynLastTtsErr='';
+const RYN_SILENT_WAV='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+function rynEnsureAudioEl(){
+  if(!rynAudioEl){
+    rynAudioEl=document.createElement('audio');
+    rynAudioEl.setAttribute('playsinline','');
+    rynAudioEl.setAttribute('webkit-playsinline','');
+    rynAudioEl.preload='auto';
+    rynAudioEl.style.display='none';
+    document.body.appendChild(rynAudioEl);
+  }
+  return rynAudioEl;
+}
+/* أندرويد/آيفون بيمنعوا الصوت إلا لو انفتح بلمسة: منفتح العنصر مرة بأول لمسة، وبعدين بنعيد استعماله لكل القراءات */
+function unlockRynAudio(){
+  try{
+    const a=rynEnsureAudioEl();
+    a.src=RYN_SILENT_WAV;
+    const pr=a.play();
+    if(pr&&pr.catch)pr.catch(()=>{});
+  }catch(e){}
+}
+['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockRynAudio,{once:true,passive:true}));
 const VOICE_PROFILES={
   'ar-SY-LaithNeural':{lang:'ar-SY',pitch:1.0,rate:1.0,preferMale:true,label:'ليث — شامي'},
   'ar-SY-AmanyNeural':{lang:'ar-SY',pitch:1.05,rate:1.0,preferMale:false,label:'أماني — شامية'},
@@ -1224,20 +1247,25 @@ async function fetchTtsAudio(text,vid,spd,withSession){
     if(withSession&&rynActiveSessionId)body.session_id=rynActiveSessionId;
     const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok||!d.audio_b64||d.fallback_browser_tts)return null;
+    if(!r.ok||!d.audio_b64||d.fallback_browser_tts){rynLastTtsErr=String(d.tts_error||d.error||('HTTP '+r.status)).slice(0,140);return null}
+    rynLastTtsErr='';
     return 'data:'+(d.mime_type||'audio/mpeg')+';base64,'+d.audio_b64;
-  }catch(e){return null}
+  }catch(e){rynLastTtsErr=String(e&&e.message||e).slice(0,140);return null}
 }
 function speakWithBrowser(cleanTxt,vid,prof,finalRate,done){
-  if(!window.speechSynthesis){done();return}
+  if(!window.speechSynthesis){toast('⚠️ هالمتصفح ما بيدعم القراءة الصوتية');done();return}
   try{
+    const vs=window.speechSynthesis.getVoices?window.speechSynthesis.getVoices():[];
+    if(vs.length===0)toast('⚠️ جهازك ما عنده أصوات قراءة. ثبّت «Google Text-to-speech» وحمّل صوت عربي من إعدادات الهاتف');
+    else if(!vs.some(v=>/^ar/i.test(v.lang||''))&&!/^en/.test(prof.lang||''))toast('⚠️ ما في صوت عربي على جهازك (إعدادات ← اللغة ← تحويل النص إلى كلام ← حمّل العربية)');
     const ut=new SpeechSynthesisUtterance(cleanTxt);
     const chosenV=pickBestBrowserVoice(vid);
     if(chosenV)ut.voice=chosenV;
     ut.lang=prof.lang||'ar-SA';
     ut.pitch=prof.pitch||1.0;
     ut.rate=finalRate;
-    ut.onend=done;ut.onerror=done;
+    ut.onend=done;
+    ut.onerror=(e)=>{toast('⚠️ صوت المتصفح فشل: '+((e&&e.error)||'خطأ'));done()};
     window.speechSynthesis.speak(ut);
   }catch(e){done()}
 }
@@ -1275,17 +1303,27 @@ async function speakTextWithRyn(txt,btnEl,onDoneCb){
     const src=await next;
     if(token!==rynSpeakToken)return;
     if(!src){
+      if(rynLastTtsErr)toast('⚠️ الصوت الحقيقي ما اشتغل ('+rynLastTtsErr+') — رح أقرأ بصوت الجهاز');
       speakWithBrowser(chunks.slice(i).join(' '),vid,prof,browserRate,finishOnce);
       return;
     }
     next=(i+1<chunks.length)?fetchTtsAudio(chunks[i+1],vid,userSpd,false):null;
+    let blocked=false;
     await new Promise(res=>{
-      const a=new Audio(src);
+      const a=rynEnsureAudioEl();
       rynTtsAudio=a;
-      a.onended=res;a.onerror=res;
-      a.play().catch(res);
+      a.onended=res;
+      a.onerror=()=>{blocked=true;res()};
+      a.src=src;
+      const pr=a.play();
+      if(pr&&pr.catch)pr.catch(()=>{blocked=true;res()});
     });
     if(token!==rynSpeakToken)return;
+    if(blocked){
+      toast('⚠️ الهاتف منع تشغيل الصوت: اضغط على الشاشة مرة وجرّب، وتأكد من صوت الوسائط');
+      speakWithBrowser(chunks.slice(i).join(' '),vid,prof,browserRate,finishOnce);
+      return;
+    }
   }
   finishOnce();
 }
@@ -1530,19 +1568,11 @@ if($('#lvInterruptBtn'))$('#lvInterruptBtn').onclick=()=>{
 
 if($('#dVoiceReadBtn'))$('#dVoiceReadBtn').onclick=async()=>{
   try{
-    if(rynTtsAudio&&!rynTtsAudio.paused){rynTtsAudio.pause();rynTtsAudio=null;await api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({action:'stop'})});toast('⏹️ تم إيقاف القراءة الصوتية');return;}
+    if(rynTtsAudio&&!rynTtsAudio.paused){stopAllRynSpeech();toast('⏹️ تم إيقاف القراءة الصوتية');return;}
     const ms=M();const lastBot=[...ms].reverse().find(m=>m.role==='model');
     const txtToRead=lastBot?lastBot.text:(ms.length?ms[ms.length-1].text:'أهلاً بك في رين');
     toast('🔊 جاري توليد الصوت...');
-    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:txtToRead,conversation_id:store.cur})});
-    const d=await r.json();
-    if(r.ok&&d.audio_b64){
-      rynTtsAudio=new Audio('data:'+(d.mime_type||'audio/wav')+';base64,'+d.audio_b64);
-      rynTtsAudio.play().catch(()=>{});
-      toast('🔊 جاري القراءة الصوتية...');
-    }else if(window.speechSynthesis){
-      const ut=new SpeechSynthesisUtterance(txtToRead);ut.lang='ar-SA';window.speechSynthesis.speak(ut);
-    }
+    await speakTextWithRyn(txtToRead,null,null);
   }catch(e){toast('⚠️ تعذر تشغيل القراءة الصوتية');}
 };
 
@@ -8512,6 +8542,28 @@ def register(app, b):
             return jsonify(error=str(pe)), 403
         except Exception as e:
             return jsonify(error=str(e)), 400
+
+    @app.get("/api/v2/voice/health")
+    def api_v2_voice_health():
+        """فحص سريع: هل توليد الصوت الحقيقي شغال على السيرفر؟ (افتحه من المتصفح بعد تسجيل الدخول)."""
+        bad = guard()
+        if bad:
+            return bad
+        import importlib.util as _ilu
+        info = {}
+        try:
+            import tts_engine as _t
+            info["provider_order"] = _t.provider_order()
+            info["edge_tts_installed"] = _ilu.find_spec("edge_tts") is not None
+            info["azure_configured"] = bool(os.environ.get("AZURE_SPEECH_KEY") and os.environ.get("AZURE_SPEECH_REGION"))
+            try:
+                data = _t.synthesize("تجربة الصوت من رين", "ar-SY-LaithNeural", 1.0)
+                info.update(ok=True, audio_bytes=len(data))
+            except Exception as e:
+                info.update(ok=False, error=str(e)[:400])
+        except Exception as e:
+            info.update(ok=False, error="tts_engine غير موجود: " + str(e)[:200])
+        return jsonify(**info)
 
     @app.post("/api/v2/voice/stop")
     def api_v2_voice_stop():
