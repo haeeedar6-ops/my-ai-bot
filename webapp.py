@@ -823,12 +823,16 @@ textarea::placeholder{color:var(--sub)}
         <label>🎙️ اختر شخصية وصوت Ryn المفضل</label>
         <small>يُستخدم هذا الصوت عند الضغط على <b>🔊 استماع</b> تحت أي رسالة وفي وضع <b>Live Voice Chat</b>:</small>
         <select class="minp" id="vVoiceSelect" style="margin-top:6px;margin-bottom:8px;font-weight:600">
-          <option value="ar-SY-RynNatural">🎙️ رين شامي طبيعي (سوري دافئ وطلق)</option>
-          <option value="ar-SA-HamedStrong">🦁 حامد — عربي فصيح جهوري قوي</option>
-          <option value="ar-EG-SalmaExpressive">🌸 سلمى — عربي ناعم ومعبّر جداً</option>
-          <option value="ar-AE-FarisTech">⚡ فارس — عربي/إنجليزي تقني سريع</option>
-          <option value="ar-XA-Standard">📖 الراوي — عربي فصيح كلاسيكي هادئ</option>
-          <option value="en-US-RynClear">🌐 RYN English (Native Clear)</option>
+          <option value="ar-SY-LaithNeural">🎙️ ليث — شامي سوري (رجّال)</option>
+          <option value="ar-SY-AmanyNeural">🌷 أماني — شامية سورية (ناعمة)</option>
+          <option value="ar-SA-HamedNeural">🦁 حامد — فصيح جهوري قوي</option>
+          <option value="ar-SA-ZariyahNeural">📖 زارية — فصيحة هادئة</option>
+          <option value="ar-EG-SalmaNeural">🌸 سلمى — مصرية معبّرة</option>
+          <option value="ar-EG-ShakirNeural">🎧 شاكر — مصري ودود</option>
+          <option value="ar-AE-HamdanNeural">⚡ حمدان — إماراتي سريع</option>
+          <option value="ar-JO-SanaNeural">🌿 سناء — أردنية قريبة</option>
+          <option value="en-US-AriaNeural">🌐 Aria — English</option>
+          <option value="en-US-GuyNeural">🌐 Guy — English</option>
         </select>
         <label style="font-size:12.5px"><span>سرعة القراءة: <b id="vSpeedVal" style="color:var(--g)">1.0x</b></span><input type="range" id="vSpeedRange" min="0.7" max="1.6" step="0.05" value="1.0" style="width:150px;accent-color:var(--g)"></label>
       </div>
@@ -1154,17 +1158,23 @@ if($('#dImpConvFile'))$('#dImpConvFile').onchange=async e=>{
     else{toast('⚠️ '+(d.error||'فشل استيراد المحادثة'));}
   }catch(err){toast('❌ ملف المحادثة غير صالح');}
 };
-let rynTtsAudio=null,rynTtsPaused=false,rynActiveSessionId='';
+let rynTtsAudio=null,rynTtsPaused=false,rynActiveSessionId='',rynSpeakToken=0;
 const VOICE_PROFILES={
-  'ar-SY-RynNatural':{lang:'ar-SY',pitch:1.02,rate:1.0,preferMale:true,label:'رين شامي طبيعي'},
-  'ar-SA-HamedStrong':{lang:'ar-SA',pitch:0.88,rate:0.98,preferMale:true,label:'حامد — فصيح قوي'},
-  'ar-EG-SalmaExpressive':{lang:'ar-EG',pitch:1.12,rate:1.02,preferMale:false,label:'سلمى — عربي معبّر'},
-  'ar-AE-FarisTech':{lang:'ar-AE',pitch:0.96,rate:1.08,preferMale:true,label:'فارس — تقني سريع'},
-  'ar-XA-Standard':{lang:'ar-SA',pitch:0.93,rate:0.94,preferMale:true,label:'الراوي — فصيح هادئ'},
-  'en-US-RynClear':{lang:'en-US',pitch:1.0,rate:1.0,preferMale:false,label:'RYN English'}
+  'ar-SY-LaithNeural':{lang:'ar-SY',pitch:1.0,rate:1.0,preferMale:true,label:'ليث — شامي'},
+  'ar-SY-AmanyNeural':{lang:'ar-SY',pitch:1.05,rate:1.0,preferMale:false,label:'أماني — شامية'},
+  'ar-SA-HamedNeural':{lang:'ar-SA',pitch:0.9,rate:0.98,preferMale:true,label:'حامد — فصيح قوي'},
+  'ar-SA-ZariyahNeural':{lang:'ar-SA',pitch:1.0,rate:0.96,preferMale:false,label:'زارية — فصيحة هادئة'},
+  'ar-EG-SalmaNeural':{lang:'ar-EG',pitch:1.1,rate:1.02,preferMale:false,label:'سلمى — مصرية'},
+  'ar-EG-ShakirNeural':{lang:'ar-EG',pitch:0.98,rate:1.0,preferMale:true,label:'شاكر — مصري'},
+  'ar-AE-HamdanNeural':{lang:'ar-AE',pitch:0.98,rate:1.05,preferMale:true,label:'حمدان — إماراتي'},
+  'ar-JO-SanaNeural':{lang:'ar-JO',pitch:1.05,rate:1.0,preferMale:false,label:'سناء — أردنية'},
+  'en-US-AriaNeural':{lang:'en-US',pitch:1.0,rate:1.0,preferMale:false,label:'Aria — English'},
+  'en-US-GuyNeural':{lang:'en-US',pitch:1.0,rate:1.0,preferMale:true,label:'Guy — English'}
 };
+const LEGACY_VOICE_IDS={'ar-SY-RynNatural':'ar-SY-LaithNeural','ar-SA-HamedStrong':'ar-SA-HamedNeural','ar-EG-SalmaExpressive':'ar-EG-SalmaNeural','ar-AE-FarisTech':'ar-AE-HamdanNeural','ar-XA-Standard':'ar-SA-ZariyahNeural','en-US-RynClear':'en-US-AriaNeural','vibevoice-realtime-exp':'ar-SY-LaithNeural'};
 try{
-  const sv=localStorage.getItem('ryn_voice_id');
+  let sv=localStorage.getItem('ryn_voice_id');
+  if(sv&&typeof LEGACY_VOICE_IDS!=='undefined'&&LEGACY_VOICE_IDS[sv])sv=LEGACY_VOICE_IDS[sv];
   if(sv&&$('#vVoiceSelect'))$('#vVoiceSelect').value=sv;
   const ss=localStorage.getItem('ryn_voice_spd');
   if(ss&&$('#vSpeedRange')){$('#vSpeedRange').value=ss;if($('#vSpeedVal'))$('#vSpeedVal').textContent=parseFloat(ss).toFixed(2)+'x';}
@@ -1173,7 +1183,7 @@ function pickBestBrowserVoice(vid){
   if(!window.speechSynthesis)return null;
   const vs=window.speechSynthesis.getVoices()||[];
   if(!vs.length)return null;
-  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-RynNatural'];
+  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
   const isEn=prof.lang.startsWith('en');
   const langMatches=vs.filter(v=>isEn?v.lang.toLowerCase().startsWith('en'):v.lang.toLowerCase().startsWith('ar'));
   if(!langMatches.length)return vs[0];
@@ -1190,13 +1200,46 @@ function pickBestBrowserVoice(vid){
   return scored[0].v;
 }
 if(window.speechSynthesis&&window.speechSynthesis.onvoiceschanged!==undefined){
-  window.speechSynthesis.onvoiceschanged=()=>{pickBestBrowserVoice('ar-SY-RynNatural')};
+  window.speechSynthesis.onvoiceschanged=()=>{pickBestBrowserVoice('ar-SY-LaithNeural')};
 }
 function stopAllRynSpeech(){
+  rynSpeakToken++;
   if(window.speechSynthesis){try{window.speechSynthesis.cancel()}catch(e){}}
   if(rynTtsAudio){try{rynTtsAudio.pause();rynTtsAudio=null}catch(e){}}
   document.querySelectorAll('[data-speak]').forEach(b=>{b.textContent='🔊 استماع'});
   setBot('idle');
+}
+function chunkSpeech(t,max){
+  const sents=(String(t).match(/[^.!?؟\n]+[.!?؟\n]*/g)||[String(t)]).map(x=>x.trim()).filter(Boolean);
+  const out=[];let cur='';
+  for(const x of sents){
+    if(cur&&(cur+' '+x).length>max){out.push(cur);cur=x}else cur=cur?cur+' '+x:x;
+  }
+  if(cur)out.push(cur);
+  return out.slice(0,14);
+}
+async function fetchTtsAudio(text,vid,spd,withSession){
+  try{
+    const body={text:text,conversation_id:store.cur,voice_id:vid,speed:spd};
+    if(withSession&&rynActiveSessionId)body.session_id=rynActiveSessionId;
+    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.audio_b64||d.fallback_browser_tts)return null;
+    return 'data:'+(d.mime_type||'audio/mpeg')+';base64,'+d.audio_b64;
+  }catch(e){return null}
+}
+function speakWithBrowser(cleanTxt,vid,prof,finalRate,done){
+  if(!window.speechSynthesis){done();return}
+  try{
+    const ut=new SpeechSynthesisUtterance(cleanTxt);
+    const chosenV=pickBestBrowserVoice(vid);
+    if(chosenV)ut.voice=chosenV;
+    ut.lang=prof.lang||'ar-SA';
+    ut.pitch=prof.pitch||1.0;
+    ut.rate=finalRate;
+    ut.onend=done;ut.onerror=done;
+    window.speechSynthesis.speak(ut);
+  }catch(e){done()}
 }
 async function speakTextWithRyn(txt,btnEl,onDoneCb){
   const cleanTxt=String(txt||'').replace(/```[\s\S]*?```/g,' كود برمجي جاهز بالشات. ').replace(/[*#_`~>]/g,' ').replace(/\s+/g,' ').trim();
@@ -1208,47 +1251,43 @@ async function speakTextWithRyn(txt,btnEl,onDoneCb){
     return;
   }
   stopAllRynSpeech();
-  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-RynNatural';
-  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-RynNatural'];
+  const token=++rynSpeakToken;
+  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
+  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
   const userSpd=parseFloat(($('#vSpeedRange')&&$('#vSpeedRange').value)||'1.0')||1.0;
-  const finalRate=Math.max(0.6,Math.min(1.8,userSpd*(prof.rate||1.0)));
+  const browserRate=Math.max(0.6,Math.min(1.8,userSpd*(prof.rate||1.0)));
   if(btnEl){btnEl.dataset.speaking='1';btnEl.textContent='⏹️ إيقاف';}
   setBot('speaking');
   if($('#lvAura'))$('#lvAura').style.transform='scale(1.08)';
   let finished=false;
   const finishOnce=()=>{
     if(finished)return;finished=true;
+    if(token!==rynSpeakToken&&btnEl&&btnEl.dataset.speaking!=='1')return;
     if(btnEl){btnEl.dataset.speaking='0';btnEl.textContent='🔊 استماع';}
     if($('#lvAura'))$('#lvAura').style.transform='scale(1)';
     setBot('idle');
     if(onDoneCb)onDoneCb();
   };
-  if(window.speechSynthesis){
-    try{
-      const ut=new SpeechSynthesisUtterance(cleanTxt);
-      const chosenV=pickBestBrowserVoice(vid);
-      if(chosenV)ut.voice=chosenV;
-      ut.lang=prof.lang||'ar-SA';
-      ut.pitch=prof.pitch||1.0;
-      ut.rate=finalRate;
-      ut.onend=finishOnce;
-      ut.onerror=finishOnce;
-      window.speechSynthesis.speak(ut);
-      api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:cleanTxt.slice(0,500),conversation_id:store.cur,voice_id:vid,speed:finalRate,session_id:rynActiveSessionId})}).catch(()=>{});
+  /* أولاً: صوت Microsoft العصبي الحقيقي من السيرفر (جملة بجملة مع تحميل مسبق للتالية)، ولو فشل نرجع لصوت المتصفح */
+  const chunks=chunkSpeech(cleanTxt,420);
+  let next=fetchTtsAudio(chunks[0],vid,userSpd,true);
+  for(let i=0;i<chunks.length;i++){
+    const src=await next;
+    if(token!==rynSpeakToken)return;
+    if(!src){
+      speakWithBrowser(chunks.slice(i).join(' '),vid,prof,browserRate,finishOnce);
       return;
-    }catch(e){}
+    }
+    next=(i+1<chunks.length)?fetchTtsAudio(chunks[i+1],vid,userSpd,false):null;
+    await new Promise(res=>{
+      const a=new Audio(src);
+      rynTtsAudio=a;
+      a.onended=res;a.onerror=res;
+      a.play().catch(res);
+    });
+    if(token!==rynSpeakToken)return;
   }
-  try{
-    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:cleanTxt,conversation_id:store.cur,voice_id:vid,speed:finalRate,session_id:rynActiveSessionId})});
-    const d=await r.json();
-    if(r.ok&&d.audio_b64){
-      rynTtsAudio=new Audio('data:'+(d.mime_type||'audio/wav')+';base64,'+d.audio_b64);
-      rynTtsAudio.playbackRate=finalRate;
-      rynTtsAudio.onended=finishOnce;
-      rynTtsAudio.onerror=finishOnce;
-      await rynTtsAudio.play();
-    }else{finishOnce();}
-  }catch(e){finishOnce();}
+  finishOnce();
 }
 function speakMessageByIndex(idx,btnEl){
   const ms=M();
@@ -1318,8 +1357,8 @@ async function startLiveVoiceChat(){
   ensureLvRobotCloned();
   liveVoiceActive=true;liveMuted=false;
   if($('#lvMuteBtn'))$('#lvMuteBtn').textContent='🎤';
-  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-RynNatural';
-  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-RynNatural'];
+  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
+  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
   if($('#lvVoiceLabel'))$('#lvVoiceLabel').textContent='Live Voice · '+prof.label;
   $('#liveVoiceOverlay').hidden=false;
   acquireWakeLock();
@@ -1402,7 +1441,7 @@ function startLiveListeningTurn(){
       if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}}
       const recog=new SR();
       liveRecog=recog;
-      const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-RynNatural';
+      const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
       recog.lang=(vid.startsWith('en')?'en-US':'ar-SA');
       recog.continuous=false;
       recog.interimResults=true;
@@ -5202,6 +5241,8 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
     ex.shutdown(wait=False)
     if not answers:
         raise b.ProviderError(502, "Ryn mix ← ولا موديل رد")
+    if meta is not None:
+        meta["participants"] = list(answers.keys())   # النماذج اللي ردّت فعلاً (مو اللي فشلت/انتهت مهلتها)
     if len(answers) == 1:
         name, only = next(iter(answers.items()))
         log.info("Ryn mix: رد %s بس", name)
@@ -6972,6 +7013,12 @@ def register(app, b):
                     pol = AIStack.get_response_policy()
                     if pol is not None and not has_gh_action_tags:
                         answer = pol.clean_natural_response(answer, user_question=text)
+                except Exception:
+                    _ = None
+                try:
+                    parts_ = (mix_meta or {}).get("participants") or []
+                    if is_mix_mode and note == "Ryn mix" and not code_req and len(parts_) > 1 and not has_gh_action_tags:
+                        answer = answer.rstrip() + "\n\n🧩 شاركوا بحل هالسؤال: " + "، ".join(parts_)
                 except Exception:
                     _ = None
                 try:

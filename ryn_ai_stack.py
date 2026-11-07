@@ -2984,8 +2984,14 @@ def get_github_engineering_service() -> Optional[Any]:
 def get_voice_service() -> Optional[Any]:
     global _GLOBAL_VOICE_SERVICE
     if _GLOBAL_VOICE_SERVICE is None and VoiceService is not None:
+        try:
+            import tts_engine as _tts
+            _tts_fn = _tts.get_provider_fn()
+        except Exception:
+            _tts_fn = None
         _GLOBAL_VOICE_SERVICE = VoiceService(
             conversation_service=get_conversation_service(),
             memory_service=get_memory_service(),
+            tts_provider_fn=_tts_fn,
         )
     return _GLOBAL_VOICE_SERVICE
