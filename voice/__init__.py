@@ -51,71 +51,136 @@ PLAYBACK_STATES = (
 
 AVAILABLE_VOICES = [
     {
-        "id": "ar-SY-RynNatural",
-        "name": "🎙️ رين شامي طبيعي (سوري دافئ وطلق)",
+        "id": "ar-SY-LaithNeural",
+        "name": "🎙️ ليث — شامي سوري (رجّال)",
         "lang": "ar-SY",
-        "pitch": 1.02,
-        "rate": 1.0,
-        "provider": "arabic-neural-tts",
-        "experimental": False,
-    },
-    {
-        "id": "ar-SA-HamedStrong",
-        "name": "🦁 حامد — عربي فصيح جهوري قوي",
-        "lang": "ar-SA",
-        "pitch": 0.90,
-        "rate": 0.98,
-        "provider": "arabic-neural-tts",
-        "experimental": False,
-    },
-    {
-        "id": "ar-EG-SalmaExpressive",
-        "name": "🌸 سلمى — عربي ناعم ومعبّر جداً",
-        "lang": "ar-EG",
-        "pitch": 1.12,
-        "rate": 1.02,
-        "provider": "arabic-neural-tts",
-        "experimental": False,
-    },
-    {
-        "id": "ar-AE-FarisTech",
-        "name": "⚡ فارس — عربي/إنجليزي تقني سريع",
-        "lang": "ar-AE",
-        "pitch": 0.96,
-        "rate": 1.08,
-        "provider": "arabic-neural-tts",
-        "experimental": False,
-    },
-    {
-        "id": "ar-XA-Standard",
-        "name": "📖 الراوي — عربي فصيح كلاسيكي هادئ",
-        "lang": "ar-SA",
-        "pitch": 0.94,
-        "rate": 0.94,
-        "provider": "arabic-neural-tts",
-        "experimental": False,
-    },
-    {
-        "id": "en-US-RynClear",
-        "name": "🌐 RYN English (Native Clear)",
-        "lang": "en-US",
+        "gender": "male",
         "pitch": 1.0,
         "rate": 1.0,
-        "provider": "neural-tts",
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "ar-SY-AmanyNeural",
+        "name": "🌷 أماني — شامية سورية (ناعمة)",
+        "lang": "ar-SY",
+        "gender": "female",
+        "pitch": 1.0,
+        "rate": 1.0,
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "ar-SA-HamedNeural",
+        "name": "🦁 حامد — فصيح جهوري قوي",
+        "lang": "ar-SA",
+        "gender": "male",
+        "pitch": 1.0,
+        "rate": 0.98,
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "ar-SA-ZariyahNeural",
+        "name": "📖 زارية — فصيحة هادئة",
+        "lang": "ar-SA",
+        "gender": "female",
+        "pitch": 1.0,
+        "rate": 0.96,
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "ar-EG-SalmaNeural",
+        "name": "🌸 سلمى — مصرية معبّرة",
+        "lang": "ar-EG",
+        "gender": "female",
+        "pitch": 1.0,
+        "rate": 1.02,
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "ar-EG-ShakirNeural",
+        "name": "🎧 شاكر — مصري ودود",
+        "lang": "ar-EG",
+        "gender": "male",
+        "pitch": 1.0,
+        "rate": 1.0,
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "ar-AE-HamdanNeural",
+        "name": "⚡ حمدان — إماراتي سريع",
+        "lang": "ar-AE",
+        "gender": "male",
+        "pitch": 1.0,
+        "rate": 1.05,
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "ar-JO-SanaNeural",
+        "name": "🌿 سناء — أردنية قريبة",
+        "lang": "ar-JO",
+        "gender": "female",
+        "pitch": 1.0,
+        "rate": 1.0,
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "en-US-AriaNeural",
+        "name": "🌐 Aria — English natural",
+        "lang": "en-US",
+        "gender": "female",
+        "pitch": 1.0,
+        "rate": 1.0,
+        "provider": "microsoft-neural",
+        "experimental": False,
+    },
+    {
+        "id": "en-US-GuyNeural",
+        "name": "🌐 Guy — English natural",
+        "lang": "en-US",
+        "gender": "male",
+        "pitch": 1.0,
+        "rate": 1.0,
+        "provider": "microsoft-neural",
         "experimental": False,
     },
     {
         "id": "vibevoice-realtime-exp",
-        "name": "🧪 VibeVoice Realtime (Experimental)",
-        "lang": "ar-SY",
+        "name": "🧪 VibeVoice Realtime (غير متاح: يحتاج GPU ولا يدعم العربية رسمياً)",
+        "lang": "en-US",
+        "gender": "n/a",
         "pitch": 1.0,
         "rate": 1.0,
         "provider": "vibevoice-adapter",
         "model_card": "https://github.com/microsoft/VibeVoice",
-        "pinned_revision": "vibevoice-0.1.0-pinned",
+        "available": False,
         "experimental": True,
     },
 ]
+
+# أسماء قديمة كانت مختلقة (مو أصوات حقيقية) -> الأصوات الحقيقية المقابلة
+LEGACY_VOICE_ALIASES = {
+    "ar-SY-RynNatural": "ar-SY-LaithNeural",
+    "ar-SA-HamedStrong": "ar-SA-HamedNeural",
+    "ar-EG-SalmaExpressive": "ar-EG-SalmaNeural",
+    "ar-AE-FarisTech": "ar-AE-HamdanNeural",
+    "ar-XA-Standard": "ar-SA-ZariyahNeural",
+    "en-US-RynClear": "en-US-AriaNeural",
+}
+DEFAULT_VOICE_ID = "ar-SY-LaithNeural"
+
+
+def canonical_voice_id(voice_id: Optional[str], fallback: str = DEFAULT_VOICE_ID) -> str:
+    """يحوّل المعرّف (حتى القديم) لصوت حقيقي موجود بالكتالوج؛ وإلا يرجّع fallback."""
+    vid = LEGACY_VOICE_ALIASES.get(str(voice_id or ""), str(voice_id or ""))
+    ok = {x["id"] for x in AVAILABLE_VOICES if x.get("available", True)}
+    return vid if vid in ok else fallback
 
 
 def _iso_utc(ts: Optional[float] = None) -> str:
@@ -258,14 +323,14 @@ class VoiceService:
 
     def get_settings(self, user_id: str) -> Dict[str, Any]:
         u = self._normalize_user(user_id)
-        default_voice = os.environ.get("TTS_DEFAULT_VOICE", "ar-SY-RynNatural")
+        default_voice = canonical_voice_id(os.environ.get("TTS_DEFAULT_VOICE", DEFAULT_VOICE_ID))
         default_lang = os.environ.get("ASR_LANGUAGE", "ar-SY")
         ret_days = int(os.environ.get("AUDIO_RETENTION_DAYS", "7"))
         with self._lock, self._conn() as conn:
             row = conn.execute("SELECT * FROM user_voice_settings WHERE user_id = ?", (u,)).fetchone()
             if row:
                 prefs = {
-                    "voice_id": row["voice_id"],
+                    "voice_id": canonical_voice_id(row["voice_id"], default_voice),
                     "speed": float(row["speed"]),
                     "asr_language": row["asr_language"],
                     "retain_raw_audio": bool(row["retain_raw_audio"]),
@@ -286,8 +351,8 @@ class VoiceService:
             "live_voice_enabled": self.live_voice_enabled,
             "asr_provider": os.environ.get("ASR_PROVIDER", "groq-whisper-v3-turbo"),
             "asr_model": os.environ.get("ASR_MODEL", "whisper-large-v3-turbo"),
-            "tts_provider": os.environ.get("TTS_PROVIDER", "arabic-neural-tts"),
-            "tts_model": os.environ.get("TTS_MODEL", "ryn-arabic-tts-v2"),
+            "tts_provider": os.environ.get("TTS_PROVIDER", "auto"),
+            "tts_model": os.environ.get("TTS_MODEL", "microsoft-neural"),
             "available_voices": AVAILABLE_VOICES,
             "preferences": prefs,
         }
@@ -303,7 +368,7 @@ class VoiceService:
     ) -> Dict[str, Any]:
         u = self._normalize_user(user_id)
         cur = self.get_settings(u)["preferences"]
-        new_vid = voice_id if voice_id in {v["id"] for v in AVAILABLE_VOICES} else cur["voice_id"]
+        new_vid = canonical_voice_id(voice_id, cur["voice_id"])
         new_spd = max(0.5, min(2.0, float(speed if speed is not None else cur["speed"])))
         new_lang = str(asr_language or cur["asr_language"])[:20]
         new_ret = bool(retain_raw_audio if retain_raw_audio is not None else cur["retain_raw_audio"])
@@ -340,7 +405,7 @@ class VoiceService:
             self.conversation_service.ensure_conversation(u, cid)
 
         prefs = self.get_settings(u)["preferences"]
-        vid = voice_id if voice_id in {v["id"] for v in AVAILABLE_VOICES} else prefs["voice_id"]
+        vid = canonical_voice_id(voice_id, prefs["voice_id"])
         spd = max(0.5, min(2.0, float(speed or prefs["speed"])))
         sid = f"vs_{uuid.uuid4().hex[:14]}"
         now = time.time()
@@ -551,7 +616,7 @@ class VoiceService:
         self._check_feature_enabled(require_live=False)
         u = self._normalize_user(user_id)
         prefs = self.get_settings(u)["preferences"]
-        vid = voice_id if voice_id in {v["id"] for v in AVAILABLE_VOICES} else prefs["voice_id"]
+        vid = canonical_voice_id(voice_id, prefs["voice_id"])
         spd = max(0.5, min(2.0, float(speed if speed is not None else prefs["speed"])))
         cid = str(conversation_id or "").strip() or f"conv_{u}_default"
 
@@ -574,13 +639,23 @@ class VoiceService:
         if session_id:
             self.transition_state(u, session_id, "speaking", playback_state="playing")
 
+        tts_error = ""
+        fallback_browser = False
         if callable(self.tts_provider_fn):
-            audio_bytes = self.tts_provider_fn(target_text, vid, spd)
+            try:
+                audio_bytes = self.tts_provider_fn(target_text, vid, spd)
+            except Exception as e:
+                # ما نرجّع بيب مزيّف: الواجهة بتنتقل لصوت المتصفح
+                tts_error = str(e)[:240]
+                audio_bytes = b""
+                fallback_browser = True
         else:
+            # بيئة اختبار/بدون مزود: صوت تجريبي صريح (ما بيطلع بالإنتاج لأن webapp بيحقن المزود الحقيقي)
             audio_bytes = synthesize_wav_Placeholder_bytes(target_text, speed=spd)
 
-        audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
-        dur_sec = round(max(0.25, (len(target_text) * 0.04) / spd), 2)
+        audio_b64 = base64.b64encode(audio_bytes).decode("ascii") if audio_bytes else ""
+        mime = "audio/wav" if audio_bytes[:4] == b"RIFF" else "audio/mpeg"
+        dur_sec = round(max(0.25, (len(target_text) * 0.06) / spd), 2)
 
         asset_id = f"va_{uuid.uuid4().hex[:14]}"
         now = time.time()
@@ -595,7 +670,7 @@ class VoiceService:
                         retention_expires_at, deleted, created_at
                     ) VALUES (?, ?, ?, ?, 'tts', ?, ?, ?, ?, ?, 0, ?)
                     """,
-                    (asset_id, session_id, u, cid, target_text[:1000], f"mem://{asset_id}.wav", audio_b64, dur_sec, exp_ts, now),
+                    (asset_id, session_id, u, cid, target_text[:1000], f"mem://{asset_id}.{'wav' if mime == 'audio/wav' else 'mp3'}", audio_b64, dur_sec, exp_ts, now),
                 )
 
         return {
@@ -609,8 +684,10 @@ class VoiceService:
             "playback_state": "playing",
             "text_read": target_text,
             "duration_sec": dur_sec,
-            "mime_type": "audio/wav",
+            "mime_type": mime,
             "audio_b64": audio_b64,
+            "fallback_browser_tts": fallback_browser,
+            "tts_error": tts_error,
         }
 
     def process_stream_event(
@@ -779,7 +856,7 @@ class VoiceService:
             "playback_state": row["playback_state"],
             "partial_transcript": row["partial_transcript"],
             "final_transcript": row["final_transcript"],
-            "voice_id": row["voice_id"],
+            "voice_id": canonical_voice_id(row["voice_id"]),
             "speed": float(row["speed"]),
             "mic_permission_granted": bool(row["mic_permission_granted"]),
             "recording_indicator_visible": bool(row["recording_indicator_visible"]),
