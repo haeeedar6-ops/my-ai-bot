@@ -1339,6 +1339,7 @@ function stopAllRynSpeech(isBargeIn){
   notifyVoicePlaybackState(isBargeIn?'barge_in':'playback_stopped',!!isBargeIn);
 }
 window.addEventListener('pagehide',()=>stopAllRynSpeech(false));
+function rynB64ToAudioUrl(b64,mime){try{const bin=atob(String(b64||'').trim());const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([u8],{type:mime||'audio/mpeg'}));}catch(e){return 'data:'+(mime||'audio/mpeg')+';base64,'+b64;}}
 function chunkSpeech(t,max){
   const sents=(String(t).match(/[^.!?؟\n]+[.!?؟\n]*/g)||[String(t)]).map(x=>x.trim()).filter(Boolean);
   const out=[];let cur='';
@@ -1363,7 +1364,7 @@ async function fetchTtsAudio(text,vid,spd,withSession,msgId,langHint){
     if(d&&d.warning)toast('⚠️ '+d.warning);
     if(!r.ok||!d.audio_b64||d.fallback_browser_tts){rynLastTtsErr=String(d.tts_error||d.error||('HTTP '+r.status)).slice(0,140);return null}
     rynLastTtsErr='';
-    return 'data:'+(d.mime_type||'audio/mpeg')+';base64,'+d.audio_b64;
+    return rynB64ToAudioUrl(d.audio_b64,d.mime_type||'audio/mpeg');
   }catch(e){rynLastTtsErr=String(e&&e.message||e).slice(0,140);return null}
 }
 function speakWithBrowser(cleanTxt,vid,prof,finalRate,done,targetLang){
@@ -1508,7 +1509,7 @@ async function rynDiagVoice(){
   a.onplaying=()=>log('   ▶️ بدأ التشغيل فعلاً (لو ما سمعت: ارفع صوت الوسائط، وتأكد إنو الهاتف مو بوضع صامت للوسائط/البلوتوث)');
   a.onended=()=>log('✅ انتهى التشغيل (مدة '+(a.duration?a.duration.toFixed(1):'?')+' ثانية)');
   a.onerror=()=>log('❌ فشل تشغيل الملف. كود الخطأ: '+(a.error?a.error.code+' '+(a.error.message||''):'؟'));
-  a.src='data:'+(d.mime_type||'audio/mpeg')+';base64,'+d.audio_b64;
+  a.src=rynB64ToAudioUrl(d.audio_b64,d.mime_type||'audio/mpeg');
   try{await a.play()}catch(e){log('❌ المتصفح رفض التشغيل: '+(e&&e.name)+' — '+(e&&e.message||''))}
 }
 if($('#vTestVoiceBtn'))$('#vTestVoiceBtn').onclick=()=>{rynDiagVoice()};
@@ -6837,7 +6838,7 @@ def register(app, b):
             if p == "/":
                 resp.headers["Content-Security-Policy"] = (
                     "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-                    "img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'")
+                    "img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; form-action 'self'")
         return resp
 
     # ---------- صفحات ثابتة ----------
