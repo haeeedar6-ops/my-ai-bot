@@ -36,15 +36,18 @@ LEGACY_VOICE_ALIASES: Dict[str, str] = {
 
 # الكتالوج المعتمد للأصوات العصبية متعددة اللغات (Allow-list صريح لمنع تمرير معرّفات وهمية)
 VOICE_CATALOG: List[Dict[str, Any]] = [
-    # Arabic (Syrian preferred for Levant/Syrian dialect, plus Saudi MSA, Egyptian, UAE, Jordanian)
-    {"id": "ar-SY-LaithNeural", "name": "🎙️ ليث — شامي سوري (رجّال)", "lang": "ar-SY", "gender": "male", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
-    {"id": "ar-SY-AmanyNeural", "name": "🌷 أماني — شامية سورية (ناعمة)", "lang": "ar-SY", "gender": "female", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
+    # Arabic — Levantine / Shami dialects (Syrian, Coastal/Lebanese, Jordanian) + Saudi MSA, Egyptian, UAE
+    {"id": "ar-SY-LaithNeural", "name": "🎙️ ليث — شامي دمشقي (شبابي طبيعي وسلس)", "lang": "ar-SY", "gender": "male", "pitch": 1.0, "rate": 0.98, "provider": "microsoft-neural", "available": True, "experimental": False},
+    {"id": "ar-SY-AmanyNeural", "name": "🌷 أماني — شامية دمشقية (دافئة وناعمة)", "lang": "ar-SY", "gender": "female", "pitch": 1.0, "rate": 0.98, "provider": "microsoft-neural", "available": True, "experimental": False},
+    {"id": "ar-LB-LaylaNeural", "name": "🌊 ليلى — شامية ساحلية/لبنانية (سلسة وحيوية)", "lang": "ar-LB", "gender": "female", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
+    {"id": "ar-LB-RamiNeural", "name": "🌲 رامي — شامي ساحلي/لبناني (هادئ وعفوي)", "lang": "ar-LB", "gender": "male", "pitch": 1.0, "rate": 0.99, "provider": "microsoft-neural", "available": True, "experimental": False},
+    {"id": "ar-JO-TaimNeural", "name": "🦅 تيم — شامي أردني (رزين وواضِح)", "lang": "ar-JO", "gender": "male", "pitch": 1.0, "rate": 0.99, "provider": "microsoft-neural", "available": True, "experimental": False},
+    {"id": "ar-JO-SanaNeural", "name": "🌿 سناء — شامية أردنية (قريبة ودافئة)", "lang": "ar-JO", "gender": "female", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
     {"id": "ar-SA-HamedNeural", "name": "🦁 حامد — فصيح جهوري قوي", "lang": "ar-SA", "gender": "male", "pitch": 1.0, "rate": 0.98, "provider": "microsoft-neural", "available": True, "experimental": False},
     {"id": "ar-SA-ZariyahNeural", "name": "📖 زارية — فصيحة هادئة", "lang": "ar-SA", "gender": "female", "pitch": 1.0, "rate": 0.96, "provider": "microsoft-neural", "available": True, "experimental": False},
-    {"id": "ar-EG-SalmaNeural", "name": "🌸 سلمى — مصرية معبّرة", "lang": "ar-EG", "gender": "female", "pitch": 1.0, "rate": 1.02, "provider": "microsoft-neural", "available": True, "experimental": False},
+    {"id": "ar-EG-SalmaNeural", "name": "🌸 سلمى — مصرية معبّرة", "lang": "ar-EG", "gender": "female", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
     {"id": "ar-EG-ShakirNeural", "name": "🎧 شاكر — مصري ودود", "lang": "ar-EG", "gender": "male", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
-    {"id": "ar-AE-HamdanNeural", "name": "⚡ حمدان — إماراتي سريع", "lang": "ar-AE", "gender": "male", "pitch": 1.0, "rate": 1.05, "provider": "microsoft-neural", "available": True, "experimental": False},
-    {"id": "ar-JO-SanaNeural", "name": "🌿 سناء — أردنية قريبة", "lang": "ar-JO", "gender": "female", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
+    {"id": "ar-AE-HamdanNeural", "name": "⚡ حمدان — خليجي إماراتي", "lang": "ar-AE", "gender": "male", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
     # English (US & UK)
     {"id": "en-US-AriaNeural", "name": "🌐 Aria — English (US Female)", "lang": "en-US", "gender": "female", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
     {"id": "en-US-GuyNeural", "name": "🌐 Guy — English (US Male)", "lang": "en-US", "gender": "male", "pitch": 1.0, "rate": 1.0, "provider": "microsoft-neural", "available": True, "experimental": False},
@@ -78,6 +81,7 @@ ALLOWED_VOICE_IDS: Dict[str, Dict[str, Any]] = {
 # جدول اللغات المعتمدة لمزود الطوارئ gTTS (فقط اللغات المتحققة، مع النطاق المحلي TLD)
 GTTS_SUPPORTED_LANGUAGES: Dict[str, Tuple[str, str]] = {
     "ar-SY": ("ar", "com"),
+    "ar-LB": ("ar", "com"),
     "ar-SA": ("ar", "com"),
     "ar-EG": ("ar", "com.eg"),
     "ar-AE": ("ar", "ae"),
@@ -172,7 +176,7 @@ def detect_text_language(text: str, hint_lang: Optional[str] = None) -> str:
             return "ar-EG"
         if _SAUDI_GULF_MARKERS.search(raw):
             return "ar-SA"
-        if hint in ("ar-SY", "ar-SA", "ar-EG", "ar-AE", "ar-JO"):
+        if hint in ("ar-SY", "ar-LB", "ar-SA", "ar-EG", "ar-AE", "ar-JO"):
             return hint
         return "ar-SY"
 
@@ -267,6 +271,194 @@ def select_voice_for_language(
     }
 
 
+
+# ---------------- محرك تحسين النطق الشامي والتشكيل الصوتي السلس (Shami Phonetic Polish) ----------------
+# قاموس التشكيل الصوتي للكلمات الشامية والسورية الشائعة لضمان نطقها بلهجة شامية طبيعية 100% بدل قراءتها كفصحى جامدة
+_SHAMI_WORD_MAP: Dict[str, str] = {
+    "رين": "رِينْ",
+    "أهلا": "أَهْلًا",
+    "اهلا": "أَهْلًا",
+    "أهلاً": "أَهْلًا",
+    "وسهلا": "وْسَهْلًا",
+    "وسهلاً": "وْسَهْلًا",
+    "مرحبا": "مَرْحَبَا",
+    "مراحب": "مَرَاحِبْ",
+    "شلونك": "شْلُونَكْ",
+    "شلونكم": "شْلُونْكُنْ",
+    "كيفك": "كِيفَكْ",
+    "كيفكن": "كِيفْكُنْ",
+    "هلق": "هَلَّقْ",
+    "هلأ": "هَلَّأْ",
+    "لهلق": "لَهَلَّقْ",
+    "لسا": "لِسَّا",
+    "عم": "عَمْ",
+    "شو": "شُو",
+    "ليش": "لِيشْ",
+    "وين": "وِينْ",
+    "وينك": "وِينَكْ",
+    "إيمتى": "إِيمْتَى",
+    "ايمتى": "إِيمْتَى",
+    "منيح": "مْنِيحْ",
+    "منيحة": "مْنِيحَة",
+    "مناح": "مْنَاحْ",
+    "كتير": "كْتِيرْ",
+    "شوي": "شْوَيّ",
+    "شوية": "شْوَيَّة",
+    "هيك": "هِيكْ",
+    "مشان": "مْشَانْ",
+    "عشان": "عَشَانْ",
+    "كرمال": "كِرْمَالْ",
+    "كرمالك": "كِرْمَالَكْ",
+    "بدي": "بِدِّي",
+    "بدك": "بِدَّكْ",
+    "بدو": "بِدُّو",
+    "بدها": "بِدْهَا",
+    "بدنا": "بِدْنَا",
+    "بدكن": "بِدْكُنْ",
+    "فيني": "فِينِي",
+    "فيك": "فِيكْ",
+    "فينا": "فِينَا",
+    "هاد": "هَادْ",
+    "هادا": "هَادَا",
+    "هاي": "هَايْ",
+    "هداك": "هَدَاكْ",
+    "هدول": "هَدُولْ",
+    "رح": "رَحْ",
+    "مو": "مُو",
+    "عنجد": "عَنْجَدْ",
+    "والله": "وَاللّٰه",
+    "يلا": "يَلَّا",
+    "طيب": "طَيِّبْ",
+    "تمام": "تَمَامْ",
+    "مزبوط": "مَزْبُوطْ",
+    "مضبوط": "مَزْبُوطْ",
+    "شغال": "شَغَّالْ",
+    "شغّال": "شَغَّالْ",
+    "شغالة": "شَغَّالَة",
+    "شغلة": "شَغْلِة",
+    "شغلات": "شَغْلَاتْ",
+    "تفضل": "تْفَضَّلْ",
+    "تفضّل": "تْفَضَّلْ",
+    "تكرم": "تِكْرَمْ",
+    "عيوني": "عْيُونِي",
+    "غالي": "غَالِي",
+    "رفيقي": "رْفِيقِي",
+    "صديقي": "صَدِيقِي",
+    "حبيبي": "حَبِيبِي",
+    "أخي": "أَخِي",
+    "نحكي": "نِحْكِي",
+    "لنحكي": "لْنِحْكِي",
+    "بحكي": "بِحْكِي",
+    "تحكي": "تِحْكِي",
+    "يحكي": "يِحْكِي",
+    "احكي": "إِحْكِي",
+    "احكيلي": "إِحْكِيلِي",
+    "قلي": "قِلِّي",
+    "قلّي": "قِلِّي",
+    "بقلك": "بْقِلَّكْ",
+    "أسمعك": "إِسْمَعَكْ",
+    "اسمعك": "إِسْمَعَكْ",
+    "سمعتك": "سْمِعْتَكْ",
+    "فهمت": "فْهِمْتْ",
+    "عليك": "عَلِيكْ",
+    "معك": "مَعَكْ",
+    "معي": "مَعِي",
+    "مع": "مَعْ",
+    "بعض": "بَعْضْ",
+    "جاهز": "جَاهِزْ",
+    "جاهزة": "جَاهْزِة",
+    "دغري": "دُغْرِي",
+    "فورا": "فَوْرًا",
+    "فوراً": "فَوْرًا",
+    "طبعاً": "طَبْعًا",
+    "طبعا": "طَبْعًا",
+    "أكيد": "أَكِيدْ",
+    "اكيد": "أَكِيدْ",
+    "بسيطة": "بَسِيطَة",
+    " ولا ": " وَلَا ",
+    "يهمك": "يْهِمَّكْ",
+    "جرب": "جَرِّبْ",
+    "جرّب": "جَرِّبْ",
+    "شوف": "شُوفْ",
+    "بلش": "بَلِّشْ",
+    "بلّش": "بَلِّشْ",
+    "خلص": "خَلَصْ",
+    "تاني": "تَانِي",
+    "تانية": "تَانْيَة",
+    "ثانية": "تَانْيَة",
+    "إلي": "إِلِي",
+    "إلك": "إِلَكْ",
+    "إلو": "إِلُو",
+    "فيها": "فِيهَا",
+    "فيه": "فِيهْ",
+    "عندي": "عِنْدِي",
+    "عندك": "عِنْدَكْ",
+    "سيرفر": "سِيرْفَرْ",
+    "ميكروفون": "مَايْكْرُوفُونْ",
+}
+
+_TECH_ARABIC_PHONETIC: List[Tuple[re.Pattern, str]] = [
+    (re.compile(r"\bRyn\b", re.I), "رِينْ"),
+    (re.compile(r"\bChatGPT\b", re.I), "تشات جي بي تي"),
+    (re.compile(r"\bOpenAI\b", re.I), "أوبن إيه آي"),
+    (re.compile(r"\bGemini\b", re.I), "جيميناي"),
+    (re.compile(r"\bGroq\b", re.I), "غروك"),
+    (re.compile(r"\bPython\b", re.I), "بايثون"),
+    (re.compile(r"\bJavaScript\b", re.I), "جافاسكربت"),
+    (re.compile(r"\bTypeScript\b", re.I), "تايب سكربت"),
+    (re.compile(r"\bGitHub\b", re.I), "غيت هاب"),
+    (re.compile(r"\bRender\b", re.I), "ريندر"),
+    (re.compile(r"\bFlask\b", re.I), "فلاسك"),
+    (re.compile(r"\bFastAPI\b", re.I), "فاست إيه بي آي"),
+    (re.compile(r"\bAPI\b"), "إيه بي آي"),
+    (re.compile(r"\bJSON\b"), "جيسون"),
+    (re.compile(r"\bHTML\b"), "إتش تي إم إل"),
+    (re.compile(r"\bCSS\b"), "سي إس إس"),
+    (re.compile(r"\bSQL\b"), "إس كيو إل"),
+    (re.compile(r"\bURL\b"), "يو آر إل"),
+]
+
+
+def polish_text_for_voice(text: str, voice: str = DEFAULT_VOICE) -> str:
+    """
+    يحسّن انسيابية النص وطبيعته الصوتية قبل إرساله لمزود النطق العصبي (edge-tts / Azure):
+    - في الأصوات العربية الشامية (`ar-SY`, `ar-LB`, `ar-JO`): يضبط تشكيل الكلمات الشامية الشائعة،
+      يمنع التنوين الفصيح المصطنع في أواخر الجمل، ويحوّل المصطلحات التقنية الشائعة لنطق صوتي سلس.
+    """
+    t = str(text or "").strip()
+    if not t:
+        return t
+    if not voice.startswith("ar-"):
+        return t
+
+    # تحويل العبارات الفصيحة الجامدة الشائعة في الرسائل الترحيبية إلى لهجة شامية دافئة عند استخدام صوت شامي
+    if voice.startswith(("ar-SY", "ar-LB", "ar-JO")):
+        t = re.sub(r"\bأهلاً بك\b", "أَهْلًا فِيكْ", t)
+        t = re.sub(r"\bاهلا بك\b", "أَهْلًا فِيكْ", t)
+        t = re.sub(r"\bكيف يمكنني مساعدتك\b", "كِيفْ فِينِي سَاعْدَكْ", t)
+        t = re.sub(r"\bكيف أستطيع مساعدتك\b", "شُو فِينِي سَاعْدَكْ", t)
+
+        # تعريب صوتي للمصطلحات الإنجليزية المفردة وسط الكلام العربي لمنع التهجئة المتقطعة
+        if len(re.findall(r"[\u0600-\u06FF]", t)) > len(re.findall(r"[A-Za-z]", t)):
+            for pat, ar_phon in _TECH_ARABIC_PHONETIC:
+                t = pat.sub(ar_phon, t)
+
+        # تطبيق التشكيل الشامي للكلمات المفتاحية
+        tokens = re.split(r"(\s+|[،,.!?؟؛:]+)", t)
+        out_tokens: List[str] = []
+        for tok in tokens:
+            if tok in _SHAMI_WORD_MAP:
+                out_tokens.append(_SHAMI_WORD_MAP[tok])
+            else:
+                out_tokens.append(tok)
+        t = "".join(out_tokens)
+
+    # تحسين فواصل التنفس الطبيعية ताकि لا يدمج الكلمات بسرعة آلية
+    t = re.sub(r"\s*([،,؛;])\s*", r"\1 ", t)
+    t = re.sub(r"\s*([.!?؟]+)\s*", r"\1 ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
 def clean_for_speech(text: str, max_chars: Optional[int] = None) -> str:
     """
     ينظف الكود والماركداون والروابط مع الحفاظ على علامات الترقيم وفواصل الفقرات للنطق الطبيعي.
@@ -278,11 +470,14 @@ def clean_for_speech(text: str, max_chars: Optional[int] = None) -> str:
     t = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", t)
     t = re.sub(r"\[([^\]]+)\]\((?:https?://)[^)]*\)", r"\1", t)
     t = re.sub(r"https?://\S+", " رابط ", t)
-    t = re.sub(r"[*#_~>|]+", " ", t)
+    t = re.sub(r"(?m)^\s*(?:[-*•]+|\d+[.)])\s+", " ، ", t)
+    t = re.sub(r"[*#_~>|•—–]+", " ، ", t)
+    t = re.sub(r'[()\[\]{}"/\\]+', " ", t)
     t = re.sub(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]", " ", t)  # إيموجي
     # الحفاظ على فواصل الأسطر كوقفة طبيعية بين الفقرات
     t = re.sub(r"\n{2,}", " . ", t)
     t = re.sub(r"\n", " ، ", t)
+    t = re.sub(r"(?:\s*،\s*){2,}", " ، ", t)
     t = re.sub(r"[ \t]+", " ", t).strip()
     if max_chars is not None and max_chars > 0:
         return t[:max_chars]
@@ -546,9 +741,10 @@ def _azure_synthesize(text: str, voice: str, speed: float) -> bytes:
         raise RuntimeError("Azure Speech غير مضبوط")
     lang = "-".join(voice.split("-")[:2])
     from xml.sax.saxutils import escape
+    spoken_text = polish_text_for_voice(text, voice)
     ssml = (
         f"<speak version='1.0' xml:lang='{lang}' xmlns='http://www.w3.org/2001/10/synthesis'>"
-        f"<voice name='{voice}'><prosody rate='{_rate_percent(speed):+d}%'>{escape(text)}</prosody></voice></speak>"
+        f"<voice name='{voice}'><prosody rate='{_rate_percent(speed):+d}%'>{escape(spoken_text)}</prosody></voice></speak>"
     )
     r = requests.post(
         f"https://{region}.tts.speech.microsoft.com/cognitiveservices/v1",
@@ -570,7 +766,8 @@ def _azure_synthesize(text: str, voice: str, speed: float) -> bytes:
 async def _edge_async(text: str, voice: str, speed: float) -> bytes:
     import edge_tts  # type: ignore
 
-    comm = edge_tts.Communicate(text, voice, rate=f"{_rate_percent(speed):+d}%")
+    spoken_text = polish_text_for_voice(text, voice)
+    comm = edge_tts.Communicate(spoken_text, voice, rate=f"{_rate_percent(speed):+d}%")
     out = bytearray()
     async for chunk in comm.stream():
         if chunk.get("type") == "audio":

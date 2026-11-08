@@ -823,14 +823,17 @@ textarea::placeholder{color:var(--sub)}
         <label>🎙️ اختر شخصية وصوت Ryn المفضل</label>
         <small>يُستخدم هذا الصوت عند الضغط على <b>🔊 استماع</b> تحت أي رسالة وفي وضع <b>Live Voice Chat</b>:</small>
         <select class="minp" id="vVoiceSelect" style="margin-top:6px;margin-bottom:8px;font-weight:600">
-          <option value="ar-SY-LaithNeural">🎙️ ليث — شامي سوري (رجّال)</option>
-          <option value="ar-SY-AmanyNeural">🌷 أماني — شامية سورية (ناعمة)</option>
+          <option value="ar-SY-LaithNeural">🎙️ ليث — شامي دمشقي (شبابي طبيعي وسلس)</option>
+          <option value="ar-SY-AmanyNeural">🌷 أماني — شامية دمشقية (دافئة وناعمة)</option>
+          <option value="ar-LB-LaylaNeural">🌊 ليلى — شامية ساحلية/لبنانية (سلسة وحيوية)</option>
+          <option value="ar-LB-RamiNeural">🌲 رامي — شامي ساحلي/لبناني (هادئ وعفوي)</option>
+          <option value="ar-JO-TaimNeural">🦅 تيم — شامي أردني (رزين وواضح)</option>
+          <option value="ar-JO-SanaNeural">🌿 سناء — شامية أردنية (قريبة ودافئة)</option>
           <option value="ar-SA-HamedNeural">🦁 حامد — فصيح جهوري قوي</option>
           <option value="ar-SA-ZariyahNeural">📖 زارية — فصيحة هادئة</option>
           <option value="ar-EG-SalmaNeural">🌸 سلمى — مصرية معبّرة</option>
           <option value="ar-EG-ShakirNeural">🎧 شاكر — مصري ودود</option>
-          <option value="ar-AE-HamdanNeural">⚡ حمدان — إماراتي سريع</option>
-          <option value="ar-JO-SanaNeural">🌿 سناء — أردنية قريبة</option>
+          <option value="ar-AE-HamdanNeural">⚡ حمدان — خليجي إماراتي</option>
           <option value="en-US-AriaNeural">🌐 Aria — English (US)</option>
           <option value="en-US-GuyNeural">🌐 Guy — English (US)</option>
           <option value="en-GB-SoniaNeural">🇬🇧 Sonia — English (UK)</option>
@@ -1216,14 +1219,17 @@ function unlockRynAudio(){
 }
 ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockRynAudio,{once:true,passive:true}));
 const VOICE_PROFILES={
-  'ar-SY-LaithNeural':{lang:'ar-SY',pitch:1.0,rate:1.0,preferMale:true,label:'ليث — شامي'},
-  'ar-SY-AmanyNeural':{lang:'ar-SY',pitch:1.05,rate:1.0,preferMale:false,label:'أماني — شامية'},
+  'ar-SY-LaithNeural':{lang:'ar-SY',pitch:1.0,rate:0.98,preferMale:true,label:'ليث — شامي دمشقي'},
+  'ar-SY-AmanyNeural':{lang:'ar-SY',pitch:1.03,rate:0.98,preferMale:false,label:'أماني — شامية دمشقية'},
+  'ar-LB-LaylaNeural':{lang:'ar-LB',pitch:1.02,rate:1.0,preferMale:false,label:'ليلى — شامية ساحلية'},
+  'ar-LB-RamiNeural':{lang:'ar-LB',pitch:1.0,rate:0.99,preferMale:true,label:'رامي — شامي ساحلي'},
+  'ar-JO-TaimNeural':{lang:'ar-JO',pitch:0.98,rate:0.99,preferMale:true,label:'تيم — شامي أردني'},
+  'ar-JO-SanaNeural':{lang:'ar-JO',pitch:1.03,rate:1.0,preferMale:false,label:'سناء — شامية أردنية'},
   'ar-SA-HamedNeural':{lang:'ar-SA',pitch:0.9,rate:0.98,preferMale:true,label:'حامد — فصيح قوي'},
   'ar-SA-ZariyahNeural':{lang:'ar-SA',pitch:1.0,rate:0.96,preferMale:false,label:'زارية — فصيحة هادئة'},
   'ar-EG-SalmaNeural':{lang:'ar-EG',pitch:1.1,rate:1.02,preferMale:false,label:'سلمى — مصرية'},
   'ar-EG-ShakirNeural':{lang:'ar-EG',pitch:0.98,rate:1.0,preferMale:true,label:'شاكر — مصري'},
-  'ar-AE-HamdanNeural':{lang:'ar-AE',pitch:0.98,rate:1.05,preferMale:true,label:'حمدان — إماراتي'},
-  'ar-JO-SanaNeural':{lang:'ar-JO',pitch:1.05,rate:1.0,preferMale:false,label:'سناء — أردنية'},
+  'ar-AE-HamdanNeural':{lang:'ar-AE',pitch:0.98,rate:1.0,preferMale:true,label:'حمدان — إماراتي'},
   'en-US-AriaNeural':{lang:'en-US',pitch:1.0,rate:1.0,preferMale:false,label:'Aria — English US'},
   'en-US-GuyNeural':{lang:'en-US',pitch:1.0,rate:1.0,preferMale:true,label:'Guy — English US'},
   'en-GB-SoniaNeural':{lang:'en-GB',pitch:1.0,rate:1.0,preferMale:false,label:'Sonia — English UK'},
@@ -1491,7 +1497,7 @@ async function rynDiagVoice(){
   log('1) طلب الصوت من السيرفر...');
   let d={},status=0;
   try{
-    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:'أهلاً بك يا صديقي، أنا رين، جاهز لنحكي مع بعض.',voice_id:vid,speed:spd})});
+    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:'أهلاً فيك يا غالي، أنا رين، جاهز نحكي سوا بأي شغلة ببالك.',voice_id:vid,speed:spd})});
     status=r.status;d=await r.json().catch(()=>({}));
   }catch(e){log('❌ فشل الاتصال بالسيرفر: '+(e&&e.message||e));return}
   log('   HTTP '+status+(d.error?(' | خطأ: '+d.error):''));
@@ -7250,6 +7256,12 @@ def register(app, b):
         emo_on = data.get("emo") is True
         if emo_on:
             mem_prompt = EMO_PROMPT + mem_prompt
+        if str(data.get("modality") or "") == "voice":
+            mem_prompt = (
+                "\n[وضع المحادثة الصوتية الحية (Live Voice): جاوب بأسلوب كلام منطوق طبيعي وسلس جداً كأنك عم تحكي صوتياً وجهاً لوجه مع صديقك. "
+                "إذا كان الكلام بالعربي، احكي بلهجة شامية سورية بيضاء عفوية ودافئة ومترابطة (استخدم عبارات طبيعية متل: هلق، شوف يا غالي، تماماً، ولا يهمك، فيني ساعدك)، "
+                "واكتب جمل قصيرة ومنسابة مع فواصل تنفس طبيعية (،) وبدون قوائم نقطية مرقمة أو رموز ماركداون صامتة.]\n"
+            ) + mem_prompt
         else:
             md().update(state="normal", reason="", since=0.0)
         now = time.time()
