@@ -816,12 +816,12 @@ textarea::placeholder{color:var(--sub)}
   </div>
 </div>
 <div id="voiceModal" hidden>
-  <div class="mbox" style="max-width:460px">
-    <div class="mh"><span>🗣️ إعدادات الصوت متعدد اللغات والقراءة الذكية</span><button id="voiceModalClose" aria-label="إغلاق">✕</button></div>
+  <div class="mbox" style="max-width:430px">
+    <div class="mh"><span>🗣️ اختيار الصوت العربي وسرعة النطق</span><button id="voiceModalClose" aria-label="إغلاق">✕</button></div>
     <div class="mbody">
       <div class="msec">
-        <label>🎙️ اختر شخصية وصوت Ryn العصبي (Multilingual Neural)</label>
-        <small>يُوجَّه تلقائياً للغة الرد (عربي شامي/فصيح/مصري، إنجليزي، ألماني، فرنسي، إسباني، إيطالي، تركي، برتغالي):</small>
+        <label>🎙️ اختر شخصية وصوت Ryn المفضل</label>
+        <small>يُستخدم هذا الصوت عند الضغط على <b>🔊 استماع</b> تحت أي رسالة وفي وضع <b>Live Voice Chat</b>:</small>
         <select class="minp" id="vVoiceSelect" style="margin-top:6px;margin-bottom:8px;font-weight:600">
           <option value="ar-SY-LaithNeural">🎙️ ليث — شامي سوري (رجّال)</option>
           <option value="ar-SY-AmanyNeural">🌷 أماني — شامية سورية (ناعمة)</option>
@@ -831,56 +831,44 @@ textarea::placeholder{color:var(--sub)}
           <option value="ar-EG-ShakirNeural">🎧 شاكر — مصري ودود</option>
           <option value="ar-AE-HamdanNeural">⚡ حمدان — إماراتي سريع</option>
           <option value="ar-JO-SanaNeural">🌿 سناء — أردنية قريبة</option>
-          <option value="en-US-AriaNeural">🌐 Aria — English (US Female)</option>
-          <option value="en-US-GuyNeural">🌐 Guy — English (US Male)</option>
-          <option value="en-GB-SoniaNeural">🇬🇧 Sonia — English (UK Female)</option>
-          <option value="en-GB-RyanNeural">🇬🇧 Ryan — English (UK Male)</option>
-          <option value="de-DE-KatjaNeural">🇩🇪 Katja — Deutsch (Female)</option>
-          <option value="de-DE-ConradNeural">🇩🇪 Conrad — Deutsch (Male)</option>
-          <option value="fr-FR-DeniseNeural">🇫🇷 Denise — Français (Female)</option>
-          <option value="fr-FR-HenriNeural">🇫🇷 Henri — Français (Male)</option>
-          <option value="es-ES-ElviraNeural">🇪🇸 Elvira — Español (España Female)</option>
-          <option value="es-ES-AlvaroNeural">🇪🇸 Álvaro — Español (España Male)</option>
-          <option value="es-MX-DaliaNeural">🇲🇽 Dalia — Español (México Female)</option>
-          <option value="it-IT-ElsaNeural">🇮🇹 Elsa — Italiano (Female)</option>
-          <option value="it-IT-DiegoNeural">🇮🇹 Diego — Italiano (Male)</option>
-          <option value="tr-TR-EmelNeural">🇹🇷 Emel — Türkçe (Female)</option>
-          <option value="tr-TR-AhmetNeural">🇹🇷 Ahmet — Türkçe (Male)</option>
-          <option value="pt-BR-FranciscaNeural">🇧🇷 Francisca — Português (Brasil)</option>
-          <option value="pt-PT-RaquelNeural">🇵🇹 Raquel — Português (Portugal)</option>
+          <option value="en-US-AriaNeural">🌐 Aria — English (US)</option>
+          <option value="en-US-GuyNeural">🌐 Guy — English (US)</option>
+          <option value="en-GB-SoniaNeural">🇬🇧 Sonia — English (UK)</option>
+          <option value="en-GB-RyanNeural">🇬🇧 Ryan — English (UK)</option>
+          <option value="de-DE-KatjaNeural">🇩🇪 Katja — Deutsch</option>
+          <option value="de-DE-ConradNeural">🇩🇪 Conrad — Deutsch</option>
+          <option value="fr-FR-DeniseNeural">🇫🇷 Denise — Français</option>
+          <option value="fr-FR-HenriNeural">🇫🇷 Henri — Français</option>
+          <option value="es-ES-ElviraNeural">🇪🇸 Elvira — Español (ES)</option>
+          <option value="es-ES-AlvaroNeural">🇪🇸 Álvaro — Español (ES)</option>
+          <option value="es-MX-DaliaNeural">🇲🇽 Dalia — Español (MX)</option>
+          <option value="it-IT-ElsaNeural">🇮🇹 Elsa — Italiano</option>
+          <option value="it-IT-DiegoNeural">🇮🇹 Diego — Italiano</option>
+          <option value="tr-TR-EmelNeural">🇹🇷 Emel — Türkçe</option>
+          <option value="tr-TR-AhmetNeural">🇹🇷 Ahmet — Türkçe</option>
+          <option value="pt-BR-FranciscaNeural">🇧🇷 Francisca — Português (BR)</option>
+          <option value="pt-PT-RaquelNeural">🇵🇹 Raquel — Português (PT)</option>
         </select>
-        <label style="margin-top:4px">🌍 لغة التعرّف الصوتي (ASR Mode)</label>
-        <select class="minp" id="vAsrLangSelect" style="margin-top:4px;margin-bottom:8px">
-          <option value="auto">🌐 تلقائي متعدد اللغات (Auto-Detect)</option>
-          <option value="ar-SY">🇸🇾 العربية — شامي سوري (ar-SY)</option>
-          <option value="ar-SA">🇸🇦 العربية — فصحى / سعودي (ar-SA)</option>
-          <option value="ar-EG">🇪🇬 العربية — مصري (ar-EG)</option>
-          <option value="en-US">🇺🇸 English (en-US)</option>
-          <option value="en-GB">🇬🇧 English (en-GB)</option>
-          <option value="de-DE">🇩🇪 Deutsch (de-DE)</option>
-          <option value="fr-FR">🇫🇷 Français (fr-FR)</option>
-          <option value="es-ES">🇪🇸 Español (es-ES)</option>
-          <option value="es-MX">🇲🇽 Español México (es-MX)</option>
-          <option value="it-IT">🇮🇹 Italiano (it-IT)</option>
-          <option value="tr-TR">🇹🇷 Türkçe (tr-TR)</option>
-          <option value="pt-BR">🇧🇷 Português (pt-BR)</option>
-          <option value="pt-PT">🇵🇹 Português (pt-PT)</option>
-        </select>
+        <label style="font-size:12.5px;margin-top:4px"><span>🌍 لغة التعرّف الصوتي (ASR):</span>
+          <select class="minp" id="vAsrLangSelect" style="width:185px;padding:4px 8px;font-size:12px">
+            <option value="auto">🌐 تلقائي (Auto-Detect)</option>
+            <option value="ar-SY">🇸🇾 عربي شامي (ar-SY)</option>
+            <option value="ar-SA">🇸🇦 عربي فصيح (ar-SA)</option>
+            <option value="ar-EG">🇪🇬 عربي مصري (ar-EG)</option>
+            <option value="en-US">🇺🇸 English (en-US)</option>
+            <option value="en-GB">🇬🇧 English (en-GB)</option>
+            <option value="de-DE">🇩🇪 Deutsch (de-DE)</option>
+            <option value="fr-FR">🇫🇷 Français (fr-FR)</option>
+            <option value="es-ES">🇪🇸 Español (es-ES)</option>
+            <option value="it-IT">🇮🇹 Italiano (it-IT)</option>
+            <option value="tr-TR">🇹🇷 Türkçe (tr-TR)</option>
+            <option value="pt-BR">🇧🇷 Português (pt-BR)</option>
+          </select>
+        </label>
         <label style="font-size:12.5px"><span>سرعة القراءة: <b id="vSpeedVal" style="color:var(--g)">1.0x</b></span><input type="range" id="vSpeedRange" min="0.7" max="1.6" step="0.05" value="1.0" style="width:150px;accent-color:var(--g)"></label>
-        <label style="font-size:12.5px;margin-top:6px;cursor:pointer"><span>🔁 القراءة التلقائية لردود Ryn (Auto-Read Replies)</span><input type="checkbox" id="vAutoReadChk" style="accent-color:var(--g)"></label>
+        <label style="font-size:12.5px;margin-top:4px;cursor:pointer"><span>🔊 قراءة تلقائية لردود Ryn (Auto-Read)</span><input type="checkbox" id="vAutoReadChk" style="accent-color:var(--g)"></label>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button type="button" class="syscheck-btn" id="vTestVoiceBtn" style="flex:1;border-color:var(--g);color:var(--g)">🔊 تجربة الصوت المختار</button>
-        <button type="button" class="syscheck-btn" id="vReadConvBtn" style="flex:1;border-color:#38bdf8;color:#38bdf8">📖 قراءة المحادثة كاملة</button>
-      </div>
-      <div id="vConvCtrlBar" hidden style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:6px;padding:6px 10px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);font-size:12px">
-        <span id="vConvProgress">📖 جاري القراءة...</span>
-        <div style="display:flex;gap:4px">
-          <button type="button" id="vPauseResumeBtn" style="background:rgba(255,255,255,.12);border:0;color:#fff;padding:3px 8px;border-radius:6px;cursor:pointer">⏸️ إيقاف مؤقت</button>
-          <button type="button" id="vSkipChunkBtn" style="background:rgba(255,255,255,.12);border:0;color:#fff;padding:3px 8px;border-radius:6px;cursor:pointer">⏭️ تخطي</button>
-          <button type="button" id="vStopConvBtn" style="background:#ff5d6c;border:0;color:#fff;padding:3px 8px;border-radius:6px;cursor:pointer">⏹️ إلغاء</button>
-        </div>
-      </div>
+      <button type="button" class="syscheck-btn" id="vTestVoiceBtn" style="border-color:var(--g);color:var(--g)">🔊 تجربة الصوت المختار الآن</button>
       <pre id="vDiagBox" style="display:none;white-space:pre-wrap;direction:rtl;text-align:right;font-size:12px;line-height:1.7;margin-top:8px;padding:10px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid var(--line)"></pre>
     </div>
   </div>
@@ -1155,13 +1143,9 @@ function loadStore(){
 }
 const curChat=()=>store.chats.find(c=>c.id===store.cur);
 const M=()=>curChat().msgs;
-function ensureMsgId(m,idx,chatId){
-  if(!m.message_id)m.message_id='msg_'+(chatId||store.cur||'c')+'_'+idx+'_'+Math.abs(String(m.text||'').length);
-  return m.message_id;
-}
 function saveStore(){
   let chats=store.chats.slice(0,MAX_CHATS).map(c=>({id:c.id,title:c.title,ts:c.ts,
-    msgs:c.msgs.slice(-80).map((m,idx)=>({message_id:ensureMsgId(m,idx,c.id),lang:m.lang||'',role:m.role,text:String(m.text).slice(0,40000),note:m.note,err:m.err,file:m.file,dfile:m.dfile,dfiles:m.dfiles,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
+    msgs:c.msgs.slice(-80).map(m=>({role:m.role,text:String(m.text).slice(0,40000),note:m.note,err:m.err,file:m.file,dfile:m.dfile,dfiles:m.dfiles,img:(m.img&&m.img.length<150000)?m.img:undefined}))}));
   for(;;){
     try{localStorage.setItem(LS,JSON.stringify({cur:store.cur,chats}));return}
     // ما في مساحة: بينزّل الأقدم مرة واحدة (عشان ما تتجمّد الواجهة مع 100 محادثة)
@@ -1208,8 +1192,7 @@ if($('#dImpConvFile'))$('#dImpConvFile').onchange=async e=>{
   }catch(err){toast('❌ ملف المحادثة غير صالح');}
 };
 let rynTtsAudio=null,rynTtsPaused=false,rynActiveSessionId='',rynSpeakToken=0;
-let rynAudioEl=null,rynLastTtsErr='',rynSkipChunkResolver=null,rynPauseWaitResolver=null;
-let rynLastSpokenPayload=null,rynAutoReadEnabled=false,rynAsrLangPref='auto';
+let rynAudioEl=null,rynLastTtsErr='';
 const RYN_SILENT_WAV='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 function rynEnsureAudioEl(){
   if(!rynAudioEl){
@@ -1222,6 +1205,7 @@ function rynEnsureAudioEl(){
   }
   return rynAudioEl;
 }
+/* أندرويد/آيفون بيمنعوا الصوت إلا لو انفتح بلمسة: منفتح العنصر مرة بأول لمسة، وبعدين بنعيد استعماله لكل القراءات */
 function unlockRynAudio(){
   try{
     const a=rynEnsureAudioEl();
@@ -1259,46 +1243,44 @@ const VOICE_PROFILES={
   'pt-PT-RaquelNeural':{lang:'pt-PT',pitch:1.0,rate:1.0,preferMale:false,label:'Raquel — Português PT'}
 };
 const LEGACY_VOICE_IDS={'ar-SY-RynNatural':'ar-SY-LaithNeural','ar-SA-HamedStrong':'ar-SA-HamedNeural','ar-EG-SalmaExpressive':'ar-EG-SalmaNeural','ar-AE-FarisTech':'ar-AE-HamdanNeural','ar-XA-Standard':'ar-SA-ZariyahNeural','en-US-RynClear':'en-US-AriaNeural','vibevoice-realtime-exp':'ar-SY-LaithNeural'};
-function resolveCatalogVoiceId(vid){
-  let v=String(vid||'').trim();
-  if(LEGACY_VOICE_IDS[v])v=LEGACY_VOICE_IDS[v];
-  return VOICE_PROFILES[v]?v:'ar-SY-LaithNeural';
-}
+let rynAutoReadEnabled=false,rynAsrLangPref='auto';
 function detectClientTextLang(txt,hint){
   const raw=String(txt||'').trim();
   const h=String(hint||'').trim();
-  const arCnt=(raw.match(/[؀-ۿ]/g)||[]).length;
-  const latCnt=(raw.match(/[A-Za-zÀ-ɏ]/g)||[]).length;
-  if(arCnt>0&&(arCnt>=latCnt*0.25||h.startsWith('ar'))){
-    if(/(هلق|هلأ|شلونك|بدي|هيك|منيح|كرمال|مشان|عنجد|كتير)/.test(raw))return 'ar-SY';
-    if(/(ازيك|إزيك|عايز|عاوز|كده|دلوقتي)/.test(raw))return 'ar-EG';
-    if(h&&h.startsWith('ar-'))return h;
+  const arCnt=(raw.match(/[\u0600-\u06FF]/g)||[]).length;
+  const latCnt=(raw.match(/[A-Za-z\u00C0-\u024F]/g)||[]).length;
+  if(arCnt>0&&(arCnt>=latCnt*0.25||h.indexOf('ar')===0)){
+    if(/(هلق|هلأ|شلونك|بدي|هيك|منيح|كرمال|مشان|عنجد|كتير)/.test(raw))return 'ar-SY';
+    if(/(ازيك|إزيك|عايز|عاوز|كده|دلوقتي)/.test(raw))return 'ar-EG';
+    if(h&&h.indexOf('ar-')===0)return h;
     return 'ar-SY';
   }
   const low=' '+raw.toLowerCase()+' ';
-  if(/[ğşıİ]/.test(raw)||/(merhaba|nasılsın|teşekkür|teşekkürler|için|değil|günaydın)/.test(low))return 'tr-TR';
-  if(/[äöüß]/.test(low)||/(hallo|danke|bitte|nicht|ich|für|wie geht|guten tag)/.test(low))return 'de-DE';
-  if(/[œç]/.test(low)||/(bonjour|merci|comment|avec|pour|dans|vous|très|c'est)/.test(low))return 'fr-FR';
-  if(/[ñ¿¡]/.test(low)||/(hola|gracias|cómo|está|para|pero|porque|buenos)/.test(low))return h==='es-MX'?'es-MX':'es-ES';
-  if(/[ãõ]/.test(low)||/(olá|obrigado|obrigada|você|não|também|bom dia)/.test(low))return h==='pt-PT'?'pt-PT':'pt-BR';
-  if(/(ciao|grazie|perché|questo|sono|buongiorno|tutto|bene)/.test(low))return 'it-IT';
-  if(h&&h!=='auto'&&h.includes('-'))return h;
+  if(/[ğşıİ]/.test(raw)||/\b(merhaba|nasılsın|teşekkür|teşekkürler|için|değil|günaydın)\b/.test(low))return 'tr-TR';
+  if(/[äöüß]/.test(low)||/\b(hallo|danke|bitte|nicht|ich|für|guten)\b/.test(low))return 'de-DE';
+  if(/[ãõ]/.test(low)||/\b(olá|obrigado|obrigada|você|não|também)\b/.test(low))return h==='pt-PT'?'pt-PT':'pt-BR';
+  if(/[ñ¿¡]/.test(low)||/\b(hola|gracias|cómo|está|para|pero|porque|buenos)\b/.test(low))return h==='es-MX'?'es-MX':'es-ES';
+  if(/\b(ciao|grazie|perché|questo|sono|buongiorno|tutto|bene)\b/.test(low))return 'it-IT';
+  if(/[œçëïùû]/.test(low)||/\b(bonjour|salut|merci|comment|avec|pour|dans|vous|nous|très)\b/.test(low))return 'fr-FR';
+  if(h&&h!=='auto'&&h.indexOf('-')>0)return h;
   return arCnt>0?'ar-SY':'en-US';
 }
 function resolveVoiceForText(txt,preferredVid,hintLang){
-  const baseVid=resolveCatalogVoiceId(preferredVid);
-  const baseProf=VOICE_PROFILES[baseVid]||VOICE_PROFILES['ar-SY-LaithNeural'];
+  let baseVid=String(preferredVid||'ar-SY-LaithNeural').trim();
+  if(LEGACY_VOICE_IDS[baseVid])baseVid=LEGACY_VOICE_IDS[baseVid];
+  if(!VOICE_PROFILES[baseVid])baseVid='ar-SY-LaithNeural';
+  const baseProf=VOICE_PROFILES[baseVid];
   const detLang=detectClientTextLang(txt,hintLang||baseProf.lang);
   const detFam=detLang.split('-')[0].toLowerCase();
   const baseFam=baseProf.lang.split('-')[0].toLowerCase();
   if(detFam===baseFam)return {voiceId:baseVid,lang:detLang,prof:baseProf};
   const entries=Object.entries(VOICE_PROFILES);
-  const exact=entries.filter(([k,p])=>p.lang.toLowerCase()===detLang.toLowerCase());
-  const sameFam=entries.filter(([k,p])=>p.lang.split('-')[0].toLowerCase()===detFam);
+  const exact=entries.filter(x=>x[1].lang.toLowerCase()===detLang.toLowerCase());
+  const sameFam=entries.filter(x=>x[1].lang.split('-')[0].toLowerCase()===detFam);
   const pool=exact.length?exact:sameFam;
   if(pool.length){
-    const genderMatch=pool.find(([k,p])=>p.preferMale===baseProf.preferMale)||pool[0];
-    return {voiceId:genderMatch[0],lang:detLang,prof:genderMatch[1]};
+    const gMatch=pool.find(x=>x[1].preferMale===baseProf.preferMale)||pool[0];
+    return {voiceId:gMatch[0],lang:detLang,prof:gMatch[1]};
   }
   return {voiceId:baseVid,lang:detLang,prof:baseProf};
 }
@@ -1308,7 +1290,8 @@ function getAsrLanguagePref(){
 }
 try{
   let sv=localStorage.getItem('ryn_voice_id');
-  if(sv){sv=resolveCatalogVoiceId(sv);if($('#vVoiceSelect'))$('#vVoiceSelect').value=sv;}
+  if(sv&&typeof LEGACY_VOICE_IDS!=='undefined'&&LEGACY_VOICE_IDS[sv])sv=LEGACY_VOICE_IDS[sv];
+  if(sv&&VOICE_PROFILES[sv]&&$('#vVoiceSelect'))$('#vVoiceSelect').value=sv;
   const ss=localStorage.getItem('ryn_voice_spd');
   if(ss&&$('#vSpeedRange')){$('#vSpeedRange').value=ss;if($('#vSpeedVal'))$('#vSpeedVal').textContent=parseFloat(ss).toFixed(2)+'x';}
   const sl=localStorage.getItem('ryn_asr_lang');
@@ -1316,323 +1299,170 @@ try{
   const sa=localStorage.getItem('ryn_auto_read');
   if(sa!==null){rynAutoReadEnabled=(sa==='1'||sa==='true');if($('#vAutoReadChk'))$('#vAutoReadChk').checked=rynAutoReadEnabled;}
 }catch(e){}
-async function syncVoiceSettingsFromServer(){
-  try{
-    const r=await api('/api/v2/voice/settings');
-    if(!r.ok)return;
-    const d=await r.json();
-    const p=d&&d.preferences;
-    if(!p)return;
-    if(p.voice_id){
-      const cv=resolveCatalogVoiceId(p.voice_id);
-      if($('#vVoiceSelect'))$('#vVoiceSelect').value=cv;
-      try{localStorage.setItem('ryn_voice_id',cv)}catch(e){}
-    }
-    if(p.speed){
-      const s=parseFloat(p.speed).toFixed(2);
-      if($('#vSpeedRange'))$('#vSpeedRange').value=s;
-      if($('#vSpeedVal'))$('#vSpeedVal').textContent=s+'x';
-      try{localStorage.setItem('ryn_voice_spd',s)}catch(e){}
-    }
-    if(p.asr_language){
-      rynAsrLangPref=p.asr_language;
-      if($('#vAsrLangSelect'))$('#vAsrLangSelect').value=p.asr_language;
-      try{localStorage.setItem('ryn_asr_lang',p.asr_language)}catch(e){}
-    }
-    if(typeof p.auto_read==='boolean'){
-      rynAutoReadEnabled=p.auto_read;
-      if($('#vAutoReadChk'))$('#vAutoReadChk').checked=rynAutoReadEnabled;
-      try{localStorage.setItem('ryn_auto_read',rynAutoReadEnabled?'1':'0')}catch(e){}
-    }
-  }catch(e){}
-}
 function pickBestBrowserVoice(vid,targetLang){
   if(!window.speechSynthesis)return null;
   const vs=window.speechSynthesis.getVoices()||[];
   if(!vs.length)return null;
   const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
-  const wantLang=(targetLang||prof.lang||'ar-SY').toLowerCase();
+  const wantLang=String(targetLang||prof.lang||'ar-SY').toLowerCase();
   const wantFam=wantLang.split('-')[0];
   const exactMatches=vs.filter(v=>String(v.lang||'').toLowerCase().replace('_','-')===wantLang);
-  const famMatches=vs.filter(v=>String(v.lang||'').toLowerCase().startsWith(wantFam));
-  const pool=exactMatches.length?exactMatches:(famMatches.length?famMatches:vs);
+  const langMatches=vs.filter(v=>String(v.lang||'').toLowerCase().startsWith(wantFam));
+  const pool=exactMatches.length?exactMatches:(langMatches.length?langMatches:vs);
   const scored=pool.map(v=>{
     let s=0;const n=(v.name+' '+v.lang).toLowerCase();
     if(n.includes('natural')||n.includes('neural')||n.includes('online'))s+=30;
-    if(n.includes('microsoft')||n.includes('google')||n.includes('siri'))s+=15;
-    if(n.includes(wantLang))s+=20;
-    else if(n.startsWith(wantFam))s+=10;
-    if(prof.preferMale&&(n.includes('hamed')||n.includes('maged')||n.includes('tarik')||n.includes('guy')||n.includes('conrad')||n.includes('henri')||n.includes('alvaro')||n.includes('diego')||n.includes('ahmet')||n.includes('male')||n.includes('shakir')))s+=10;
-    if(!prof.preferMale&&(n.includes('salma')||n.includes('zariyah')||n.includes('aria')||n.includes('katja')||n.includes('denise')||n.includes('elvira')||n.includes('elsa')||n.includes('emel')||n.includes('francisca')||n.includes('female')||n.includes('amany')))s+=10;
+    if(n.includes('microsoft')||n.includes('google')||n.includes('maged')||n.includes('tarik')||n.includes('hamed')||n.includes('salma')||n.includes('mariam')||n.includes('laila'))s+=15;
+    if(n.includes(wantLang))s+=18;
+    if(prof.preferMale&&(n.includes('hamed')||n.includes('maged')||n.includes('tarik')||n.includes('naayf')||n.includes('guy')||n.includes('conrad')||n.includes('henri')||n.includes('alvaro')||n.includes('diego')||n.includes('ahmet')||n.includes('male')||n.includes('shakir')))s+=10;
+    if(!prof.preferMale&&(n.includes('salma')||n.includes('zariyah')||n.includes('mariam')||n.includes('laila')||n.includes('aria')||n.includes('katja')||n.includes('denise')||n.includes('elvira')||n.includes('elsa')||n.includes('emel')||n.includes('female')||n.includes('amany')))s+=10;
     return {v,s};
   }).sort((a,b)=>b.s-a.s);
   return scored[0].v;
 }
 if(window.speechSynthesis&&window.speechSynthesis.onvoiceschanged!==undefined){
-  window.speechSynthesis.onvoiceschanged=()=>{pickBestBrowserVoice('ar-SY-LaithNeural','ar-SY')};
+  window.speechSynthesis.onvoiceschanged=()=>{pickBestBrowserVoice('ar-SY-LaithNeural')};
 }
 function notifyVoicePlaybackState(action,bargeIn){
   try{
-    api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId||'',action:action,barge_in:!!bargeIn})}).catch(()=>{});
+    if(rynActiveSessionId){
+      api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,action:action,barge_in:!!bargeIn})}).catch(()=>{});
+    }
   }catch(e){}
 }
 function stopAllRynSpeech(isBargeIn){
   rynSpeakToken++;
-  rynTtsPaused=false;
-  if(rynPauseWaitResolver){const r=rynPauseWaitResolver;rynPauseWaitResolver=null;r();}
-  if(rynSkipChunkResolver){const s=rynSkipChunkResolver;rynSkipChunkResolver=null;s();}
   if(window.speechSynthesis){try{window.speechSynthesis.cancel()}catch(e){}}
   if(rynTtsAudio){try{rynTtsAudio.pause();rynTtsAudio=null}catch(e){}}
   document.querySelectorAll('[data-speak]').forEach(b=>{b.dataset.speaking='0';b.textContent='🔊 استماع'});
-  document.querySelectorAll('[data-speak-pause]').forEach(b=>{b.hidden=true;b.textContent='⏸️'});
-  if($('#vConvCtrlBar'))$('#vConvCtrlBar').hidden=true;
   setBot('idle');
   notifyVoicePlaybackState(isBargeIn?'barge_in':'playback_stopped',!!isBargeIn);
 }
-function togglePauseRynSpeech(pauseBtnEl){
-  if(!rynTtsAudio&&(!window.speechSynthesis||!window.speechSynthesis.speaking))return;
-  if(!rynTtsPaused){
-    rynTtsPaused=true;
-    if(rynTtsAudio&&!rynTtsAudio.paused){try{rynTtsAudio.pause()}catch(e){}}
-    if(window.speechSynthesis&&window.speechSynthesis.speaking){try{window.speechSynthesis.pause()}catch(e){}}
-    if(pauseBtnEl)pauseBtnEl.textContent='▶️';
-    if($('#vPauseResumeBtn'))$('#vPauseResumeBtn').textContent='▶️ استئناف';
-    notifyVoicePlaybackState('playback_paused',false);
-  }else{
-    rynTtsPaused=false;
-    if(rynTtsAudio&&rynTtsAudio.paused){try{rynTtsAudio.play().catch(()=>{})}catch(e){}}
-    if(window.speechSynthesis&&window.speechSynthesis.paused){try{window.speechSynthesis.resume()}catch(e){}}
-    if(rynPauseWaitResolver){const r=rynPauseWaitResolver;rynPauseWaitResolver=null;r();}
-    if(pauseBtnEl)pauseBtnEl.textContent='⏸️';
-    if($('#vPauseResumeBtn'))$('#vPauseResumeBtn').textContent='⏸️ إيقاف مؤقت';
-    notifyVoicePlaybackState('playback_resumed',false);
-  }
-}
-function skipCurrentRynChunk(){
-  if(rynTtsAudio){try{rynTtsAudio.pause()}catch(e){}}
-  if(rynSkipChunkResolver){const s=rynSkipChunkResolver;rynSkipChunkResolver=null;s();}
-}
 window.addEventListener('pagehide',()=>stopAllRynSpeech(false));
 function chunkSpeech(t,max){
-  const sents=(String(t).match(/[^.!?؟؛;
-]+[.!?؟؛;
-]*/g)||[String(t)]).map(x=>x.trim()).filter(Boolean);
+  const sents=(String(t).match(/[^.!?؟\n]+[.!?؟\n]*/g)||[String(t)]).map(x=>x.trim()).filter(Boolean);
   const out=[];let cur='';
-  const lim=max||1200;
+  const lim=max||800;
   for(const x of sents){
     if(x.length>lim){
       if(cur){out.push(cur);cur='';}
       for(let i=0;i<x.length;i+=lim){const p=x.slice(i,i+lim).trim();if(p)out.push(p);}
-    }else if(cur&&(cur+' '+x).length>lim){out.push(cur);cur=x}
-    else cur=cur?cur+' '+x:x;
+    }else if(cur&&(cur+' '+x).length>lim){out.push(cur);cur=x}else cur=cur?cur+' '+x:x;
   }
   if(cur)out.push(cur);
   return out;
 }
-async function fetchTtsSpec(opts){
+async function fetchTtsAudio(text,vid,spd,withSession,msgId,langHint){
   try{
-    const body={
-      text:opts.text||'',
-      conversation_id:opts.conversationId||store.cur,
-      voice_id:opts.voiceId,
-      speed:opts.speed,
-      language:opts.language||''
-    };
-    if(opts.messageId)body.message_id=opts.messageId;
-    if(opts.readFullConversation){
-      body.read_full_conversation=true;
-      body.page=opts.page||1;
-      body.page_size=opts.pageSize||8;
-      body.include_user_messages=!!opts.includeUserMessages;
-    }
-    if(opts.withSession&&rynActiveSessionId)body.session_id=rynActiveSessionId;
+    const body={text:text,conversation_id:store.cur,voice_id:vid,speed:spd};
+    if(msgId)body.message_id=msgId;
+    if(langHint)body.language=langHint;
+    if(withSession&&rynActiveSessionId)body.session_id=rynActiveSessionId;
     const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(d&&d.warning)toast('⚠️ '+d.warning);
-    if(!r.ok||(!d.audio_b64&&(!d.chunks||!d.chunks.length))||d.fallback_browser_tts){
-      rynLastTtsErr=String(d.tts_error||d.error||('HTTP '+r.status)).slice(0,140);
-      return null;
-    }
+    if(!r.ok||!d.audio_b64||d.fallback_browser_tts){rynLastTtsErr=String(d.tts_error||d.error||('HTTP '+r.status)).slice(0,140);return null}
     rynLastTtsErr='';
-    if(d.fallback_provider==='gtts'){
-      toast('ℹ️ يتم القراءة عبر مزود الطوارئ الأساسي (gTTS Fallback) لعدم توفر الصوت العصبي حالياً.');
-    }
-    return d;
+    return 'data:'+(d.mime_type||'audio/mpeg')+';base64,'+d.audio_b64;
   }catch(e){rynLastTtsErr=String(e&&e.message||e).slice(0,140);return null}
 }
 function speakWithBrowser(cleanTxt,vid,prof,finalRate,done,targetLang){
   if(!window.speechSynthesis){toast('⚠️ هالمتصفح ما بيدعم القراءة الصوتية');done();return}
   try{
-    const vs=window.speechSynthesis.getVoices?window.speechSynthesis.getVoices():[];
     const effLang=targetLang||(prof&&prof.lang)||detectClientTextLang(cleanTxt,'ar-SY');
+    const ut=new SpeechSynthesisUtterance(cleanTxt);
     const chosenV=pickBestBrowserVoice(vid,effLang);
-    toast('ℹ️ يتم القراءة بصوت المتصفح المحلي (Browser Voice Fallback · '+effLang+')');
-    const chunks=chunkSpeech(cleanTxt,380);
-    let idx=0;
-    const playNext=()=>{
-      if(idx>=chunks.length){done();return;}
-      const ut=new SpeechSynthesisUtterance(chunks[idx++]);
-      if(chosenV)ut.voice=chosenV;
-      ut.lang=(chosenV&&chosenV.lang)||effLang;
-      ut.pitch=(prof&&prof.pitch)||1.0;
-      ut.rate=finalRate;
-      ut.onend=()=>playNext();
-      ut.onerror=(e)=>{toast('⚠️ صوت المتصفح فشل: '+((e&&e.error)||'خطأ'));done()};
-      window.speechSynthesis.speak(ut);
-    };
-    playNext();
+    if(chosenV)ut.voice=chosenV;
+    ut.lang=(chosenV&&chosenV.lang)||effLang;
+    ut.pitch=prof.pitch||1.0;
+    ut.rate=finalRate;
+    ut.onend=done;
+    ut.onerror=(e)=>{toast('⚠️ صوت المتصفح فشل: '+((e&&e.error)||'خطأ'));done()};
+    window.speechSynthesis.speak(ut);
   }catch(e){done()}
 }
-async function playSingleDataUri(dataUri,token){
-  if(token!==rynSpeakToken)return true;
-  while(rynTtsPaused&&token===rynSpeakToken){
-    await new Promise(r=>{rynPauseWaitResolver=r;});
-  }
-  if(token!==rynSpeakToken)return true;
-  let blocked=false;
-  await new Promise(res=>{
-    rynSkipChunkResolver=res;
-    const a=rynEnsureAudioEl();
-    rynTtsAudio=a;
-    a.onended=()=>{rynSkipChunkResolver=null;res();};
-    a.onerror=()=>{rynSkipChunkResolver=null;blocked=true;res();};
-    a.src=dataUri;
-    const pr=a.play();
-    if(pr&&pr.catch)pr.catch(()=>{rynSkipChunkResolver=null;blocked=true;res();});
-  });
-  return !blocked;
-}
-async function speakTextWithRyn(txt,btnEl,onDoneCb,opts){
-  opts=opts||{};
+async function speakTextWithRyn(txt,btnEl,onDoneCb,msgId){
   const cleanTxt=String(txt||'').replace(/```[\s\S]*?```/g,' كود برمجي جاهز بالشات. ').replace(/[*#_`~>]/g,' ').replace(/\s+/g,' ').trim();
-  if(!cleanTxt&&!opts.messageId&&!opts.readFullConversation){if(onDoneCb)onDoneCb();return;}
+  if(!cleanTxt){if(onDoneCb)onDoneCb();return;}
   if(btnEl&&btnEl.dataset.speaking==='1'){
     stopAllRynSpeech(false);
+    btnEl.dataset.speaking='0';
+    btnEl.textContent='🔊 استماع';
     return;
   }
   stopAllRynSpeech(false);
   const token=++rynSpeakToken;
   const rawVid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
-  const routed=resolveVoiceForText(cleanTxt,rawVid,opts.language||'');
+  const routed=resolveVoiceForText(cleanTxt,rawVid,'');
   const vid=routed.voiceId;
   const prof=routed.prof;
-  const detectedLang=routed.lang;
+  const detLang=routed.lang;
   const userSpd=parseFloat(($('#vSpeedRange')&&$('#vSpeedRange').value)||'1.0')||1.0;
   const browserRate=Math.max(0.6,Math.min(1.8,userSpd*(prof.rate||1.0)));
-  rynLastSpokenPayload={text:txt,opts:Object.assign({},opts,{language:detectedLang})};
-  const pauseBtn=btnEl&&btnEl.parentElement?btnEl.parentElement.querySelector('[data-speak-pause]'):null;
   if(btnEl){btnEl.dataset.speaking='1';btnEl.textContent='⏹️ إيقاف';}
-  if(pauseBtn){pauseBtn.hidden=false;pauseBtn.textContent='⏸️';}
   setBot('speaking');
   if($('#lvAura'))$('#lvAura').style.transform='scale(1.08)';
   notifyVoicePlaybackState('playback_started',false);
   let finished=false;
-  const finishOnce=(wasStopped)=>{
+  const finishOnce=()=>{
     if(finished)return;finished=true;
+    if(token!==rynSpeakToken&&btnEl&&btnEl.dataset.speaking!=='1')return;
     if(btnEl){btnEl.dataset.speaking='0';btnEl.textContent='🔊 استماع';}
-    if(pauseBtn){pauseBtn.hidden=true;}
     if($('#lvAura'))$('#lvAura').style.transform='scale(1)';
     setBot('idle');
-    notifyVoicePlaybackState(wasStopped?'playback_stopped':'playback_ended',false);
+    notifyVoicePlaybackState('playback_ended',false);
     if(onDoneCb)onDoneCb();
   };
-  const chunks=chunkSpeech(cleanTxt,1200);
-  let nextPromise=fetchTtsSpec({
-    text:chunks[0]||cleanTxt,
-    messageId:chunks.length<=1?opts.messageId:'',
-    conversationId:opts.conversationId||store.cur,
-    voiceId:vid,
-    speed:userSpd,
-    language:detectedLang,
-    withSession:true
-  });
-  for(let i=0;i<Math.max(1,chunks.length);i++){
-    const spec=await nextPromise;
-    if(token!==rynSpeakToken){finishOnce(true);return;}
-    if(!spec){
-      if(rynLastTtsErr)toast('⚠️ الصوت العصبي غير متاح ('+rynLastTtsErr+') — يتم استخدام صوت المتصفح');
-      speakWithBrowser(chunks.slice(i).join(' '),vid,prof,browserRate,()=>finishOnce(false),detectedLang);
+  const chunks=chunkSpeech(cleanTxt,600);
+  let next=fetchTtsAudio(chunks[0],vid,userSpd,true,chunks.length<=1?msgId:'',detLang);
+  for(let i=0;i<chunks.length;i++){
+    const src=await next;
+    if(token!==rynSpeakToken)return;
+    if(!src){
+      if(rynLastTtsErr)toast('⚠️ الصوت الحقيقي ما اشتغل ('+rynLastTtsErr+') — رح أقرأ بصوت الجهاز');
+      speakWithBrowser(chunks.slice(i).join(' '),vid,prof,browserRate,finishOnce,detLang);
       return;
     }
-    nextPromise=(i+1<chunks.length)?fetchTtsSpec({
-      text:chunks[i+1],
-      conversationId:opts.conversationId||store.cur,
-      voiceId:vid,
-      speed:userSpd,
-      language:detectedLang,
-      withSession:false
-    }):null;
-    const srvChunks=(Array.isArray(spec.chunks)&&spec.chunks.length)?spec.chunks:[{audio_b64:spec.audio_b64,mime_type:spec.mime_type||'audio/mpeg'}];
-    for(let cIdx=0;cIdx<srvChunks.length;cIdx++){
-      if(token!==rynSpeakToken){finishOnce(true);return;}
-      const sc=srvChunks[cIdx];
-      const uri='data:'+(sc.mime_type||spec.mime_type||'audio/mpeg')+';base64,'+sc.audio_b64;
-      const ok=await playSingleDataUri(uri,token);
-      if(token!==rynSpeakToken){finishOnce(true);return;}
-      if(!ok){
-        toast('⚠️ المتصفح منع تشغيل الصوت: اضغط على الشاشة مرة وجرّب، أو سيتم القراءة بصوت الجهاز');
-        speakWithBrowser(chunks.slice(i).join(' '),vid,prof,browserRate,()=>finishOnce(false),detectedLang);
-        return;
-      }
+    next=(i+1<chunks.length)?fetchTtsAudio(chunks[i+1],vid,userSpd,false,'',detLang):null;
+    let blocked=false;
+    await new Promise(res=>{
+      const a=rynEnsureAudioEl();
+      rynTtsAudio=a;
+      a.onended=res;
+      a.onerror=()=>{blocked=true;res()};
+      a.src=src;
+      const pr=a.play();
+      if(pr&&pr.catch)pr.catch(()=>{blocked=true;res()});
+    });
+    if(token!==rynSpeakToken)return;
+    if(blocked){
+      toast('⚠️ الهاتف منع تشغيل الصوت: اضغط على الشاشة مرة وجرّب، وتأكد من صوت الوسائط');
+      speakWithBrowser(chunks.slice(i).join(' '),vid,prof,browserRate,finishOnce,detLang);
+      return;
     }
   }
-  finishOnce(false);
+  finishOnce();
 }
 function speakMessageByIndex(idx,btnEl){
   const ms=M();
   if(!ms[idx])return;
   const m=ms[idx];
-  const msgId=ensureMsgId(m,idx,store.cur);
-  const detLang=m.lang||detectClientTextLang(m.text,'auto');
-  m.lang=detLang;
-  speakTextWithRyn(m.text,btnEl,null,{messageId:msgId,conversationId:store.cur,language:detLang});
-}
-function replayLastRynSpeech(btnEl){
-  if(rynLastSpokenPayload&&rynLastSpokenPayload.text){
-    speakTextWithRyn(rynLastSpokenPayload.text,btnEl,null,rynLastSpokenPayload.opts);
-  }
-}
-async function readFullConversationPaginated(){
-  const ms=M().filter(m=>m.role==='model');
-  if(!ms.length){toast('لا توجد ردود في المحادثة الحالية لقراءتها');return;}
-  const bar=$('#vConvCtrlBar'),prog=$('#vConvProgress');
-  if(bar)bar.hidden=false;
-  const sessionTok=++rynSpeakToken;
-  for(let i=0;i<ms.length;i++){
-    if(sessionTok!==rynSpeakToken)break;
-    if(prog)prog.textContent='📖 قراءة الرد '+(i+1)+' من '+ms.length+'...';
-    await new Promise(res=>{
-      rynSpeakToken=sessionTok-1;
-      speakTextWithRyn(ms[i].text,null,res,{
-        messageId:ms[i].message_id||'',
-        conversationId:store.cur,
-        language:ms[i].lang||detectClientTextLang(ms[i].text,'auto')
-      });
-    });
-  }
-  if(bar)bar.hidden=true;
+  if(!m.message_id)m.message_id='msg_'+(store.cur||'c')+'_'+idx;
+  speakTextWithRyn(m.text,btnEl,null,m.message_id);
 }
 function openVoiceModal(){
-  syncVoiceSettingsFromServer();
   if($('#voiceModal'))$('#voiceModal').hidden=false;
   $('#menu').hidden=true;
 }
 if($('#mVoiceStudio'))$('#mVoiceStudio').onclick=openVoiceModal;
 if($('#voiceModalClose'))$('#voiceModalClose').onclick=()=>{$('#voiceModal').hidden=true;};
 if($('#vVoiceSelect'))$('#vVoiceSelect').onchange=e=>{
-  const v=resolveCatalogVoiceId(e.target.value);
+  const v=e.target.value;
   try{localStorage.setItem('ryn_voice_id',v)}catch(err){}
   api('/api/v2/voice/settings',{method:'POST',body:JSON.stringify({voice_id:v})}).catch(()=>{});
   const prof=VOICE_PROFILES[v];
   if(prof&&$('#lvVoiceLabel'))$('#lvVoiceLabel').textContent='Live Voice · '+prof.label;
   toast('✅ تم اختيار الصوت: '+(prof?prof.label:v));
-};
-if($('#vAsrLangSelect'))$('#vAsrLangSelect').onchange=e=>{
-  const l=e.target.value||'auto';
-  rynAsrLangPref=l;
-  try{localStorage.setItem('ryn_asr_lang',l)}catch(err){}
-  api('/api/v2/voice/settings',{method:'POST',body:JSON.stringify({asr_language:l})}).catch(()=>{});
-  toast('🌍 لغة التعرّف الصوتي: '+l);
 };
 if($('#vSpeedRange'))$('#vSpeedRange').oninput=e=>{
   const s=parseFloat(e.target.value).toFixed(2);
@@ -1640,63 +1470,50 @@ if($('#vSpeedRange'))$('#vSpeedRange').oninput=e=>{
   try{localStorage.setItem('ryn_voice_spd',s)}catch(err){}
   api('/api/v2/voice/settings',{method:'POST',body:JSON.stringify({speed:parseFloat(s)})}).catch(()=>{});
 };
+if($('#vAsrLangSelect'))$('#vAsrLangSelect').onchange=e=>{
+  rynAsrLangPref=e.target.value||'auto';
+  try{localStorage.setItem('ryn_asr_lang',rynAsrLangPref)}catch(err){}
+  api('/api/v2/voice/settings',{method:'POST',body:JSON.stringify({asr_language:rynAsrLangPref})}).catch(()=>{});
+};
 if($('#vAutoReadChk'))$('#vAutoReadChk').onchange=e=>{
   rynAutoReadEnabled=!!e.target.checked;
   try{localStorage.setItem('ryn_auto_read',rynAutoReadEnabled?'1':'0')}catch(err){}
   api('/api/v2/voice/settings',{method:'POST',body:JSON.stringify({auto_read:rynAutoReadEnabled})}).catch(()=>{});
-  toast(rynAutoReadEnabled?'🔊 تم تفعيل القراءة التلقائية لردود Ryn':'🔇 تم إيقاف القراءة التلقائية للردود');
 };
-if($('#vReadConvBtn'))$('#vReadConvBtn').onclick=()=>{readFullConversationPaginated()};
-if($('#vPauseResumeBtn'))$('#vPauseResumeBtn').onclick=()=>togglePauseRynSpeech(null);
-if($('#vSkipChunkBtn'))$('#vSkipChunkBtn').onclick=()=>skipCurrentRynChunk();
-if($('#vStopConvBtn'))$('#vStopConvBtn').onclick=()=>stopAllRynSpeech(false);
 async function rynDiagVoice(){
   const box=$('#vDiagBox');
   const log=(m)=>{if(box){box.style.display='block';box.textContent+=m+'\n'}};
   if(box){box.textContent='';box.style.display='block'}
-  const vid=resolveCatalogVoiceId(($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural');
+  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
   const spd=parseFloat(($('#vSpeedRange')&&$('#vSpeedRange').value)||'1.0')||1.0;
-  const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
-  const sampleMap={
-    'ar':'أهلاً بك يا صديقي، أنا رين، جاهز لنحكي مع بعض.',
-    'en':'Hello my friend, I am Ryn, ready to talk with you.',
-    'de':'Hallo mein Freund, ich bin Ryn und bereit, mit dir zu sprechen.',
-    'fr':'Bonjour mon ami, je suis Ryn, prêt à discuter avec toi.',
-    'es':'Hola amigo, soy Ryn, listo para hablar contigo.',
-    'it':'Ciao amico mio, sono Ryn, pronto a parlare con te.',
-    'tr':'Merhaba arkadaşım, ben Ryn, seninle konuşmaya hazırım.',
-    'pt':'Olá meu amigo, sou o Ryn, pronto para conversar com você.'
-  };
-  const fam=prof.lang.split('-')[0].toLowerCase();
-  const sampleTxt=sampleMap[fam]||sampleMap['ar'];
-  log('الصوت المختار: '+vid+' ('+prof.lang+') | السرعة: '+spd);
-  log('1) طلب الصوت من السيرفر (/api/v2/voice/speak)...');
+  log('الصوت المختار: '+vid+' | السرعة: '+spd);
+  log('1) طلب الصوت من السيرفر...');
   let d={},status=0;
   try{
-    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:sampleTxt,voice_id:vid,speed:spd,language:prof.lang})});
+    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:'أهلاً بك يا صديقي، أنا رين، جاهز لنحكي مع بعض.',voice_id:vid,speed:spd})});
     status=r.status;d=await r.json().catch(()=>({}));
   }catch(e){log('❌ فشل الاتصال بالسيرفر: '+(e&&e.message||e));return}
   log('   HTTP '+status+(d.error?(' | خطأ: '+d.error):''));
   if(!d.audio_b64){
     log('❌ السيرفر ما رجّع صوت. السبب: '+(d.tts_error||d.error||'غير معروف'));
-    log('→ رح يشتغل صوت المتصفح كبديل طوارئ (Browser Fallback).');
-    speakWithBrowser(sampleTxt,vid,prof,spd,()=>log('   انتهى صوت المتصفح'),prof.lang);
+    log('→ رح يشتغل صوت المتصفح فقط (وقد يفشل إذا جهازك ما عنده محرك قراءة).');
+    speakWithBrowser('أهلاً بك يا صديقي، أنا رين.',vid,VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'],spd,()=>log('   انتهى صوت المتصفح'));
     return;
   }
   const kb=Math.round(d.audio_b64.length*0.75/1024);
-  log('✅ وصل الصوت: '+kb+' KB | النوع: '+(d.mime_type||'?')+' | المزود: '+(d.tts_provider_used||'غير معروف')+' | الجودة: '+(d.fallback_quality||'neural'));
+  log('✅ وصل الصوت: '+kb+' KB | النوع: '+(d.mime_type||'?')+' | المزود: '+(d.tts_provider_used||'غير معروف'));
   log('2) تشغيل الصوت على جهازك...');
   const a=rynEnsureAudioEl();
   a.muted=false;a.volume=1;
-  a.onplaying=()=>log('   ▶️ بدأ التشغيل فعلاً');
-  a.onended=()=>{log('✅ انتهى التشغيل (مدة '+(a.duration?a.duration.toFixed(1):'?')+' ثانية)');notifyVoicePlaybackState('playback_ended',false);};
-  a.onerror=()=>log('❌ فشل تشغيل الملف.');
+  a.onplaying=()=>log('   ▶️ بدأ التشغيل فعلاً (لو ما سمعت: ارفع صوت الوسائط، وتأكد إنو الهاتف مو بوضع صامت للوسائط/البلوتوث)');
+  a.onended=()=>log('✅ انتهى التشغيل (مدة '+(a.duration?a.duration.toFixed(1):'?')+' ثانية)');
+  a.onerror=()=>log('❌ فشل تشغيل الملف. كود الخطأ: '+(a.error?a.error.code+' '+(a.error.message||''):'؟'));
   a.src='data:'+(d.mime_type||'audio/mpeg')+';base64,'+d.audio_b64;
   try{await a.play()}catch(e){log('❌ المتصفح رفض التشغيل: '+(e&&e.name)+' — '+(e&&e.message||''))}
 }
 if($('#vTestVoiceBtn'))$('#vTestVoiceBtn').onclick=()=>{rynDiagVoice()};
 
-/* ===== وضع المحادثة الصوتية الحية بشاشة كاملة مع الروبوت وتفاعلاته (Full-Screen Live Voice Chat + Audio Frame Streaming & Barge-In) ===== */
+/* ===== وضع المحادثة الصوتية الحية بشاشة كاملة مع الروبوت وتفاعلاته (Full-Screen Live Voice Chat) ===== */
 let liveVoiceActive=false,liveMuted=false,liveRecog=null,liveMediaRec=null,liveChunks=[];
 function ensureLvRobotCloned(){
   const box=$('#lvBotBox');
@@ -1711,7 +1528,7 @@ function setLvUiState(st,subText){
   if(!liveVoiceActive)return;
   if(st==='listening'){
     setBot('listening');
-    if(tEl)tEl.textContent='عم أسمعك... احكي بأي لغة براحتك 🎙️';
+    if(tEl)tEl.textContent='عم أسمعك... احكي براحتك 🎙️';
     if(dot){dot.style.background='#00ff9d';dot.style.boxShadow='0 0 12px #00ff9d';}
     if(aura)aura.style.transform='scale(1.05)';
   }else if(st==='thinking'){
@@ -1721,7 +1538,7 @@ function setLvUiState(st,subText){
     if(aura)aura.style.transform='scale(0.96)';
   }else if(st==='speaking'){
     setBot('speaking');
-    if(tEl)tEl.textContent='رين يحكي معك الآن... (احكي أو اضغط 🗣️ للمقاطعة الفورية)';
+    if(tEl)tEl.textContent='رين يحكي معك الآن... (احكي أو اضغط 🗣️ للمقاطعة)';
     if(dot){dot.style.background='#38bdf8';dot.style.boxShadow='0 0 14px #38bdf8';}
     if(aura)aura.style.transform='scale(1.12)';
   }else if(st==='muted'){
@@ -1736,10 +1553,9 @@ async function startLiveVoiceChat(){
   ensureLvRobotCloned();
   liveVoiceActive=true;liveMuted=false;
   if($('#lvMuteBtn'))$('#lvMuteBtn').textContent='🎤';
-  const vid=resolveCatalogVoiceId(($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural');
+  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
   const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
-  const canStream=!!(navigator.mediaDevices&&window.MediaRecorder);
-  if($('#lvVoiceLabel'))$('#lvVoiceLabel').textContent=(canStream?'Live Voice · ':'Push-to-Talk · ')+prof.label;
+  if($('#lvVoiceLabel'))$('#lvVoiceLabel').textContent='Live Voice · '+prof.label;
   $('#liveVoiceOverlay').hidden=false;
   acquireWakeLock();
   try{
@@ -1747,33 +1563,30 @@ async function startLiveVoiceChat(){
     const d=await r.json();
     if(d&&d.session)rynActiveSessionId=d.session.session_id;
   }catch(e){}
-  setLvUiState('listening','تحدث الآن بأي لغة... أنا أسمعك مباشرة 👋');
+  setLvUiState('listening','تحدث الآن... أنا أسمعك مباشرة 👋');
   startLiveListeningTurn();
 }
 function stopLiveVoiceChat(){
   liveVoiceActive=false;
-  stopAllRynSpeech(false);
+  stopAllRynSpeech();
   if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}liveRecog=null;}
   if(liveMediaRec&&liveMediaRec.state!=='inactive'){try{liveMediaRec.stop()}catch(e){}liveMediaRec=null;}
   $('#liveVoiceOverlay').hidden=true;
   setBot('idle');
-  notifyVoicePlaybackState('playback_stopped',false);
+  api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,action:'stop'})}).catch(()=>{});
 }
-async function handleLiveUserUtterance(userText,detectedLang){
+async function handleLiveUserUtterance(userText){
   const clean=String(userText||'').trim();
   if(!clean||!liveVoiceActive)return;
-  stopAllRynSpeech(true);
-  const turnLang=detectedLang||detectClientTextLang(clean,getAsrLanguagePref());
-  setLvUiState('thinking','أنت ('+turnLang+'): «'+clean+'»');
+  stopAllRynSpeech();
+  setLvUiState('thinking','أنت: «'+clean+'»');
   const hist=M().filter(m=>m.role!=='sys').slice(-14).map(m=>({role:m.role,text:m.text}));
-  const userMsgObj={role:'user',text:clean,lang:turnLang,message_id:'msg_u_'+Date.now()};
-  M().push(userMsgObj);touch();render();saveStore();
+  M().push({role:'user',text:clean});touch();render();saveStore();
   try{
     const r=await api('/api/chat',{method:'POST',body:JSON.stringify({
       message:clean,
       conversation_id:store.cur,
       modality:'voice',
-      language:turnLang,
       history:hist,
       memory:mem,
       emo:emo
@@ -1784,6 +1597,7 @@ async function handleLiveUserUtterance(userText,detectedLang){
       if(liveVoiceActive&&!liveMuted)setTimeout(startLiveListeningTurn,800);
       return;
     }
+    /* نتابع مهمة الرد بالخلفية حتى تجهز ثم ننطقها فوراً بالروبوت وريأكشناته */
     let replyText='',replyNote='';
     for(let i=0;i<300&&liveVoiceActive;i++){
       await sleep(750);
@@ -1792,7 +1606,7 @@ async function handleLiveUserUtterance(userText,detectedLang){
       if(jd.status==='running')continue;
       if(jd.status==='done'){
         replyText=jd.text||'';replyNote=jd.note||'';
-        await applyCompletedJobPayload(jd,store.cur,true);
+        await applyCompletedJobPayload(jd,store.cur);
         touch();render();saveStore();
       }else{
         replyText=jd.text||'صار خطأ بسيط، احكيلي مرة ثانية.';
@@ -1801,21 +1615,12 @@ async function handleLiveUserUtterance(userText,detectedLang){
     }
     if(!liveVoiceActive)return;
     moodFromNote(replyNote);
-    const replyLang=detectClientTextLang(replyText,turnLang);
     setLvUiState('speaking',replyText);
-    /* نشغّل الاستماع بالخلفية أثناء نطق RYN لالتقاط أي مقاطعة صوتية فورية (Full-Duplex Barge-in) */
-    startBargeInMonitor();
-    const ms=M();
-    const lastMsg=ms[ms.length-1];
     await speakTextWithRyn(replyText,null,()=>{
       if(liveVoiceActive&&!liveMuted){
         setLvUiState('listening','تحدث الآن... عم أسمعك 🎙️');
         startLiveListeningTurn();
       }
-    },{
-      messageId:lastMsg?lastMsg.message_id:'',
-      conversationId:store.cur,
-      language:replyLang
     });
   }catch(e){
     if(liveVoiceActive&&!liveMuted){
@@ -1824,65 +1629,18 @@ async function handleLiveUserUtterance(userText,detectedLang){
     }
   }
 }
-function startBargeInMonitor(){
-  if(!liveVoiceActive||liveMuted)return;
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR)return;
-  try{
-    if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}}
-    const recog=new SR();
-    liveRecog=recog;
-    const asrPref=getAsrLanguagePref();
-    if(asrPref&&asrPref!=='auto')recog.lang=asrPref;
-    recog.continuous=false;
-    recog.interimResults=true;
-    let bargeText='';
-    recog.onresult=e=>{
-      let interim='';
-      for(let i=e.resultIndex;i<e.results.length;i++){
-        const tr=e.results[i][0].transcript;
-        if(e.results[i].isFinal)bargeText+=tr+' ';
-        else interim+=tr;
-      }
-      const shown=(bargeText+' '+interim).trim();
-      if(shown){
-        stopAllRynSpeech(true);
-        setLvUiState('listening','«'+shown+'»');
-      }
-    };
-    recog.onend=()=>{
-      if(!liveVoiceActive||liveMuted)return;
-      if(bargeText.trim()){
-        handleLiveUserUtterance(bargeText.trim(),detectClientTextLang(bargeText.trim(),asrPref));
-      }
-    };
-    recog.onerror=()=>{};
-    recog.start();
-  }catch(e){}
-}
-function blobToBase64(blob){
-  return new Promise(res=>{
-    const rd=new FileReader();
-    rd.onloadend=()=>{const s=String(rd.result||'');res(s.includes(',')?s.split(',')[1]:s);};
-    rd.onerror=()=>res('');
-    rd.readAsDataURL(blob);
-  });
-}
 function startLiveListeningTurn(){
   if(!liveVoiceActive||liveMuted)return;
-  const asrPref=getAsrLanguagePref();
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(SR&&asrPref!=='server_stream'){
+  if(SR){
     try{
       if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}}
       const recog=new SR();
       liveRecog=recog;
-      if(asrPref&&asrPref!=='auto'){
-        recog.lang=asrPref;
-      }else{
-        const lastMsg=M().slice(-1)[0];
-        recog.lang=(lastMsg&&lastMsg.lang)||navigator.language||'ar-SY';
-      }
+      const asrPref=getAsrLanguagePref();
+      const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
+      const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
+      recog.lang=(asrPref&&asrPref!=='auto')?asrPref:(prof.lang||'ar-SY');
       recog.continuous=false;
       recog.interimResults=true;
       let finalBuf='';
@@ -1895,22 +1653,18 @@ function startLiveListeningTurn(){
         }
         const shown=(finalBuf+' '+interim).trim();
         if(shown){
-          if((rynTtsAudio&&!rynTtsAudio.paused)||(window.speechSynthesis&&window.speechSynthesis.speaking)){
-            stopAllRynSpeech(true);
-          }
+          /* إذا كان الروبوت عم يحكي والمستخدم بلّش يحكي، نقاطع الصوت فوراً (Barge-in) */
+          if((rynTtsAudio&&!rynTtsAudio.paused)||(window.speechSynthesis&&window.speechSynthesis.speaking))stopAllRynSpeech(true);
           setLvUiState('listening','«'+shown+'»');
-          if(rynActiveSessionId){
-            api('/api/v2/voice/stream',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,event_type:'partial_transcript',partial_transcript:shown,language:asrPref})}).catch(()=>{});
-          }
         }
       };
       recog.onend=()=>{
         if(!liveVoiceActive||liveMuted)return;
         if(finalBuf.trim()){
-          const det=detectClientTextLang(finalBuf.trim(),asrPref);
-          handleLiveUserUtterance(finalBuf.trim(),det);
+          handleLiveUserUtterance(finalBuf.trim());
         }else{
-          if((!rynTtsAudio||rynTtsAudio.paused)&&(!window.speechSynthesis||!window.speechSynthesis.speaking)){
+          /* إذا ما التقط كلام، يرجع يستمع بهدوء طالما المستخدم بوضع الاتصال */
+          if(!window.speechSynthesis||!window.speechSynthesis.speaking){
             setTimeout(()=>{if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();},350);
           }
         }
@@ -1920,53 +1674,30 @@ function startLiveListeningTurn(){
       return;
     }catch(e){}
   }
-  /* مسار البث الصوتي الحقيقي للسيرفر (Streaming Audio Frames + Whisper Multilingual ASR) */
+  /* مسار احتياطي للمتصفحات التي لا تدعم Web Speech Recognition: يسجل مقطعاً صوتياً ويفرغه عبر /api/transcribe */
   if(navigator.mediaDevices&&window.MediaRecorder){
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
       if(!liveVoiceActive||liveMuted){stream.getTracks().forEach(t=>t.stop());return;}
       const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m))||'';
       const mr=new MediaRecorder(stream,mt?{mimeType:mt}:{});
       liveMediaRec=mr;liveChunks=[];
-      mr.ondataavailable=async e=>{
-        if(e.data&&e.data.size){
-          liveChunks.push(e.data);
-          if(rynActiveSessionId&&liveVoiceActive&&!liveMuted){
-            const b64=await blobToBase64(e.data);
-            if(b64){
-              api('/api/v2/voice/stream',{method:'POST',body:JSON.stringify({
-                session_id:rynActiveSessionId,
-                event_type:'audio_frame',
-                audio_b64:b64,
-                mime_type:mr.mimeType||mt||'audio/webm',
-                language:asrPref
-              })}).catch(()=>{});
-            }
-          }
-        }
-      };
+      mr.ondataavailable=e=>{if(e.data&&e.data.size)liveChunks.push(e.data)};
       mr.onstop=async()=>{
         stream.getTracks().forEach(t=>t.stop());
         if(!liveVoiceActive||liveMuted)return;
         const blob=new Blob(liveChunks,{type:mr.mimeType||mt||'audio/webm'});
         if(blob.size<1500){if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();return;}
-        setLvUiState('thinking','جاري تفريغ كلامك وفهم اللغة...');
+        setLvUiState('thinking','جاري فهم كلامك...');
         const ext=blob.type.indexOf('mp4')>=0?'m4a':'webm';
-        const fd=new FormData();
-        fd.append('audio',blob,'voice.'+ext);
-        fd.append('language',asrPref);
-        if(rynActiveSessionId)fd.append('session_id',rynActiveSessionId);
+        const fd=new FormData();fd.append('audio',blob,'voice.'+ext);fd.append('language',getAsrLanguagePref());
         try{
-          let r=await api('/api/v2/voice/transcribe',{method:'POST',body:fd});
-          let d=await r.json().catch(()=>({}));
-          if(!r.ok||!d.text){
-            r=await api('/api/transcribe',{method:'POST',body:fd});
-            d=await r.json().catch(()=>({}));
-          }
-          if(r.ok&&d.text)handleLiveUserUtterance(d.text,d.detected_language||asrPref);
+          const r=await api('/api/transcribe',{method:'POST',body:fd});
+          const d=await r.json();
+          if(r.ok&&d.text)handleLiveUserUtterance(d.text);
           else if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();
         }catch(e){if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();}
       };
-      mr.start(1500);
+      mr.start();
       setTimeout(()=>{if(mr.state==='recording')mr.stop()},5500);
     }).catch(()=>{toast('يرجى السماح بإذن الميكروفون للمحادثة الصوتية')});
   }
@@ -1987,7 +1718,8 @@ if($('#lvMuteBtn'))$('#lvMuteBtn').onclick=()=>{
   }
 };
 if($('#lvInterruptBtn'))$('#lvInterruptBtn').onclick=()=>{
-  stopAllRynSpeech(true);
+  /* مقاطعة فورية (Barge-in) أو إنهاء جملة التسجيل الحالية والبدء بالاستماع */
+  stopAllRynSpeech();
   if(liveMediaRec&&liveMediaRec.state==='recording'){try{liveMediaRec.stop();return}catch(e){}}
   liveMuted=false;if($('#lvMuteBtn'))$('#lvMuteBtn').textContent='🎤';
   setLvUiState('listening','قاطعت الصوت — تفضّل احكي أنا عم أسمعك 🎙️');
@@ -1996,16 +1728,11 @@ if($('#lvInterruptBtn'))$('#lvInterruptBtn').onclick=()=>{
 
 if($('#dVoiceReadBtn'))$('#dVoiceReadBtn').onclick=async()=>{
   try{
-    if(rynTtsAudio&&!rynTtsAudio.paused){stopAllRynSpeech(false);toast('⏹️ تم إيقاف القراءة الصوتية');return;}
-    const ms=M();const lastBotIdx=ms.map(m=>m.role).lastIndexOf('model');
-    if(lastBotIdx>=0){
-      toast('🔊 جاري توليد الصوت...');
-      speakMessageByIndex(lastBotIdx,null);
-    }else{
-      const txtToRead=ms.length?ms[ms.length-1].text:'أهلاً بك في رين';
-      toast('🔊 جاري توليد الصوت...');
-      await speakTextWithRyn(txtToRead,null,null);
-    }
+    if(rynTtsAudio&&!rynTtsAudio.paused){stopAllRynSpeech();toast('⏹️ تم إيقاف القراءة الصوتية');return;}
+    const ms=M();const lastBot=[...ms].reverse().find(m=>m.role==='model');
+    const txtToRead=lastBot?lastBot.text:(ms.length?ms[ms.length-1].text:'أهلاً بك في رين');
+    toast('🔊 جاري توليد الصوت...');
+    await speakTextWithRyn(txtToRead,null,null);
   }catch(e){toast('⚠️ تعذر تشغيل القراءة الصوتية');}
 };
 
@@ -2120,7 +1847,7 @@ function render(){
     const body=pic+fbox+dbox+(m.reveal?'':md(shown));
     return '<div class="bubble '+(me?'me':'bot')+(m.err?' err':'')+'"'+(m.reveal?' data-rev="1"':'')+'>'+body+'</div>'+
       (m.note?'<div class="note">'+esc(m.note)+'</div>':'')+
-      (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button><button data-speak="'+i+'" data-msgid="'+esc(ensureMsgId(m,i,store.cur))+'">🔊 استماع</button><button data-speak-pause="'+i+'" hidden title="إيقاف مؤقت / استئناف">⏸️</button><button data-speak-replay="'+i+'" title="إعادة القراءة">🔁</button></div>');
+      (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button><button data-speak="'+i+'">🔊 استماع</button></div>');
   }).join('')+(busy?'<div class="bubble bot"><span class="typing"><i></i><i></i><i></i></span></div>':'');
   msgs.scrollTop=msgs.scrollHeight;
   const rv=ms.findIndex(m=>m.reveal);if(rv>=0)startReveal(rv);
@@ -2155,10 +1882,6 @@ msgs.addEventListener('click',e=>{
   if(c){copy(M()[+c.dataset.copy].text);return}
   const sp=e.target.closest('[data-speak]');
   if(sp){speakMessageByIndex(+sp.dataset.speak,sp);return}
-  const spp=e.target.closest('[data-speak-pause]');
-  if(spp){togglePauseRynSpeech(spp);return}
-  const spr=e.target.closest('[data-speak-replay]');
-  if(spr){const idx=+spr.dataset.speakReplay;stopAllRynSpeech(false);speakMessageByIndex(idx,spr.parentElement.querySelector('[data-speak]'));return}
 });
 async function copy(t){
   try{await navigator.clipboard.writeText(t)}catch(e){
@@ -2224,13 +1947,13 @@ function cancelRequest(){
   setBot('idle');say('عم ألغي...');
   if(curJob)api('/api/cancel/'+curJob,{method:'POST'}).catch(()=>{});
 }
-async function applyCompletedJobPayload(j,targetChatId,skipAutoRead){
+async function applyCompletedJobPayload(j,targetChatId){
   const chatObj=(targetChatId&&store.chats.find(c=>c.id===targetChatId))||curChat();
   const ms=chatObj?chatObj.msgs:M();
   moodFromNote(j.note);
   if(j.image){
     const img=await shrink(j.image,720);
-    ms.push({message_id:j.message_id||('msg_m_'+Date.now()),lang:detectClientTextLang(j.text||'','auto'),role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img});
+    ms.push({role:'model',text:j.text||'تفضّل الصورة 🎨',note:j.note,img});
   }else{
     const full=j.text||'(رد فاضي)';
     if(Array.isArray(j.memories)&&j.memories.length){
@@ -2239,13 +1962,8 @@ async function applyCompletedJobPayload(j,targetChatId,skipAutoRead){
     }
     const dfs=(j.files&&j.files.length?j.files:(j.file?[j.file]:[])).map(f=>({name:f.name,url:'/api/download/'+f.id,ext:f.ext,size:f.size,auto:!!f.auto}));
     if(dfs.length)say(dfs.some(f=>f.auto)?'نزّلتلك الكود بملف 💾':'جهزتلك ملف التحميل 💾');
-    const msgId=j.message_id||('msg_m_'+Date.now());
-    const detLang=j.detected_language||detectClientTextLang(full,'auto');
-    ms.push({message_id:msgId,lang:detLang,role:'model',text:full,note:j.note,reveal:(!document.hidden&&full.length<6000&&!dfs.length),dfiles:dfs});
-    if(!skipAutoRead&&(window._autoSpeakNextReply||rynAutoReadEnabled)){
-      window._autoSpeakNextReply=false;
-      setTimeout(()=>speakTextWithRyn(full,null,null,{messageId:msgId,conversationId:targetChatId||store.cur,language:detLang}),300);
-    }
+    ms.push({role:'model',text:full,note:j.note,reveal:(!document.hidden&&full.length<6000&&!dfs.length),dfiles:dfs});
+    if(window._autoSpeakNextReply||rynAutoReadEnabled){window._autoSpeakNextReply=false;setTimeout(()=>speakTextWithRyn(full),300);}
     if(autoDl)dfs.filter(f=>f.auto).forEach((f,i)=>setTimeout(()=>autoDownload(f),500+800*i));
   }
 }
@@ -2466,21 +2184,13 @@ let rec=null,recChunks=[],recT=null,recStart=0;
 function stopRec(){if(rec&&rec.state!=='inactive')rec.stop()}
 async function sendAudio(blob){
   const ext=blob.type.indexOf('mp4')>=0?'m4a':(blob.type.indexOf('ogg')>=0?'ogg':'webm');
-  const fd=new FormData();
-  fd.append('audio',blob,'voice.'+ext);
-  fd.append('language',getAsrLanguagePref());
-  if(store.cur)fd.append('conversation_id',store.cur);
+  const fd=new FormData();fd.append('audio',blob,'voice.'+ext);
   try{
-    let r=await api('/api/v2/voice/transcribe',{method:'POST',body:fd});
-    let d={};try{d=await r.json()}catch(e){}
-    if(!r.ok||!d.text){
-      r=await api('/api/transcribe',{method:'POST',body:fd});
-      try{d=await r.json()}catch(e){}
-    }
-    if(!r.ok||!d.text){toast(d.error||'ما قدرت أفرّغ الصوت');setBot('error',1800);return}
+    const r=await api('/api/transcribe',{method:'POST',body:fd});let d={};try{d=await r.json()}catch(e){}
+    if(!r.ok){toast(d.error||'ما قدرت أفرّغ الصوت');setBot('error',1800);return}
     inp.value=(inp.value?inp.value+' ':'')+d.text;grow();inp.focus();setBot('happy',1200);
     if(window._autoSendAfterTranscribe){window._autoSendAfterTranscribe=false;say('سمعتك 🎧 عم أجاوبك بصوت مباشر...');send();}
-    else{say('سمعتك ('+(d.detected_language||'auto')+') 🎧 راجع النص وابعتو');}
+    else{say('سمعتك 🎧 راجع النص وابعتو');}
   }catch(e){if(e.message!=='auth'){toast('فشل إرسال الصوت');setBot('error',1800)}}
 }
 async function micToggle(){
@@ -2815,8 +2525,7 @@ if($('#agPairBtn'))$('#agPairBtn').onclick=async()=>{
 let agTtsOn=true;
 function speakAgentReply(txt){
   if(!agTtsOn||!txt)return;
-  const detLang=detectClientTextLang(txt,getAsrLanguagePref());
-  speakTextWithRyn(txt,null,null,{conversationId:store.cur,language:detLang});
+  speakTextWithRyn(txt,null,null);
 }
 if($('#agTtsBtn'))$('#agTtsBtn').onclick=()=>{
   agTtsOn=!agTtsOn;
@@ -2845,7 +2554,7 @@ if($('#agVoiceBtn'))$('#agVoiceBtn').onclick=()=>{
   if(!SR){toast('متصفحك لا يدعم الإملاء الصوتي المباشر، استخدم خانة الكتابة');return;}
   if(agListening&&agRec){try{agRec.stop()}catch(e){}return;}
   agRec=new SR();
-  const _agLang=getAsrLanguagePref();agRec.lang=(_agLang&&_agLang!=='auto')?_agLang:(navigator.language||'ar-SY');
+  const _agL=getAsrLanguagePref();agRec.lang=(_agL&&_agL!=='auto')?_agL:'ar-SY';
   agRec.interimResults=true;
   agRec.continuous=false;
   const st=$('#agVoiceStatus'),btn=$('#agVoiceBtn');
@@ -7712,7 +7421,7 @@ def register(app, b):
                     why = "Groq %s" % r.status_code
             except Exception as e:
                 why = "Groq: " + str(e)[:80]
-        if not text and b.client:   # احتياط: Gemini متعدد اللغات
+        if not text and b.client:   # احتياط: Gemini بيسمع الصوت
             try:
                 T = b.types
                 used_model = [m for m in b.FAST_MODELS if isinstance(m, str)][0]
@@ -7720,7 +7429,7 @@ def register(app, b):
                     model=used_model,
                     contents=[T.Content(role="user", parts=[
                         T.Part.from_bytes(data=data, mime_type=mime),
-                        T.Part(text="فرّغ هذا التسجيل الصوتي حرفياً بلغة المتحدث الأصلية (مع الحفاظ على أي مصطلحات بلغات أخرى)، بدون أي إضافة أو شرح.")])],
+                        T.Part(text="فرّغ هالتسجيل الصوتي حرفياً بلغة المتحدث، بدون أي إضافة أو شرح.")])],
                     config=T.GenerateContentConfig(http_options=T.HttpOptions(timeout=60000)))
                 text = (resp.text or "").strip()
                 used_prov = "gemini"
@@ -7734,15 +7443,7 @@ def register(app, b):
             detected_lang = _te.detect_text_language(text, hint_lang=req_lang if req_lang != "auto" else detected_lang)
         except Exception:
             detected_lang = detected_lang or (req_lang if req_lang != "auto" else "ar-SY")
-        return jsonify(
-            ok=True,
-            text=text,
-            transcript=text,
-            detected_language=detected_lang,
-            requested_language=req_lang,
-            asr_provider=used_prov,
-            asr_model=used_model,
-        )
+        return jsonify(ok=True, text=text, transcript=text, detected_language=detected_lang, asr_provider=used_prov, asr_model=used_model)
 
     @app.post("/api/clientlog")
     def api_clientlog():
@@ -8945,11 +8646,6 @@ def register(app, b):
         body = request.get_json(silent=True) or {}
         f = request.files.get("audio")
         audio_b = f.read() if f else b""
-        if not audio_b and body.get("audio_b64"):
-            try:
-                audio_b = base64.b64decode(str(body["audio_b64"]).split(",")[-1].strip())
-            except Exception:
-                return jsonify(error="بيانات audio_b64 غير صالحة"), 400
         mime_t = (f.mimetype if f else str(body.get("mime_type") or "audio/webm"))
         req_lang = str(body.get("language") or request.form.get("language") or "").strip() or None
         try:
@@ -9024,11 +8720,7 @@ def register(app, b):
             )
             if request.args.get("raw") == "1" and res.get("audio_b64"):
                 raw_bytes = base64.b64decode(res["audio_b64"])
-                resp = Response(raw_bytes, mimetype=res.get("mime_type") or "audio/mpeg")
-                resp.headers["X-Voice-Id"] = str(res.get("voice_id") or "")
-                resp.headers["X-TTS-Provider"] = str(res.get("tts_provider_used") or "")
-                resp.headers["X-Output-Format"] = str(res.get("output_format") or "mp3")
-                return resp
+                return Response(raw_bytes, mimetype=res.get("mime_type") or "audio/mpeg")
             return jsonify(**res)
         except PermissionError as pe:
             return jsonify(error=str(pe)), 403
@@ -9037,7 +8729,7 @@ def register(app, b):
 
     @app.get("/api/v2/voice/health")
     def api_v2_voice_health():
-        """فحص شامل لجاهزية محرك الصوت العصبي (TTS) ومزود التفريغ الصوتي (ASR)."""
+        """فحص سريع: هل توليد الصوت الحقيقي شغال على السيرفر؟ (افتحه من المتصفح بعد تسجيل الدخول)."""
         bad = guard()
         if bad:
             return bad
@@ -9053,7 +8745,7 @@ def register(app, b):
                 info["asr"] = AIStack.get_voice_service().asr_health_check()
             try:
                 data = _t.synthesize("تجربة الصوت من رين", "ar-SY-LaithNeural", 1.0)
-                info.update(ok=True, audio_bytes=len(data), output_format=getattr(_t.synthesize, "last_format", "mp3"), mime_type=_t.sniff_mime(data))
+                info.update(ok=True, audio_bytes=len(data))
             except Exception as e:
                 info.update(ok=False, error=str(e)[:400])
         except Exception as e:
@@ -9082,7 +8774,7 @@ def register(app, b):
                 user_id=target_u,
                 session_id=str(body.get("session_id") or "").strip() or None,
                 barge_in=bool(body.get("barge_in", False)),
-                playback_action=str(body.get("action") or body.get("playback_action") or "stop"),
+                playback_action=str(body.get("action") or "stop"),
             )
             return jsonify(**res)
         except PermissionError as pe:
