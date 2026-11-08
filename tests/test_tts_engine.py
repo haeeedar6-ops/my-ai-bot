@@ -115,6 +115,23 @@ class TestVoiceCatalogAndSpeak(unittest.TestCase):
         self.assertTrue(out["audio_b64"])
         self.assertFalse(out["fallback_browser_tts"])
 
+    def test_speak_reports_which_provider_made_the_audio(self):
+        def fake(text, voice, speed):
+            fake.last_provider = "edge"
+            return b"ID3\x04fake" * 8
+
+        fake.last_provider = ""
+        vs = VoiceService(db_path=self.db, tts_provider_fn=fake)
+        self.assertEqual(vs.speak("u1", text="مرحبا")["tts_provider_used"], "edge")
+
+    def test_synthesize_records_last_provider(self):
+        with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto"}), \
+                mock.patch.object(tts_engine, "_edge_synthesize", side_effect=RuntimeError("403")), \
+                mock.patch.object(tts_engine, "_gtts_synthesize", return_value=b"ID3g"):
+            os.environ.pop("AZURE_SPEECH_KEY", None)
+            tts_engine.synthesize("نص فريد لاختبار المزود المستعمل 777", "ar-SY-LaithNeural", 1.0)
+        self.assertEqual(tts_engine.synthesize.last_provider, "gtts")
+
     def test_speak_provider_failure_does_not_return_a_beep(self):
         def broken(*_a):
             raise RuntimeError("network down")
