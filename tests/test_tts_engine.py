@@ -36,9 +36,9 @@ class TestTtsEngine(unittest.TestCase):
         with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto"}, clear=False):
             os.environ.pop("AZURE_SPEECH_KEY", None)
             os.environ.pop("AZURE_SPEECH_REGION", None)
-            self.assertEqual(tts_engine.provider_order(), ["edge"])
+            self.assertEqual(tts_engine.provider_order(), ["edge", "gtts"])
         with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto", "AZURE_SPEECH_KEY": "k", "AZURE_SPEECH_REGION": "westeurope"}):
-            self.assertEqual(tts_engine.provider_order(), ["azure", "edge"])
+            self.assertEqual(tts_engine.provider_order(), ["azure", "edge", "gtts"])
         with mock.patch.dict(os.environ, {"TTS_PROVIDER": "edge", "AZURE_SPEECH_KEY": "k", "AZURE_SPEECH_REGION": "r"}):
             self.assertEqual(tts_engine.provider_order(), ["edge"])
 
@@ -61,9 +61,18 @@ class TestTtsEngine(unittest.TestCase):
         self.assertEqual(a, b"ID3fake-mp3")
         self.assertEqual(calls, {"azure": 1, "edge": 1})  # الثانية من الكاش
 
+    def test_gtts_is_last_resort_when_edge_is_blocked(self):
+        with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto"}), \
+                mock.patch.object(tts_engine, "_edge_synthesize", side_effect=RuntimeError("403 Invalid response status")), \
+                mock.patch.object(tts_engine, "_gtts_synthesize", return_value=b"ID3gtts"):
+            os.environ.pop("AZURE_SPEECH_KEY", None)
+            out = tts_engine.synthesize("نص فريد لاختبار شبكة الأمان 4242", "ar-SY-LaithNeural", 1.0)
+        self.assertEqual(out, b"ID3gtts")
+
     def test_all_providers_fail_raises(self):
-        with mock.patch.dict(os.environ, {"TTS_PROVIDER": "edge"}), \
-                mock.patch.object(tts_engine, "_edge_synthesize", side_effect=RuntimeError("no net")):
+        with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto"}), \
+                mock.patch.object(tts_engine, "_edge_synthesize", side_effect=RuntimeError("no net")), \
+                mock.patch.object(tts_engine, "_gtts_synthesize", side_effect=RuntimeError("no net")):
             with self.assertRaises(RuntimeError):
                 tts_engine.synthesize("نص مختلف تماماً لتجنب الكاش 98765", "ar-SA-HamedNeural", 1.0)
 
