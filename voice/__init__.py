@@ -688,6 +688,7 @@ class VoiceService:
             "audio_b64": audio_b64,
             "fallback_browser_tts": fallback_browser,
             "tts_error": tts_error,
+            "tts_provider_used": str(getattr(self.tts_provider_fn, "last_provider", "") or ""),
         }
 
     def process_stream_event(
