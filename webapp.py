@@ -837,6 +837,7 @@ textarea::placeholder{color:var(--sub)}
         <label style="font-size:12.5px"><span>سرعة القراءة: <b id="vSpeedVal" style="color:var(--g)">1.0x</b></span><input type="range" id="vSpeedRange" min="0.7" max="1.6" step="0.05" value="1.0" style="width:150px;accent-color:var(--g)"></label>
       </div>
       <button type="button" class="syscheck-btn" id="vTestVoiceBtn" style="border-color:var(--g);color:var(--g)">🔊 تجربة الصوت المختار الآن</button>
+      <pre id="vDiagBox" style="display:none;white-space:pre-wrap;direction:rtl;text-align:right;font-size:12px;line-height:1.7;margin-top:8px;padding:10px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid var(--line)"></pre>
     </div>
   </div>
 </div>
@@ -1351,9 +1352,38 @@ if($('#vSpeedRange'))$('#vSpeedRange').oninput=e=>{
   if($('#vSpeedVal'))$('#vSpeedVal').textContent=s+'x';
   try{localStorage.setItem('ryn_voice_spd',s)}catch(err){}
 };
-if($('#vTestVoiceBtn'))$('#vTestVoiceBtn').onclick=()=>{
-  speakTextWithRyn('أهلاً بك يا صديقي، أنا رين، جاهز لنحكي مع بعض بصوت عربي واضح وطبيعي.');
-};
+async function rynDiagVoice(){
+  const box=$('#vDiagBox');
+  const log=(m)=>{if(box){box.style.display='block';box.textContent+=m+'\n'}};
+  if(box){box.textContent='';box.style.display='block'}
+  const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
+  const spd=parseFloat(($('#vSpeedRange')&&$('#vSpeedRange').value)||'1.0')||1.0;
+  log('الصوت المختار: '+vid+' | السرعة: '+spd);
+  log('1) طلب الصوت من السيرفر...');
+  let d={},status=0;
+  try{
+    const r=await api('/api/v2/voice/speak',{method:'POST',body:JSON.stringify({text:'أهلاً بك يا صديقي، أنا رين، جاهز لنحكي مع بعض.',voice_id:vid,speed:spd})});
+    status=r.status;d=await r.json().catch(()=>({}));
+  }catch(e){log('❌ فشل الاتصال بالسيرفر: '+(e&&e.message||e));return}
+  log('   HTTP '+status+(d.error?(' | خطأ: '+d.error):''));
+  if(!d.audio_b64){
+    log('❌ السيرفر ما رجّع صوت. السبب: '+(d.tts_error||d.error||'غير معروف'));
+    log('→ رح يشتغل صوت المتصفح فقط (وقد يفشل إذا جهازك ما عنده محرك قراءة).');
+    speakWithBrowser('أهلاً بك يا صديقي، أنا رين.',vid,VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'],spd,()=>log('   انتهى صوت المتصفح'));
+    return;
+  }
+  const kb=Math.round(d.audio_b64.length*0.75/1024);
+  log('✅ وصل الصوت: '+kb+' KB | النوع: '+(d.mime_type||'?')+' | المزود: '+(d.tts_provider_used||'غير معروف'));
+  log('2) تشغيل الصوت على جهازك...');
+  const a=rynEnsureAudioEl();
+  a.muted=false;a.volume=1;
+  a.onplaying=()=>log('   ▶️ بدأ التشغيل فعلاً (لو ما سمعت: ارفع صوت الوسائط، وتأكد إنو الهاتف مو بوضع صامت للوسائط/البلوتوث)');
+  a.onended=()=>log('✅ انتهى التشغيل (مدة '+(a.duration?a.duration.toFixed(1):'?')+' ثانية)');
+  a.onerror=()=>log('❌ فشل تشغيل الملف. كود الخطأ: '+(a.error?a.error.code+' '+(a.error.message||''):'؟'));
+  a.src='data:'+(d.mime_type||'audio/mpeg')+';base64,'+d.audio_b64;
+  try{await a.play()}catch(e){log('❌ المتصفح رفض التشغيل: '+(e&&e.name)+' — '+(e&&e.message||''))}
+}
+if($('#vTestVoiceBtn'))$('#vTestVoiceBtn').onclick=()=>{rynDiagVoice()};
 
 /* ===== وضع المحادثة الصوتية الحية بشاشة كاملة مع الروبوت وتفاعلاته (Full-Screen Live Voice Chat) ===== */
 let liveVoiceActive=false,liveMuted=false,liveRecog=null,liveMediaRec=null,liveChunks=[];

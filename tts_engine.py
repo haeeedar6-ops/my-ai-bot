@@ -92,6 +92,7 @@ class _LRU:
 
 
 _CACHE = _LRU()
+_PROVIDER_BY_KEY: Dict[str, str] = {}
 
 
 # ---------------- Azure Speech (رسمي) ----------------
@@ -182,6 +183,7 @@ def synthesize(text: str, voice_id: Optional[str] = None, speed: float = 1.0) ->
     key = hashlib.sha256(f"{voice}|{_rate_percent(speed)}|{clean}".encode("utf-8")).hexdigest()
     hit = _CACHE.get(key)
     if hit:
+        synthesize.last_provider = _PROVIDER_BY_KEY.get(key, "cache")  # type: ignore[attr-defined]
         return hit
     errors = []
     for name in provider_order():
@@ -189,11 +191,16 @@ def synthesize(text: str, voice_id: Optional[str] = None, speed: float = 1.0) ->
             fn = {"azure": _azure_synthesize, "edge": _edge_synthesize, "gtts": _gtts_synthesize}[name]
             data = fn(clean, voice, speed)
             _CACHE.put(key, data)
+            _PROVIDER_BY_KEY[key] = name
+            synthesize.last_provider = name  # type: ignore[attr-defined]
             return data
         except Exception as e:  # نجرّب المزود التالي
             errors.append(f"{name}: {str(e)[:120]}")
             log.warning("TTS provider %s failed: %s", name, e)
     raise RuntimeError("فشل توليد الصوت — " + " | ".join(errors))
+
+
+synthesize.last_provider = ""  # type: ignore[attr-defined]
 
 
 def get_provider_fn() -> Callable[[str, str, float], bytes]:
