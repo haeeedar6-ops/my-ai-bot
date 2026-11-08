@@ -5,3 +5,4 @@ pypdf
 pyflakes
 requests
 edge-tts
+gTTS

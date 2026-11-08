@@ -8555,6 +8555,7 @@ def register(app, b):
             import tts_engine as _t
             info["provider_order"] = _t.provider_order()
             info["edge_tts_installed"] = _ilu.find_spec("edge_tts") is not None
+            info["gtts_installed"] = _ilu.find_spec("gtts") is not None
             info["azure_configured"] = bool(os.environ.get("AZURE_SPEECH_KEY") and os.environ.get("AZURE_SPEECH_REGION"))
             try:
                 data = _t.synthesize("تجربة الصوت من رين", "ar-SY-LaithNeural", 1.0)

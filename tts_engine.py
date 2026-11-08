@@ -1,10 +1,12 @@
 """
 tts_engine.py — أصوات عربية حقيقية (Microsoft Neural) لـ Ryn.
 
-المزودات (بالترتيب، حسب TTS_PROVIDER = auto | azure | edge):
+المزودات (بالترتيب، حسب TTS_PROVIDER = auto | azure | edge | gtts):
   1) azure: خدمة Azure Speech الرسمية (مفاتيح: AZURE_SPEECH_KEY + AZURE_SPEECH_REGION) — مستقرة ورسمية.
-  2) edge : حزمة edge-tts (نفس أصوات Microsoft Edge العصبية، بدون مفتاح) — مجانية لكنها غير رسمية.
-لو فشل المزود نرجّع خطأ واضح والواجهة تنتقل لصوت المتصفح؛ ما في صوت تجريبي (بيب) بالإنتاج.
+  2) edge : حزمة edge-tts (نفس أصوات Microsoft Edge العصبية، بدون مفتاح) — مجانية لكنها غير رسمية، وممكن
+            تنحجب من سيرفرات الاستضافة (خطأ 403).
+  3) gtts : صوت Google Translate (عربي فصيح، صوت واحد) — شبكة أمان لما تفشل الباقية؛ أبسط بالجودة لكنه بيشتغل غالباً.
+لو فشلوا كلهم نرجّع خطأ واضح والواجهة تنتقل لصوت المتصفح؛ ما في صوت تجريبي (بيب) بالإنتاج.
 
 ملاحظة عن VibeVoice (Microsoft): كود الـ TTS انحذف من المستودع الرسمي، والنموذج الحي (Realtime-0.5B)
 بحاجة GPU ولا يدعم العربية بشكل رسمي، فما بينفع على Render المجاني. الأصوات العصبية أدناه هي الحل العملي.
@@ -146,14 +148,29 @@ def _edge_synthesize(text: str, voice: str, speed: float) -> bytes:
     return data
 
 
+# ---------------- gTTS (شبكة أمان) ----------------
+def _gtts_synthesize(text: str, voice: str, speed: float) -> bytes:
+    try:
+        from gtts import gTTS  # type: ignore
+    except Exception:
+        raise RuntimeError("حزمة gTTS غير مثبتة (pip install gTTS)")
+    import io
+
+    lang = "ar" if voice.startswith("ar-") else voice.split("-")[0]
+    buf = io.BytesIO()
+    gTTS(text=text, lang=lang, slow=float(speed) < 0.85).write_to_fp(buf)
+    data = buf.getvalue()
+    if not data:
+        raise RuntimeError("gTTS رجّع صوتاً فاضياً")
+    return data
+
+
 def provider_order() -> list:
     mode = os.environ.get("TTS_PROVIDER", "auto").strip().lower()
     has_azure = bool(os.environ.get("AZURE_SPEECH_KEY") and os.environ.get("AZURE_SPEECH_REGION"))
-    if mode == "azure":
-        return ["azure"]
-    if mode == "edge":
-        return ["edge"]
-    return ["azure", "edge"] if has_azure else ["edge"]
+    if mode in ("azure", "edge", "gtts"):
+        return [mode]
+    return (["azure"] if has_azure else []) + ["edge", "gtts"]
 
 
 def synthesize(text: str, voice_id: Optional[str] = None, speed: float = 1.0) -> bytes:
@@ -169,7 +186,8 @@ def synthesize(text: str, voice_id: Optional[str] = None, speed: float = 1.0) ->
     errors = []
     for name in provider_order():
         try:
-            data = _azure_synthesize(clean, voice, speed) if name == "azure" else _edge_synthesize(clean, voice, speed)
+            fn = {"azure": _azure_synthesize, "edge": _edge_synthesize, "gtts": _gtts_synthesize}[name]
+            data = fn(clean, voice, speed)
             _CACHE.put(key, data)
             return data
         except Exception as e:  # نجرّب المزود التالي
