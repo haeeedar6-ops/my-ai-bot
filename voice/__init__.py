@@ -69,6 +69,7 @@ DEFAULT_VOICE_ID = tts_engine.DEFAULT_VOICE
 SUPPORTED_ASR_LANGUAGES: List[Dict[str, str]] = [
     {"code": "auto", "name": "🌐 تلقائي متعدد اللغات (Auto-Detect)"},
     {"code": "ar-SY", "name": "🇸🇾 العربية — شامي سوري (ar-SY)"},
+    {"code": "ar-LB", "name": "🇱🇧 العربية — شامي ساحلي/لبناني (ar-LB)"},
     {"code": "ar-SA", "name": "🇸🇦 العربية — فصحى / سعودي (ar-SA)"},
     {"code": "ar-EG", "name": "🇪🇬 العربية — مصري (ar-EG)"},
     {"code": "ar-AE", "name": "🇦🇪 العربية — إماراتي (ar-AE)"},
@@ -89,6 +90,7 @@ _CANONICAL_ASR_LANG_MAP: Dict[str, str] = {
     "auto": "auto",
     "ar": "ar-SY",
     "ar-sy": "ar-SY",
+    "ar-lb": "ar-LB",
     "ar-sa": "ar-SA",
     "ar-eg": "ar-EG",
     "ar-ae": "ar-AE",
