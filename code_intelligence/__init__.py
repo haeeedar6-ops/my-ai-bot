@@ -47,6 +47,48 @@ CHANGE_STATUSES = (
 )
 
 PROTECTED_BRANCHES = ("main", "master", "production", "prod")
+OPERATIONS = ("edit", "create", "delete")
+_SECRET_RE = re.compile(
+    r"(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_\-]{20,}|AIza[0-9A-Za-z_\-]{30,}|"
+    r"(?i:bearer)\s+[A-Za-z0-9._\-]{20,}|(?i:token|api[_-]?key|secret|password)\s*[=:]\s*\S{6,})"
+)
+
+
+def redact_secrets(text: Any) -> str:
+    """يشيل التوكنات/المفاتيح من أي نص قبل ما يدخل لوغ أو سجل تدقيق."""
+    return _SECRET_RE.sub("[REDACTED]", str(text or ""))
+
+
+def validate_repo_path(path: str) -> str:
+    """تحقق صارم من مسار ملف داخل الريبو (Path Traversal / مسارات خطرة). يرجّع المسار النظيف أو يرمي ValueError."""
+    raw = str(path or "")
+    if "\x00" in raw or "\\" in raw:
+        raise ValueError("مسار الملف غير صالح أو غير آمن")
+    clean = raw.strip().lstrip("/")
+    parts = clean.split("/")
+    if not clean or any(p in ("", ".", "..") for p in parts) or re.match(r"^[A-Za-z]:", clean):
+        raise ValueError("مسار الملف غير صالح أو غير آمن")
+    if parts[0].lower() == ".git" or len(clean) > 300:
+        raise ValueError("مسار الملف غير مسموح (.git أو طويل جداً)")
+    return clean
+
+
+def change_digest(repo: str, base_branch: str, work_branch: str, file_path: str, operation: str, proposed_content: str) -> str:
+    """بصمة التعديل بالضبط؛ الموافقة بتنربط فيها حتى ما تنطبق على تعديل غير اللي انعرض."""
+    h = hashlib.sha256()
+    for part in (repo, base_branch, work_branch, file_path, operation, proposed_content):
+        h.update(str(part).encode("utf-8"))
+        h.update(b"\x1f")
+    return h.hexdigest()
+
+
+class _ClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            return super().__exit__(exc_type, exc, tb)
+        finally:
+            self.close()
+
 SENSITIVE_FILES = ("requirements.txt", "Dockerfile", "render.yaml", "_worker.js", ".env")
 
 
@@ -69,6 +111,10 @@ class ApprovalRequiredError(PermissionError):
     """Raised when an action modifies a protected branch, deletes files, or changes dependencies without explicit approval."""
 
 
+class ApprovalExpiredError(ApprovalRequiredError):
+    """الموافقة انتهت صلاحيتها أو ما بتطابق التعديل الحالي؛ لازم موافقة جديدة."""
+
+
 class GitHubEngineeringService:
     """
     Manages `code_change_requests`, 7-pass code review, work branch isolation, stale SHA conflict checks,
@@ -88,11 +134,15 @@ class GitHubEngineeringService:
         self.memory_service = memory_service
         self.work_branch_prefix = os.environ.get("GITHUB_WORK_BRANCH_PREFIX", "ryn-work/").strip() or "ryn-work/"
         self.require_approval_default = os.environ.get("GITHUB_REQUIRE_APPROVAL", "1").strip() not in ("0", "false", "no")
+        try:
+            self.approval_ttl_sec = max(30.0, float(os.environ.get("GITHUB_APPROVAL_TTL_SEC", "900")))
+        except Exception:
+            self.approval_ttl_sec = 900.0
         self._lock = threading.RLock()
         self._init_db()
 
     def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
+        conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False, factory=_ClosingConnection)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA foreign_keys=ON;")
@@ -130,8 +180,68 @@ class GitHubEngineeringService:
                 );
                 CREATE INDEX IF NOT EXISTS idx_ccr_user ON code_change_requests(user_id, created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_ccr_idem ON code_change_requests(user_id, idempotency_key);
+                CREATE TABLE IF NOT EXISTS github_audit_log (
+                    id TEXT PRIMARY KEY,
+                    request_id TEXT NOT NULL DEFAULT '',
+                    actor TEXT NOT NULL,
+                    repo TEXT NOT NULL DEFAULT '',
+                    branch TEXT NOT NULL DEFAULT '',
+                    files TEXT NOT NULL DEFAULT '[]',
+                    action TEXT NOT NULL,
+                    outcome TEXT NOT NULL DEFAULT '',
+                    test_result TEXT NOT NULL DEFAULT '',
+                    approval_ref TEXT NOT NULL DEFAULT '',
+                    detail TEXT NOT NULL DEFAULT '',
+                    created_at REAL NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_gh_audit_user ON github_audit_log(actor, created_at DESC);
                 """
             )
+            cols = {r["name"] for r in conn.execute("PRAGMA table_info(code_change_requests)").fetchall()}
+            for col, ddl in (
+                ("operation", "TEXT NOT NULL DEFAULT 'edit'"),
+                ("approved_digest", "TEXT NOT NULL DEFAULT ''"),
+                ("approved_at", "REAL NOT NULL DEFAULT 0"),
+            ):
+                if col not in cols:
+                    conn.execute(f"ALTER TABLE code_change_requests ADD COLUMN {col} {ddl}")
+
+    def _audit(self, actor: str, action: str, ccr: Optional[Dict[str, Any]] = None, outcome: str = "",
+               detail: str = "", branch: str = "") -> None:
+        """سجل تدقيق: مين، أي ريبو/فرع/ملفات، شو الإجراء، نتيجة الفحص، مرجع الموافقة. بدون أسرار."""
+        try:
+            c = ccr or {}
+            tests = c.get("test_evidence") or {}
+            test_result = "passed" if (c.get("status") in ("tests-passed", "committed", "merged")) else str(c.get("status") or "")
+            if isinstance(tests, dict) and tests.get("summary"):
+                test_result = f"{test_result}: {tests.get('summary')}"
+            with self._lock, self._conn() as conn:
+                conn.execute(
+                    "INSERT INTO github_audit_log (id, request_id, actor, repo, branch, files, action, outcome, test_result, approval_ref, detail, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        f"aud_{uuid.uuid4().hex[:12]}", str(c.get("id") or ""), str(actor or ""), str(c.get("repo") or ""),
+                        branch or str(c.get("work_branch") or ""), json.dumps([c.get("file_path")] if c.get("file_path") else []),
+                        action, outcome, redact_secrets(test_result)[:300],
+                        (str(c.get("approved_digest") or "")[:16]), redact_secrets(detail)[:500], time.time(),
+                    ),
+                )
+        except Exception:
+            pass
+
+    def list_audit_log(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        u = str(user_id or "").strip()
+        with self._lock, self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM github_audit_log WHERE actor = ? ORDER BY created_at DESC LIMIT ?", (u, int(limit))
+            ).fetchall()
+            out = []
+            for r in rows:
+                d = dict(r)
+                d["files"] = json.loads(d.get("files") or "[]")
+                d["timestamp"] = _iso_utc(d["created_at"])
+                out.append(d)
+            return out
 
     @staticmethod
     def _extract_symbols_and_routes(py_code: str) -> Tuple[set, set]:
@@ -290,6 +400,7 @@ class GitHubEngineeringService:
         work_branch: str = "",
         idempotency_key: str = "",
         test_runner_fn: Optional[Callable[[str, str], Dict[str, Any]]] = None,
+        operation: str = "edit",
     ) -> Dict[str, Any]:
         """
         Steps 1-9 of Section 8:
@@ -310,9 +421,14 @@ class GitHubEngineeringService:
                 if existing:
                     return self._row_to_ccr(existing)
 
-        clean_path = (file_path or "").strip().lstrip("/")
-        if not clean_path or ".." in clean_path.split("/"):
-            raise ValueError("مسار الملف غير صالح أو غير آمن")
+        op = str(operation or "edit").strip().lower()
+        if op not in OPERATIONS:
+            raise ValueError(f"نوع العملية غير مدعوم: {op}")
+        clean_path = validate_repo_path(file_path)
+        if op == "delete":
+            proposed_content = ""
+        elif op == "create" and original_content:
+            raise ValueError("إنشاء ملف جديد ما بيكون له محتوى أصلي؛ استخدم edit للملفات الموجودة")
 
         req_id = f"ccr_{uuid.uuid4().hex[:12]}"
         task_branch = (work_branch or f"{self.work_branch_prefix}{req_id}").strip()
@@ -337,15 +453,27 @@ class GitHubEngineeringService:
             proposed_content=proposed_content,
             test_runner_fn=test_runner_fn,
         )
+        if op == "delete":
+            # الحذف مقصود وبيتأكد بتأكيد صريح للمسار؛ فحص "ملف فارغ/دوال انحذفت" بيصير معلومة مو فشل.
+            removed = []
+            for p in passes:
+                if p.get("name") == "Compatibility":
+                    removed = list(p.get("removed_functions") or [])
+            for p in passes:
+                if p.get("name") in ("Requirements", "Compatibility", "Final verification"):
+                    p["passed"] = True
+                    p["detail"] = f"عملية حذف مقصودة للملف {clean_path} (دوال/مسارات رح تنزال: {removed or 'لا شي'})؛ بتحتاج تأكيد المسار صراحة."
         all_passed = all(p["passed"] for p in passes)
         status = "tests-passed" if all_passed else "drafted"
 
         is_destructive_or_sensitive = (
             os.path.basename(clean_path) in SENSITIVE_FILES
+            or op == "delete"
             or not proposed_content.strip()
             or base_branch.lower() in PROTECTED_BRANCHES
         )
-        approval_status = "pending" if (self.require_approval_default or is_destructive_or_sensitive) else "approved"
+        # الخطة: ما في رفع لـ GitHub بدون موافقة صريحة منفصلة، بكل الحالات (مو بس الحساس).
+        approval_status = "pending"
 
         change_plan = {
             "request_summary": (request_text or f"Update {clean_path}")[:300],
@@ -353,7 +481,9 @@ class GitHubEngineeringService:
             "base_branch": base_branch,
             "work_branch": task_branch,
             "base_sha": recorded_base_sha,
-            "requires_explicit_approval": is_destructive_or_sensitive or self.require_approval_default,
+            "requires_explicit_approval": True,
+            "operation": op,
+            "destructive": bool(is_destructive_or_sensitive),
         }
         rollback_plan = {
             "target_path": clean_path,
@@ -398,10 +528,16 @@ class GitHubEngineeringService:
                     now,
                 ),
             )
+            conn.execute("UPDATE code_change_requests SET operation = ? WHERE id = ?", (op, req_id))
             row = conn.execute("SELECT * FROM code_change_requests WHERE id = ?", (req_id,)).fetchone()
-            return self._row_to_ccr(row)
+            created = self._row_to_ccr(row)
+        self._audit(u, f"create:{op}", created, outcome=created["status"], detail=request_text)
+        return created
 
-    def approve_change_request(self, user_id: str, request_id: str, approve: bool = True) -> Dict[str, Any]:
+    def approve_change_request(
+        self, user_id: str, request_id: str, approve: bool = True, confirm_delete_path: str = ""
+    ) -> Dict[str, Any]:
+        """الموافقة بتنربط ببصمة التعديل الحالي + وقت. الحذف بدو تأكيد صريح بكتابة المسار بالضبط."""
         u = str(user_id or "").strip()
         with self._lock, self._conn() as conn:
             row = conn.execute("SELECT * FROM code_change_requests WHERE id = ?", (request_id,)).fetchone()
@@ -409,14 +545,22 @@ class GitHubEngineeringService:
                 raise KeyError("طلب التعديل غير موجود")
             if row["user_id"] != u:
                 raise PermissionError("⛔ لا تملك صلاحية اعتماد طلب تعديل يخص مستخدماً آخر")
+            op = row["operation"] or "edit"
+            if approve and op == "delete" and str(confirm_delete_path or "").strip().lstrip("/") != row["file_path"]:
+                raise ApprovalRequiredError(
+                    f"⛔ الحذف عملية خطرة: اكتب المسار بالضبط للتأكيد ({row['file_path']})."
+                )
             new_app = "approved" if approve else "rejected"
             new_st = row["status"] if approve else "rejected"
+            digest = change_digest(row["repo"], row["base_branch"], row["work_branch"], row["file_path"], op, row["proposed_content"]) if approve else ""
             conn.execute(
-                "UPDATE code_change_requests SET approval_status = ?, approved_by = ?, status = ?, updated_at = ? WHERE id = ?",
-                (new_app, u, new_st, time.time(), request_id),
+                "UPDATE code_change_requests SET approval_status = ?, approved_by = ?, status = ?, approved_digest = ?, approved_at = ?, updated_at = ? WHERE id = ?",
+                (new_app, u, new_st, digest, time.time() if approve else 0, time.time(), request_id),
             )
             updated = conn.execute("SELECT * FROM code_change_requests WHERE id = ?", (request_id,)).fetchone()
-            return self._row_to_ccr(updated)
+            result = self._row_to_ccr(updated)
+        self._audit(u, "approve" if approve else "reject", result, outcome=new_app)
+        return result
 
     def commit_and_verify_change_request(
         self,
@@ -426,6 +570,7 @@ class GitHubEngineeringService:
         remote_write_fn: Callable[[str, str, str, str, str], Dict[str, Any]],
         target_branch: Optional[str] = None,
         allow_protected_branch_merge: bool = False,
+        remote_delete_fn: Optional[Callable[[str, str, str, str], Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
         Steps 10-12 of Section 8:
@@ -448,6 +593,7 @@ class GitHubEngineeringService:
             ccr = self._row_to_ccr(row)
 
         if ccr["status"] != "tests-passed" and ccr["status"] != "staged":
+            self._audit(u, "commit", ccr, outcome="blocked", detail=f"status={ccr['status']}")
             raise RuntimeError(f"لا يمكن رفع التعديل لأن حالته الحالية '{ccr['status']}' (يجب أن يجتاز الفحوصات أولاً).")
 
         branch_to_use = (target_branch or ccr["work_branch"] or ccr["base_branch"]).strip()
@@ -458,12 +604,25 @@ class GitHubEngineeringService:
                 )
 
         if ccr["approval_status"] != "approved":
+            self._audit(u, "commit", ccr, outcome="blocked", detail="no approval", branch=branch_to_use)
             raise ApprovalRequiredError("⛔ هذا التعديل يتطلب موافقة صريحة (`approve_change_request`) قبل الرفع إلى GitHub.")
+        op = ccr.get("operation") or "edit"
+        expected = change_digest(ccr["repo"], ccr["base_branch"], ccr["work_branch"], ccr["file_path"], op, ccr["proposed_content"])
+        if not ccr.get("approved_digest") or ccr["approved_digest"] != expected:
+            self._audit(u, "commit", ccr, outcome="blocked", detail="digest mismatch", branch=branch_to_use)
+            raise ApprovalExpiredError("⛔ الموافقة ما بتطابق التعديل الحالي بالضبط؛ لازم موافقة جديدة.")
+        if time.time() - float(ccr.get("approved_at") or 0) > self.approval_ttl_sec:
+            self._audit(u, "commit", ccr, outcome="blocked", detail="approval expired", branch=branch_to_use)
+            raise ApprovalExpiredError("⛔ انتهت صلاحية الموافقة؛ وافق من جديد قبل الرفع مباشرة.")
 
         # Step 10.5: Detect stale file SHA / base commit before writing!
         current_remote = remote_read_fn(ccr["repo"], ccr["base_branch"], ccr["file_path"])
         current_remote_sha = str(current_remote.get("sha") or "").strip()
-        if ccr["original_file_sha"] and current_remote_sha and current_remote_sha != ccr["original_file_sha"]:
+        if op == "create" and current_remote_sha:
+            self._audit(u, "commit", ccr, outcome="blocked", detail="file already exists", branch=branch_to_use)
+            raise StaleSHAConflictError(f"⚠️ الملف `{ccr['file_path']}` موجود أصلاً على GitHub؛ ما منقدر ننشئه من جديد.")
+        if op != "create" and ccr["original_file_sha"] and current_remote_sha and current_remote_sha != ccr["original_file_sha"]:
+            self._audit(u, "commit", ccr, outcome="conflict_blocked", detail="stale sha", branch=branch_to_use)
             with self._lock, self._conn() as conn:
                 conn.execute(
                     "UPDATE code_change_requests SET status = 'conflict_blocked', updated_at = ? WHERE id = ?",
@@ -477,23 +636,34 @@ class GitHubEngineeringService:
 
         # Step 11: Commit to branch
         commit_msg = f"RYN Verified Change ({request_id}): {ccr['file_path']}"
-        write_res = remote_write_fn(
-            ccr["repo"],
-            branch_to_use,
-            ccr["file_path"],
-            ccr["proposed_content"],
-            current_remote_sha or ccr["original_file_sha"],
-        )
-        commit_sha = str(write_res.get("commit_sha") or "").strip()
-        if not commit_sha:
-            raise RuntimeError("لم يؤكد GitHub معرّف الـ Commit (`commit_sha` مفقود)؛ لن يتم الإبلاغ عن نجاح العملية.")
-
-        # Re-read file from GitHub to verify commit actually landed and content matches
-        reread_res = remote_read_fn(ccr["repo"], branch_to_use, ccr["file_path"])
-        reread_content = str(reread_res.get("content") or "")
-        reread_sha = str(reread_res.get("sha") or "")
-        if reread_content != ccr["proposed_content"]:
-            raise RuntimeError("فشل التحقق بعد الرفع: محتوى الملف المعاد قراءته من GitHub لا يطابق التعديل المعتمد!")
+        if op == "delete":
+            if remote_delete_fn is None:
+                raise RuntimeError("الحذف يحتاج remote_delete_fn صريح؛ ما في حذف عبر دالة الكتابة.")
+            del_res = remote_delete_fn(ccr["repo"], branch_to_use, ccr["file_path"], current_remote_sha or ccr["original_file_sha"])
+            commit_sha = str(del_res.get("commit_sha") or "").strip()
+            if not commit_sha:
+                raise RuntimeError("لم يؤكد GitHub معرّف الـ Commit للحذف؛ لن يتم الإبلاغ عن نجاح العملية.")
+            gone = remote_read_fn(ccr["repo"], branch_to_use, ccr["file_path"])
+            if str(gone.get("sha") or "").strip() or gone.get("content"):
+                raise RuntimeError("فشل التحقق بعد الحذف: الملف لسا موجود على GitHub!")
+            reread_sha = ""
+        else:
+            write_res = remote_write_fn(
+                ccr["repo"],
+                branch_to_use,
+                ccr["file_path"],
+                ccr["proposed_content"],
+                current_remote_sha or ccr["original_file_sha"],
+            )
+            commit_sha = str(write_res.get("commit_sha") or "").strip()
+            if not commit_sha:
+                raise RuntimeError("لم يؤكد GitHub معرّف الـ Commit (`commit_sha` مفقود)؛ لن يتم الإبلاغ عن نجاح العملية.")
+            # Re-read file from GitHub to verify commit actually landed and content matches
+            reread_res = remote_read_fn(ccr["repo"], branch_to_use, ccr["file_path"])
+            reread_content = str(reread_res.get("content") or "")
+            reread_sha = str(reread_res.get("sha") or "")
+            if reread_content != ccr["proposed_content"]:
+                raise RuntimeError("فشل التحقق بعد الرفع: محتوى الملف المعاد قراءته من GitHub لا يطابق التعديل المعتمد!")
 
         new_status = "merged" if branch_to_use == ccr["base_branch"] else "committed"
         now = time.time()
@@ -508,6 +678,8 @@ class GitHubEngineeringService:
             )
             updated_row = conn.execute("SELECT * FROM code_change_requests WHERE id = ?", (request_id,)).fetchone()
             updated_ccr = self._row_to_ccr(updated_row)
+
+        self._audit(u, f"commit:{op}", updated_ccr, outcome=new_status, detail=f"commit={commit_sha[:10]}", branch=branch_to_use)
 
         # Step 12: Record audit trail and verified fix in technical memory
         if self.memory_service is not None:
@@ -593,6 +765,9 @@ class GitHubEngineeringService:
             "review_passes": json.loads(row["review_passes_json"] or "[]"),
             "test_evidence": json.loads(row["test_evidence_json"] or "{}"),
             "rollback_plan": json.loads(row["rollback_plan_json"] or "{}"),
+            "operation": row["operation"] if "operation" in row.keys() else "edit",
+            "approved_digest": row["approved_digest"] if "approved_digest" in row.keys() else "",
+            "approved_at": row["approved_at"] if "approved_at" in row.keys() else 0,
             "status": row["status"],
             "approval_status": row["approval_status"],
             "approved_by": row["approved_by"],
