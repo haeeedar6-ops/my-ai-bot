@@ -78,6 +78,25 @@ class TestGithubRouteGate(unittest.TestCase):
         self.assertTrue(fb["approximate"] and fb["note"])
         self.assertFalse(j["paid_providers_enabled"])
 
+    def test_live_status_route_reports_reasons(self):
+        r = self.c.get("/api/v2/live/status")
+        j = r.get_json()
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("available", j)
+        self.assertEqual(j["default_voice"], "Charon")
+        with mock.patch.dict(os.environ, {"GEMINI_API_KEY": ""}):
+            self.assertTrue(any("GEMINI_API_KEY" in x for x in self.c.get("/api/v2/live/status").get_json()["reasons"]))
+
+    def test_live_status_requires_auth(self):
+        self.assertEqual(self.app.test_client().get("/api/v2/live/status").status_code, 401)
+
+    def test_index_html_has_live_client_and_no_placeholders(self):
+        html = self.c.get("/").get_data(as_text=True)
+        self.assertNotIn("__RYN_", html)
+        self.assertIn("window.RynLive", html)
+        self.assertIn("startGeminiLive", html)
+        self.assertIn("RynDuplex", html)
+
     def test_unauthenticated_blocked(self):
         r = self.app.test_client().post("/api/github/save", json={"path": "a"}, headers=self.h)
         self.assertEqual(r.status_code, 401)
