@@ -6,3 +6,5 @@ pyflakes
 requests
 edge-tts
 gTTS
+
+flask-sock

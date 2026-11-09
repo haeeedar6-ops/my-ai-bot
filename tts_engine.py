@@ -459,6 +459,92 @@ def polish_text_for_voice(text: str, voice: str = DEFAULT_VOICE) -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
+
+# ---------------- تجهيز النص العربي للنطق (أرقام/رموز) ----------------
+_AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
+_ONES = ["صفر", "واحد", "اثنين", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة",
+         "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"]
+_TENS = {20: "عشرين", 30: "ثلاثين", 40: "أربعين", 50: "خمسين", 60: "ستين", 70: "سبعين", 80: "ثمانين", 90: "تسعين"}
+_HUNDREDS = {1: "مئة", 2: "مئتين", 3: "ثلاثمئة", 4: "أربعمئة", 5: "خمسمئة", 6: "ستمئة", 7: "سبعمئة", 8: "ثمانمئة", 9: "تسعمئة"}
+
+
+def _below_1000(n: int) -> str:
+    parts = []
+    h, r = divmod(n, 100)
+    if h:
+        parts.append(_HUNDREDS[h])
+    if r:
+        if r < 20:
+            parts.append(_ONES[r])
+        else:
+            t, u = divmod(r, 10)
+            parts.append((_ONES[u] + " و" if u else "") + _TENS[t * 10])
+    return " و".join(parts)
+
+
+def _scale(n: int, one: str, two: str, few: str, many: str) -> str:
+    if n == 1:
+        return one
+    if n == 2:
+        return two
+    if 3 <= n <= 10:
+        return f"{_below_1000(n)} {few}"
+    return f"{_below_1000(n)} {many}"
+
+
+def number_to_arabic_words(n: int) -> str:
+    """رقم صحيح → كلمات عربية مفهومة للنطق (حتى مليارات). بيرجّع الرقم نفسه إذا كان كبير جداً."""
+    n = int(n)
+    if n < 0:
+        return "ناقص " + number_to_arabic_words(-n)
+    if n == 0:
+        return _ONES[0]
+    if n >= 10**12:
+        return " ".join(_ONES[int(d)] for d in str(n))
+    parts = []
+    for size, one, two, few, many in ((10**9, "مليار", "ملياران", "مليارات", "مليار"),
+                                      (10**6, "مليون", "مليونان", "ملايين", "مليون"),
+                                      (10**3, "ألف", "ألفين", "آلاف", "ألف")):
+        q, n = divmod(n, size)
+        if q:
+            parts.append(_scale(q, one, two, few, many))
+    if n:
+        parts.append(_below_1000(n))
+    return " و".join(parts)
+
+
+def _num_token(m) -> str:
+    raw = m.group(0).replace(",", "").replace("٬", "")
+    try:
+        if "." in raw:
+            whole, frac = raw.split(".", 1)
+            return f"{number_to_arabic_words(int(whole or 0))} فاصلة " + " ".join(_ONES[int(d)] for d in frac[:6])
+        return number_to_arabic_words(int(raw))
+    except Exception:
+        return m.group(0)
+
+
+def prepare_arabic_for_speech(text: str) -> str:
+    """يحوّل الأرقام والرموز الشائعة لكلمات عربية، ويشيل التطويل. بيشتغل بس إذا النص غالبه عربي."""
+    t = str(text or "").translate(_AR_DIGITS)
+    arabic = len(re.findall(r"[\u0600-\u06FF]", t))
+    latin = len(re.findall(r"[A-Za-z]", t))
+    if arabic == 0 or arabic < latin:
+        return t
+    t = t.replace("ـ", "")  # التطويل
+    t = re.sub(r"(\d)\s*%", r"\1 بالمية", t)
+    t = re.sub(r"\$\s*(\d[\d,]*(?:\.\d+)?)", r"\1 دولار", t)
+    t = re.sub(r"(\d[\d,]*(?:\.\d+)?)\s*\$", r"\1 دولار", t)
+    t = re.sub(r"€\s*(\d[\d,]*(?:\.\d+)?)", r"\1 يورو", t)
+    t = re.sub(r"(\d)\s*°\s*C?", r"\1 درجة", t)
+    t = re.sub(r"(\d+)\s*[x×]\s*(\d+)", r"\1 ضرب \2", t)
+    t = re.sub(r"(?<=\d)\s*\+(?=\s|$)", " زائد", t)
+    t = re.sub(r"(?<=\d)\s*[-–]\s*(?=\d)", " إلى ", t)
+    t = re.sub(r"\d[\d,٬]*(?:\.\d+)?", _num_token, t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
 def clean_for_speech(text: str, max_chars: Optional[int] = None) -> str:
     """
     ينظف الكود والماركداون والروابط مع الحفاظ على علامات الترقيم وفواصل الفقرات للنطق الطبيعي.
@@ -479,6 +565,7 @@ def clean_for_speech(text: str, max_chars: Optional[int] = None) -> str:
     t = re.sub(r"\n", " ، ", t)
     t = re.sub(r"(?:\s*،\s*){2,}", " ، ", t)
     t = re.sub(r"[ \t]+", " ", t).strip()
+    t = prepare_arabic_for_speech(t)
     if max_chars is not None and max_chars > 0:
         return t[:max_chars]
     return t

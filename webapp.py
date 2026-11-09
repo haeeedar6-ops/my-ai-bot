@@ -49,6 +49,22 @@ MANIFEST = {
 SW_JS = ("self.addEventListener('install',e=>self.skipWaiting());"
          "self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));")
 
+def _load_live_js() -> str:
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice", "live_client.js"), encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return "window.RynLive=null;"
+
+
+def _load_duplex_js() -> str:
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice", "duplex_vad.js"), encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return "window.RynDuplex=null;"
+
+
 INDEX_HTML = r'''<!doctype html>
 <html lang="ar" dir="rtl" data-theme="violet">
 <head>
@@ -1420,7 +1436,7 @@ async function speakTextWithRyn(txt,btnEl,onDoneCb,msgId){
     notifyVoicePlaybackState('playback_ended',false);
     if(onDoneCb)onDoneCb();
   };
-  const chunks=chunkSpeech(cleanTxt,600);
+  const chunks=chunkSpeech(cleanTxt,240);
   let next=fetchTtsAudio(chunks[0],vid,userSpd,true,chunks.length<=1?msgId:'',detLang);
   for(let i=0;i<chunks.length;i++){
     const src=await next;
@@ -1521,6 +1537,9 @@ async function rynDiagVoice(){
 if($('#vTestVoiceBtn'))$('#vTestVoiceBtn').onclick=()=>{rynDiagVoice()};
 
 /* ===== وضع المحادثة الصوتية الحية بشاشة كاملة مع الروبوت وتفاعلاته (Full-Screen Live Voice Chat) ===== */
+__RYN_DUPLEX_JS__
+__RYN_LIVE_JS__
+let rynLiveOn=false;
 let liveVoiceActive=false,liveMuted=false,liveRecog=null,liveMediaRec=null,liveChunks=[];
 function ensureLvRobotCloned(){
   const box=$('#lvBotBox');
@@ -1534,27 +1553,93 @@ function setLvUiState(st,subText){
   const tEl=$('#lvStatusTitle'),bEl=$('#lvTranscriptBox'),dot=$('#lvDot'),aura=$('#lvAura');
   if(!liveVoiceActive)return;
   if(st==='listening'){
+    if(window.RynDuplex)RynDuplex.disarm();
     setBot('listening');
     if(tEl)tEl.textContent='عم أسمعك... احكي براحتك 🎙️';
     if(dot){dot.style.background='#00ff9d';dot.style.boxShadow='0 0 12px #00ff9d';}
     if(aura)aura.style.transform='scale(1.05)';
   }else if(st==='thinking'){
+    if(window.RynDuplex)RynDuplex.disarm();
     setBot('thinking');
     if(tEl)tEl.textContent='عم أفكّر بجوابك... 🧠';
     if(dot){dot.style.background='#a855f7';dot.style.boxShadow='0 0 12px #a855f7';}
     if(aura)aura.style.transform='scale(0.96)';
   }else if(st==='speaking'){
     setBot('speaking');
+    if(window.RynDuplex&&!liveMuted){RynDuplex.arm(function(){
+      if(!liveVoiceActive)return;
+      stopAllRynSpeech(true);
+      setLvUiState('listening','سمعتك... احكي 🎙️');
+      startLiveListeningTurn();
+    });}
     if(tEl)tEl.textContent='رين يحكي معك الآن... (احكي أو اضغط 🗣️ للمقاطعة)';
     if(dot){dot.style.background='#38bdf8';dot.style.boxShadow='0 0 14px #38bdf8';}
     if(aura)aura.style.transform='scale(1.12)';
   }else if(st==='muted'){
+    if(window.RynDuplex)RynDuplex.disarm();
     setBot('idle');
     if(tEl)tEl.textContent='الميكروفون مكتوم 🔇';
     if(dot){dot.style.background='#ff5d6c';dot.style.boxShadow='none';}
     if(aura)aura.style.transform='scale(1)';
   }
   if(subText!==undefined&&bEl)bEl.textContent=subText;
+}
+function liveMemText(){
+  try{
+    if(!mem||mem.enabled===false)return '';
+    const parts=[];
+    if(mem.name)parts.push('اسم المستخدم: '+mem.name);
+    if(mem.custom)parts.push(String(mem.custom));
+    (mem.facts||[]).slice(0,20).forEach(f=>{const t=typeof f==='string'?f:(f&&f.text)||'';if(t)parts.push('- '+t);});
+    return parts.join('\n').slice(0,1500);
+  }catch(e){return '';}
+}
+async function startGeminiLive(){
+  if(!window.RynLive||!RynLive.supported())return false;
+  try{if(localStorage.getItem('ryn_live_mode')==='classic')return false;}catch(e){}
+  let st=null;
+  try{const r=await api('/api/v2/live/status');st=await r.json();}catch(e){return false;}
+  if(!st||!st.available)return false;
+  let ready=false,fellBack=false;
+  const box=t=>{const b=$('#lvTranscriptBox');if(b&&t!==undefined)b.textContent=t;};
+  const hist=()=>M().filter(m=>m.role==='user'||m.role==='model').slice(-8).map(m=>({role:m.role==='user'?'user':'bot',text:String(m.text||'').slice(0,300)}));
+  const fallback=()=>{
+    if(fellBack||!liveVoiceActive)return;fellBack=true;
+    try{RynLive.stop()}catch(e){}
+    rynLiveOn=false;toast('تعذّر الوضع الحي، رجعنا للوضع التقليدي');
+    if(window.RynDuplex&&RynDuplex.enabled())RynDuplex.open();
+    setLvUiState('listening','تحدث الآن... أنا أسمعك 👋');startLiveListeningTurn();
+  };
+  let userBuf='',botBuf='';
+  rynLiveOn=true;
+  const ok=await RynLive.start({
+    voice:(function(){try{return localStorage.getItem('ryn_live_voice')||''}catch(e){return ''}})(),
+    dialect:(function(){try{return localStorage.getItem('ryn_dialect')||'syrian'}catch(e){return 'syrian'}})(),
+    memory:liveMemText(),
+    getHistory:hist,
+    onReady:()=>{ready=true;},
+    onState:s=>{
+      if(!liveVoiceActive||!rynLiveOn)return;
+      if(s==='listening'){userBuf='';setLvUiState('listening',botBuf?('رين: '+botBuf):undefined);}
+      else if(s==='speaking'){setLvUiState('speaking',botBuf||undefined);}
+      else if(s==='connecting'||s==='reconnecting'){setLvUiState('thinking',s==='connecting'?'عم نوصّل... ⏳':'عم نعيد الاتصال... ⏳');}
+    },
+    onUserText:t=>{userBuf+=t;botBuf='';box('«'+userBuf.trim()+'»');},
+    onBotText:t=>{botBuf+=t;box(botBuf);},
+    onTurn:(u,b)=>{
+      if(u)M().push({role:'user',text:u});
+      if(b)M().push({role:'model',text:b});
+      touch();render();saveStore();botBuf='';
+    },
+    onError:(code,msg)=>{
+      if(!ready&&(code==='connect_failed'||code==='ws_lost'||code==='no_key'||code==='start_timeout')){fallback();return;}
+      if(code==='mic_denied'){toast('لازم تسمح للميكروفون');stopLiveVoiceChat();return;}
+      toast(msg||'مشكلة بالمكالمة الحية');
+    },
+    onClosed:()=>{}
+  });
+  if(!ok){rynLiveOn=false;return false;}
+  return true;
 }
 async function startLiveVoiceChat(){
   ensureLvRobotCloned();
@@ -1570,11 +1655,18 @@ async function startLiveVoiceChat(){
     const d=await r.json();
     if(d&&d.session)rynActiveSessionId=d.session.session_id;
   }catch(e){}
+  if(await startGeminiLive()){
+    setLvUiState('listening','عم نوصّل... احكي لما تسمع الجاهزية 👋');
+    return;
+  }
+  if(window.RynDuplex&&RynDuplex.enabled())RynDuplex.open();
   setLvUiState('listening','تحدث الآن... أنا أسمعك مباشرة 👋');
   startLiveListeningTurn();
 }
 function stopLiveVoiceChat(){
   liveVoiceActive=false;
+  if(rynLiveOn){try{RynLive.stop()}catch(e){}rynLiveOn=false;}
+  if(window.RynDuplex)RynDuplex.close();
   stopAllRynSpeech();
   if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}liveRecog=null;}
   if(liveMediaRec&&liveMediaRec.state!=='inactive'){try{liveMediaRec.stop()}catch(e){}liveMediaRec=null;}
@@ -1715,6 +1807,12 @@ if($('#lvMuteBtn'))$('#lvMuteBtn').onclick=()=>{
   liveMuted=!liveMuted;
   $('#lvMuteBtn').textContent=liveMuted?'🔇':'🎤';
   $('#lvMuteBtn').style.background=liveMuted?'rgba(255,93,108,.28)':'rgba(255,255,255,.08)';
+  if(rynLiveOn){
+    RynLive.setMuted(liveMuted);
+    if(liveMuted)setLvUiState('muted','تم كتم الميكروفون مؤقتاً — اضغط 🔇 لإعادة تشغيله');
+    else setLvUiState('listening','عم أسمعك... احكي براحتك 🎙️');
+    return;
+  }
   if(liveMuted){
     if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}}
     if(liveMediaRec&&liveMediaRec.state==='recording'){try{liveMediaRec.stop()}catch(e){}}
@@ -1725,6 +1823,7 @@ if($('#lvMuteBtn'))$('#lvMuteBtn').onclick=()=>{
   }
 };
 if($('#lvInterruptBtn'))$('#lvInterruptBtn').onclick=()=>{
+  if(rynLiveOn){RynLive.interrupt();setLvUiState('listening','احكي... 🎙️');return;}
   /* مقاطعة فورية (Barge-in) أو إنهاء جملة التسجيل الحالية والبدء بالاستماع */
   stopAllRynSpeech();
   if(liveMediaRec&&liveMediaRec.state==='recording'){try{liveMediaRec.stop();return}catch(e){}}
@@ -6850,7 +6949,7 @@ def register(app, b):
     # ---------- صفحات ثابتة ----------
     @app.get("/")
     def web_index():
-        return Response(INDEX_HTML.replace("__APP_NAME__", APP_NAME), mimetype="text/html")
+        return Response(INDEX_HTML.replace("__APP_NAME__", APP_NAME).replace("__RYN_DUPLEX_JS__", _load_duplex_js()).replace("__RYN_LIVE_JS__", _load_live_js()), mimetype="text/html")
 
     @app.get("/manifest.webmanifest")
     def web_manifest():
@@ -7894,6 +7993,28 @@ def register(app, b):
         except Exception as e:
             return jsonify(error=redact_secrets(str(e))), 400
 
+    def _gh_gate_create(op, body):
+        """يبني طلب تعديل (diff + فحوصات) بدل الكتابة المباشرة. الرفع الفعلي بس بعد موافقة صريحة."""
+        svc = AIStack.get_github_engineering_service()
+        mgr = AIStack.get_github_manager()
+        if svc is None:
+            raise RuntimeError("خدمة هندسة GitHub غير متاحة")
+        path = str(body.get("path") or "").strip()
+        repo = str(body.get("repo") or "").strip()
+        branch = str(body.get("branch") or "").strip()
+        try:
+            cur = mgr.get_file(path, user_id=uid(), repo_override=repo, branch_override=branch)
+        except Exception:
+            cur = {"content": "", "sha": "", "repo": repo, "branch": branch or "main"}
+        if op == "edit" and not cur.get("sha"):
+            op = "create"
+        return svc.create_change_request(
+            user_id=uid(), repo=cur.get("repo") or repo, file_path=path,
+            original_content=cur.get("content", ""), proposed_content=str(body.get("content") or ""),
+            original_file_sha=cur.get("sha", ""), base_branch=cur.get("branch") or branch or "main",
+            request_text=str(body.get("message") or ""), operation=op,
+        )
+
     @app.post("/api/github/save")
     def api_github_save_file():
         bad = guard()
@@ -7902,25 +8023,16 @@ def register(app, b):
         if AIStack is None:
             return jsonify(error="وحدة GitHub غير متاحة"), 503
         body = request.get_json(silent=True) or {}
-        path = str(body.get("path") or "").strip()
-        content = str(body.get("content") or "")
-        msg = str(body.get("message") or "").strip()
-        sha = str(body.get("sha") or "").strip() or None
-        repo = str(body.get("repo") or "").strip()
-        branch = str(body.get("branch") or "").strip()
         try:
             if body.get("token"):
-                AIStack.get_github_manager().set_config(uid(), repo=repo, branch=branch, token=str(body.get("token")))
-            res = AIStack.get_github_manager().save_file(
-                path=path,
-                content=content,
-                commit_message=msg,
-                sha=sha,
-                user_id=uid(),
-                repo_override=repo,
-                branch_override=branch,
-            )
-            return jsonify(**res)
+                AIStack.get_github_manager().set_config(
+                    uid(), repo=str(body.get("repo") or "").strip(), branch=str(body.get("branch") or "").strip(), token=str(body.get("token"))
+                )
+            ccr = _gh_gate_create("edit", body)
+            return jsonify(
+                ok=False, approval_required=True, change_request=ccr,
+                message="ما انرفع شي. راجع الـ diff ووافق، وبعدها نفّذ الرفع من /api/v2/github/changes/<id>/commit",
+            ), 428
         except Exception as e:
             return jsonify(error=redact_secrets(str(e))), 400
 
@@ -7932,21 +8044,12 @@ def register(app, b):
         if AIStack is None:
             return jsonify(error="وحدة GitHub غير متاحة"), 503
         body = request.get_json(silent=True) or {}
-        path = str(body.get("path") or "").strip()
-        msg = str(body.get("message") or "").strip()
-        sha = str(body.get("sha") or "").strip() or None
-        repo = str(body.get("repo") or "").strip()
-        branch = str(body.get("branch") or "").strip()
         try:
-            res = AIStack.get_github_manager().delete_file(
-                path=path,
-                commit_message=msg,
-                sha=sha,
-                user_id=uid(),
-                repo_override=repo,
-                branch_override=branch,
-            )
-            return jsonify(**res)
+            ccr = _gh_gate_create("delete", body)
+            return jsonify(
+                ok=False, approval_required=True, change_request=ccr,
+                message="الحذف ما تنفّذ. وافق مع تأكيد المسار بالضبط (confirm_delete_path) ثم نفّذ commit.",
+            ), 428
         except Exception as e:
             return jsonify(error=redact_secrets(str(e))), 400
 
@@ -8847,6 +8950,7 @@ def register(app, b):
                 request_text=str(body.get("request_text") or ""),
                 work_branch=str(body.get("work_branch") or ""),
                 idempotency_key=str(body.get("idempotency_key") or ""),
+                operation=str(body.get("operation") or "edit"),
             )
             return jsonify(ok=True, change_request=ccr)
         except Exception as e:
@@ -8862,13 +8966,169 @@ def register(app, b):
         body = request.get_json(silent=True) or {}
         try:
             ccr = AIStack.get_github_engineering_service().approve_change_request(
-                uid(), request_id, approve=bool(body.get("approve", True))
+                uid(), request_id, approve=bool(body.get("approve", True)),
+                confirm_delete_path=str(body.get("confirm_delete_path") or ""),
             )
             return jsonify(ok=True, change_request=ccr)
         except PermissionError as pe:
             return jsonify(error=str(pe)), 403
         except Exception as e:
             return jsonify(error=str(e)), 400
+
+    @app.post("/api/v2/github/changes/<request_id>/commit")
+    def api_v2_github_commit_change(request_id):
+        """الرفع الفعلي: بيشتغل بس إذا الموافقة موجودة وما انتهت وبتطابق التعديل بالضبط."""
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_github_engineering_service() is None:
+            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
+        svc = AIStack.get_github_engineering_service()
+        mgr = AIStack.get_github_manager()
+        body = request.get_json(silent=True) or {}
+        try:
+            ccr0 = svc.get_change_request(uid(), request_id)
+            target = str(body.get("target_branch") or ccr0["work_branch"]).strip()
+
+            def _read(repo, branch, path):
+                try:
+                    d = mgr.get_file(path, user_id=uid(), repo_override=repo, branch_override=branch)
+                    return {"sha": d.get("sha", ""), "content": d.get("content", "")}
+                except Exception:
+                    return {"sha": "", "content": ""}
+
+            def _write(repo, branch, path, content, sha):
+                return mgr.save_file(path=path, content=content, commit_message=f"RYN change {request_id}", sha=sha or None,
+                                     user_id=uid(), repo_override=repo, branch_override=branch)
+
+            def _delete(repo, branch, path, sha):
+                return mgr.delete_file(path=path, commit_message=f"RYN delete {request_id}", sha=sha or None,
+                                       user_id=uid(), repo_override=repo, branch_override=branch)
+
+            # نتأكد من الموافقة قبل ما نلمس GitHub (حتى إنشاء الفرع)
+            if ccr0["approval_status"] != "approved":
+                svc._audit(uid(), "commit", ccr0, outcome="blocked", detail="no approval", branch=target)
+                return jsonify(error="⛔ لازم موافقة صريحة على هالتعديل قبل الرفع", approval_required=True), 403
+            if target.lower() not in ("main", "master", "production", "prod") and target != ccr0["base_branch"]:
+                mgr.ensure_branch(target, base_branch=ccr0["base_branch"], user_id=uid(), repo_override=ccr0["repo"])
+            ccr = svc.commit_and_verify_change_request(
+                uid(), request_id, _read, _write, target_branch=target,
+                allow_protected_branch_merge=False, remote_delete_fn=_delete,
+            )
+            return jsonify(ok=True, change_request=ccr)
+        except PermissionError as pe:
+            return jsonify(error=redact_secrets(str(pe))), 403
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 409 if "SHA" in str(e) else 400
+
+    # ---------- مكالمة صوتية حية (Gemini Live) عبر WebSocket ----------
+    try:
+        from flask_sock import Sock as _Sock
+    except Exception:
+        _Sock = None
+    from voice import live_bridge as _lb
+
+    _live_limits = _lb.LiveLimits()
+    _live_registry = _lb.LiveRegistry(_live_limits.max_concurrent)
+
+    def _live_key() -> str:
+        return os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'").strip()
+
+    @app.get("/api/v2/live/status")
+    def api_v2_live_status():
+        bad = guard()
+        if bad:
+            return bad
+        reasons = []
+        if _Sock is None:
+            reasons.append("flask-sock غير مثبّتة (أضفها لـ requirements.txt)")
+        if not _live_key():
+            reasons.append("GEMINI_API_KEY ناقص")
+        return jsonify(ok=True, available=not reasons, reasons=reasons, voices=list(_lb.LIVE_VOICES),
+                       default_voice=_lb.DEFAULT_LIVE_VOICE, active_calls=_live_registry.count())
+
+    if _Sock is not None:
+        _sock = _Sock(app)
+
+        @_sock.route("/api/v2/live/ws")
+        def api_v2_live_ws(ws):
+            def _err(code, msg):
+                try:
+                    ws.send(json.dumps({"type": "error", "code": code, "message": msg}, ensure_ascii=False))
+                except Exception:
+                    pass
+
+            if not authed():
+                return _err("unauthorized", "سجّل دخول")
+            origin = request.headers.get("Origin", "")
+            if origin:
+                from urllib.parse import urlparse
+                allowed = {request.host, request.headers.get("X-Forwarded-Host", "")}
+                if urlparse(origin).netloc not in allowed:
+                    return _err("bad_origin", "طلب مرفوض")
+            key = _live_key()
+            if not key:
+                return _err("no_key", "GEMINI_API_KEY ناقص")
+            factory = _lb.GeminiLiveFactory(key)
+
+            async def _open(system_instruction, voice):
+                return await factory.open(system_instruction, voice, _live_limits)
+
+            try:
+                _lb.serve_ws(ws, uid(), _open, _live_registry, _live_limits)
+            except Exception as e:
+                _err("server_error", redact_secrets(type(e).__name__))
+
+    # ---------- RYN Mix: خطة التوجيه (بدون تنفيذ) + سجل التدقيق + قدرات اللهجات ----------
+    _mix_holder = {}
+
+    def _mix_dry():
+        if "o" not in _mix_holder:
+            from core.orchestrator import RynMixOrchestrator
+
+            def _never(_t, _c):
+                raise RuntimeError("dry-run فقط")
+            _mix_holder["o"] = RynMixOrchestrator(_never)
+        return _mix_holder["o"]
+
+    @app.post("/api/v2/mix/plan")
+    def api_v2_mix_plan():
+        """بيرجّع فهم الطلب + الخطة + قرار التوجيه فقط. ما بينفّذ شي ولا بيستدعي موديلات."""
+        bad = guard()
+        if bad:
+            return bad
+        body = request.get_json(silent=True) or {}
+        o = _mix_dry()
+        intent = o.understand(str(body.get("text") or ""))
+        return jsonify(ok=True, intent=intent, plan=o.plan(intent), route=o.route(intent), dry_run=True)
+
+    @app.get("/api/v2/mix/audit")
+    def api_v2_mix_audit():
+        bad = guard()
+        if bad:
+            return bad
+        return jsonify(ok=True, audit=_mix_dry().list_audit(uid()))
+
+    @app.get("/api/v2/voice/dialects")
+    def api_v2_voice_dialects():
+        bad = guard()
+        if bad:
+            return bad
+        import tts_engine as _te
+        items = []
+        for k in _te.DIALECT_REGISTRY:
+            cap = _te.get_dialect_capability(k)
+            items.append({**cap, "name": _te.DIALECT_REGISTRY[k]["name"]})
+        return jsonify(ok=True, default="syrian", dialects=items, paid_providers_enabled=_te.paid_providers_allowed())
+
+    @app.get("/api/v2/github/audit")
+    def api_v2_github_audit():
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None or AIStack.get_github_engineering_service() is None:
+            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
+        return jsonify(ok=True, audit=AIStack.get_github_engineering_service().list_audit_log(uid()))
 
     log.info("Web UI enabled (password %s)", "set" if password else "NOT set")
 
