@@ -34,30 +34,23 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("\'").strip()
 PORT = int(os.environ.get("PORT", 10000))
 
-# موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
+# تحقق من وجود مفتاح API أولاً
+if not GEMINI_API_KEY:
+    logging.warning("متغيّر البيئة GEMINI_API_KEY غير مضبوط، يرجى ضبطه لضمان عمل البوت بشكل سليم.")
+
+# موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة (أسماء رسمية معتمدة).
 FAST_MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip(),
-    "gemini-3.5-flash",
-    "gemini-3.8-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-3-flash-preview",
-    "gemini-4-argon",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
+    os.environ.get("GEMINI_MODEL", "gemini-1.5-flash").strip(),
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-pro",
 ]
 DEEP_MODELS = [
-    os.environ.get("GEMINI_DEEP_MODEL", "gemini-3.8-flash").strip(),
-    "gemini-3.8-flash",
-    "gemini-4-argon",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-3.1-pro-preview",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
+    os.environ.get("GEMINI_DEEP_MODEL", "gemini-1.5-pro").strip(),
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash-exp",
 ]
 MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
