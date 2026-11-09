@@ -75,7 +75,10 @@ class TestTtsEngine(unittest.TestCase):
             os.environ.pop("AZURE_SPEECH_REGION", None)
             self.assertEqual(tts_engine.provider_order(), ["edge", "gtts"])
         with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto", "AZURE_SPEECH_KEY": "k", "AZURE_SPEECH_REGION": "westeurope"}):
-            self.assertEqual(tts_engine.provider_order(), ["azure", "edge", "gtts"])
+            os.environ.pop("TTS_ALLOW_PAID", None)
+            self.assertEqual(tts_engine.provider_order(), ["edge", "gtts"])  # Azure مقفل بدون موافقة
+        with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto", "TTS_ALLOW_PAID": "1", "AZURE_SPEECH_KEY": "k", "AZURE_SPEECH_REGION": "westeurope"}):
+            self.assertEqual(tts_engine.provider_order(), ["edge", "gtts", "azure"])
         with mock.patch.dict(os.environ, {"TTS_PROVIDER": "edge", "AZURE_SPEECH_KEY": "k", "AZURE_SPEECH_REGION": "r"}):
             self.assertEqual(tts_engine.provider_order(), ["edge"])
 
@@ -90,13 +93,13 @@ class TestTtsEngine(unittest.TestCase):
             calls["edge"] += 1
             return b"ID3fake-mp3"
 
-        with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto", "AZURE_SPEECH_KEY": "k", "AZURE_SPEECH_REGION": "r"}), \
+        with mock.patch.dict(os.environ, {"TTS_PROVIDER": "auto", "TTS_ALLOW_PAID": "1", "AZURE_SPEECH_KEY": "k", "AZURE_SPEECH_REGION": "r"}), \
                 mock.patch.object(tts_engine, "_azure_synthesize", azure), \
                 mock.patch.object(tts_engine, "_edge_synthesize", edge):
             a = tts_engine.synthesize("مرحبا يا صديقي تجربة الكاش 123", "ar-SY-AmanyNeural", 1.0)
             b = tts_engine.synthesize("مرحبا يا صديقي تجربة الكاش 123", "ar-SY-AmanyNeural", 1.0)
         self.assertEqual(a, b"ID3fake-mp3")
-        self.assertEqual(calls, {"azure": 1, "edge": 1})
+        self.assertEqual(calls, {"azure": 0, "edge": 1})  # مجاني أولاً؛ Azure ما انلمس
 
     def test_cache_key_includes_provider_and_invalidates_on_config_change(self):
         # Fix #15: Switching provider configuration causes a cache miss instead of serving stale audio
