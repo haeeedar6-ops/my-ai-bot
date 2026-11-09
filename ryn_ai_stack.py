@@ -1170,7 +1170,34 @@ class GitHubFileManager:
             raise RuntimeError(f"GitHub Delete HTTP {r.status_code}: {r.text[:180]}")
         with self._lock:
             self._tree_cache.clear()
-        return {"ok": True, "repo": repo, "branch": branch, "deleted_path": clean_p}
+        try:
+            del_commit_sha = ((r.json() or {}).get("commit") or {}).get("sha", "")
+        except Exception:
+            del_commit_sha = ""
+        return {"ok": True, "repo": repo, "branch": branch, "deleted_path": clean_p, "commit_sha": del_commit_sha}
+
+    def ensure_branch(self, branch: str, base_branch: str = "main", user_id: str = "main", repo_override: str = "") -> Dict[str, Any]:
+        """ينشئ فرع عمل من آخر commit بالفرع الأساسي إذا مو موجود (ما بيلمس الفرع الأساسي)."""
+        repo, _cfg, _p, tok = self._validate_user_access_and_repo(user_id, repo_override=repo_override, require_token=True)
+        name = str(branch or "").strip()
+        if not name or ".." in name or name.startswith("/") or " " in name:
+            raise ValueError("اسم الفرع غير صالح")
+        head = requests.get(f"https://api.github.com/repos/{repo}/git/ref/heads/{name}", headers=self._headers(tok), timeout=15)
+        if head.status_code == 200:
+            return {"ok": True, "created": False, "branch": name}
+        base = requests.get(f"https://api.github.com/repos/{repo}/git/ref/heads/{base_branch}", headers=self._headers(tok), timeout=15)
+        if base.status_code != 200:
+            raise RuntimeError(f"تعذر قراءة الفرع الأساسي {base_branch} (HTTP {base.status_code})")
+        base_sha = ((base.json() or {}).get("object") or {}).get("sha", "")
+        if not base_sha:
+            raise RuntimeError("ما لقيت commit للفرع الأساسي")
+        mk = requests.post(
+            f"https://api.github.com/repos/{repo}/git/refs", headers=self._headers(tok),
+            json={"ref": f"refs/heads/{name}", "sha": base_sha}, timeout=20,
+        )
+        if mk.status_code not in (200, 201):
+            raise RuntimeError(f"تعذر إنشاء الفرع (HTTP {mk.status_code})")
+        return {"ok": True, "created": True, "branch": name, "base_sha": base_sha}
 
     # ---------- التفاعل المباشر مع ملفات GitHub من قلب المحادثة ----------
     def set_pending_edit(self, user_id: str, edit_data: Dict[str, Any]) -> None:

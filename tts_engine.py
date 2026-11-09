@@ -691,7 +691,8 @@ def _current_config_fingerprint() -> str:
     az_key = os.environ.get("AZURE_SPEECH_KEY", "").strip()
     az_hash = hashlib.sha256(az_key.encode("utf-8")).hexdigest()[:8] if az_key else "none"
     def_v = os.environ.get("TTS_DEFAULT_VOICE", DEFAULT_VOICE).strip()
-    return f"v2|{mode}|{model}|{fmt}|{az_reg}|{az_hash}|{def_v}"
+    paid = "paid" if paid_providers_allowed() else "free"
+    return f"v3|{mode}|{paid}|{model}|{fmt}|{az_reg}|{az_hash}|{def_v}"
 
 
 def clear_cache() -> None:
@@ -823,12 +824,21 @@ def _gtts_synthesize(text: str, voice: str, speed: float) -> bytes:
     return data
 
 
+def paid_providers_allowed() -> bool:
+    """Azure (مدفوع) ما بيشتغل إلا بموافقة صريحة: TTS_ALLOW_PAID=1 أو TTS_PROVIDER=azure."""
+    return os.environ.get("TTS_ALLOW_PAID", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def provider_order() -> list:
+    """ترتيب مجاني أولاً. Azure المدفوع ما يدخل تلقائياً حتى لو المفاتيح موجودة."""
     mode = os.environ.get("TTS_PROVIDER", "auto").strip().lower()
     has_azure = bool(os.environ.get("AZURE_SPEECH_KEY") and os.environ.get("AZURE_SPEECH_REGION"))
     if mode in ("azure", "edge", "gtts"):
         return [mode]
-    return (["azure"] if has_azure else []) + ["edge", "gtts"]
+    order = ["edge", "gtts"]
+    if has_azure and paid_providers_allowed():
+        order.append("azure")  # آخر خيار احتياطي، فقط بعد تفعيل صريح
+    return order
 
 
 def _synthesize_single_chunk(clean_chunk: str, voice: str, speed: float) -> Tuple[bytes, Dict[str, Any]]:
@@ -1000,3 +1010,35 @@ synthesize.last_metadata = {}  # type: ignore[attr-defined]
 def get_provider_fn() -> Callable[[str, str, float], bytes]:
     """الدالة اللي بتتحقن بـ VoiceService(tts_provider_fn=...)."""
     return synthesize
+
+
+# ---------------- سجل قدرات اللهجات (Phase C) ----------------
+# status: "native_catalog" = صوت لهجة موجود بكتالوج Microsoft ومضاف عنا (لسا بدّو اختبار سمعي)
+#         "fallback"       = ما في صوت أصلي مختبَر؛ منستخدم أقرب صوت ومنقول للمستخدم
+# ما بنعلّم أي لهجة "verified" إلا بعد اختبار سمعي حقيقي (listening_verified).
+DIALECT_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "syrian":      {"name": "سوري",   "locale": "ar-SY", "voice": "ar-SY-LaithNeural", "status": "native_catalog", "listening_verified": False, "fallback_locale": "ar-LB"},
+    "lebanese":    {"name": "لبناني", "locale": "ar-LB", "voice": "ar-LB-RamiNeural",  "status": "native_catalog", "listening_verified": False, "fallback_locale": "ar-SY"},
+    "jordanian":   {"name": "أردني",  "locale": "ar-JO", "voice": "ar-JO-TaimNeural",  "status": "native_catalog", "listening_verified": False, "fallback_locale": "ar-SY"},
+    "egyptian":    {"name": "مصري",   "locale": "ar-EG", "voice": "ar-EG-ShakirNeural","status": "native_catalog", "listening_verified": False, "fallback_locale": "ar-SA"},
+    "gulf":        {"name": "خليجي",  "locale": "ar-AE", "voice": "ar-AE-HamdanNeural","status": "native_catalog", "listening_verified": False, "fallback_locale": "ar-SA"},
+    "msa":         {"name": "فصحى",   "locale": "ar-SA", "voice": "ar-SA-HamedNeural", "status": "native_catalog", "listening_verified": False, "fallback_locale": "ar-SA"},
+    "palestinian": {"name": "فلسطيني","locale": None,    "voice": "ar-JO-TaimNeural",  "status": "fallback", "listening_verified": False, "fallback_locale": "ar-JO"},
+    "iraqi":       {"name": "عراقي",  "locale": None,    "voice": "ar-AE-HamdanNeural","status": "fallback", "listening_verified": False, "fallback_locale": "ar-AE"},
+    "moroccan":    {"name": "مغربي",  "locale": None,    "voice": "ar-SA-HamedNeural", "status": "fallback", "listening_verified": False, "fallback_locale": "ar-SA"},
+}
+
+
+def get_dialect_capability(dialect: Optional[str]) -> Dict[str, Any]:
+    """يرجّع الصوت المناسب للهجة + إفصاح صادق إذا كان تقريبي. ما بيخترع معرّفات."""
+    key = str(dialect or "syrian").strip().lower()
+    entry = DIALECT_REGISTRY.get(key) or DIALECT_REGISTRY["syrian"]
+    voice = entry["voice"] if entry["voice"] in ALLOWED_VOICE_IDS else DEFAULT_VOICE
+    approximate = entry["status"] != "native_catalog"
+    note = ""
+    if approximate:
+        note = f"ما في صوت {entry['name']} مختبَر؛ عم نستخدم أقرب صوت ({voice}). النص بيضل باللهجة المطلوبة."
+    elif not entry["listening_verified"]:
+        note = "الصوت موجود بالكتالوج بس لسا ما انعمله اختبار سمعي."
+    return {"dialect": key if key in DIALECT_REGISTRY else "syrian", "voice_id": voice, "approximate": approximate,
+            "listening_verified": entry["listening_verified"], "status": entry["status"], "note": note}
