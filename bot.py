@@ -785,10 +785,10 @@ def ask_openai_compat(prov, contents, deep=False, json_mode=False):
     raise last or ProviderError(None, "no backend ready")
 
 def ask_model(chat_id, contents, deep=False, json_mode=False, code=False):
-    """طلبات الكود بتروح تلقائياً لـ Groq، وإذا فشل بيجاوب Gemini. (إلا إذا اخترت موديل بإيدك أو طفّيت /code)."""
+    """في الموقع تم إلغاء التوجيه التلقائي للكود إلى GPT/Groq ليجيب الموديل المختار مباشرة."""
     pre_note = None
-    if (code and not json_mode and _groq_ready() and chat_id not in code_route_off
-            and chat_id not in chat_provider and _text_only(contents)):
+    if (code and not json_mode and _groq_ready() and not str(chat_id).startswith("web:")
+            and chat_id not in code_route_off and chat_id not in chat_provider and _text_only(contents)):
         try:
             out = {}
             ans = _call_backend(GROQ_BACKEND, contents, deep, False, models=groq_code_models(), out=out)
