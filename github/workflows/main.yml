@@ -1,0 +1,61 @@
+name: Build RYN Agent (Android APK + Windows PC EXE)
+
+on:
+  push:
+    paths:
+      - "ryn-android/**"
+      - "ryn-desktop/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+jobs:
+  build-android-apk:
+    name: "📱 Build Android Phone APK"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.5"
+      - name: Accept Android licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Build Debug APK
+        working-directory: ./ryn-android
+        run: |
+          set +e
+          gradle assembleDebug --no-daemon --console=plain > build.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "################ الأخطاء الحقيقية (آخر الصفحة) ################"
+            grep -E "^e: " build.log | sed 's#file:///home/runner/work/my-ai-bot/my-ai-bot/ryn-android/app/src/main/java/com/ryn/agent/##' | head -40
+            grep -E "What went wrong" -A6 build.log | head -30
+            echo "###############################################################"
+            grep -E "^e: " build.log | head -10 | while read -r line; do echo "::error::$line"; done
+          fi
+          exit $code
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RYN-Agent-Phone-APK
+          path: ryn-android/app/build/outputs/apk/debug/app-debug.apk
+
+  build-windows-exe:
+    name: "💻 Build Windows PC EXE"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install & Build EXE
+        working-directory: ./ryn-desktop
+        run: |
+          pip install -r requirements.txt pyinstaller
+          pyinstaller --noconfirm --onefile --windowed --name RYN-Agent-PC --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 --hidden-import pyperclip run_desktop.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RYN-Agent-Windows-PC-EXE
+          path: ryn-desktop/dist/RYN-Agent-PC.exe
