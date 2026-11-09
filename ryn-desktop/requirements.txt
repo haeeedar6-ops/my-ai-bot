@@ -4,3 +4,4 @@ Pillow>=10.2.0
 PyAutoGUI>=0.9.54
 customtkinter>=5.2.2
 keyring>=24.3.0
+sounddevice>=0.4.6  # اختياري: المقاطعة أثناء الكلام
