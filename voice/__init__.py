@@ -38,7 +38,20 @@ VOICE_STATES = (
     "transcribing",
     "thinking",
     "speaking",
+    "interrupted",
+    "reconnecting",
+    "error",
 )
+
+
+class _ClosingConnection(sqlite3.Connection):
+    """with-block يعمل commit/rollback وبعدها يسكّر الاتصال فعلياً (sqlite3 الافتراضي ما بيسكّر)."""
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            return super().__exit__(exc_type, exc, tb)
+        finally:
+            self.close()
 
 PLAYBACK_STATES = (
     "stopped",
@@ -208,7 +221,7 @@ class VoiceService:
             return 120.0
 
     def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
+        conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False, factory=_ClosingConnection)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA foreign_keys=ON;")
