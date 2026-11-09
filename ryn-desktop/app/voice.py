@@ -192,6 +192,10 @@ class PushToTalkController:
         self._pause_event.set()
         self._active_proc: Optional[subprocess.Popen] = None
         self._lock = threading.RLock()
+        # مقاطعة أثناء الكلام: مطفية افتراضياً (ما في إلغاء صدى على ويندوز). RYN_DESKTOP_DUPLEX=1 لتفعيلها.
+        self.duplex_enabled: bool = os.environ.get("RYN_DESKTOP_DUPLEX", "0").strip().lower() in ("1", "true", "yes", "on")
+        self.duplex_profile: str = os.environ.get("RYN_DESKTOP_DUPLEX_PROFILE", "headphones")
+        self.duplex_frame_source_factory = None
 
     def _emit_log(self, msg: str) -> None:
         if callable(self.log_cb):
@@ -365,7 +369,44 @@ class PushToTalkController:
             "warning": plan["warning"],
         }
 
+    def _start_duplex_guard(self):
+        """يشغّل مراقب المقاطعة أثناء النطق (مطفي افتراضياً). أي فشل = رجوع صامت لوضع الضغط-للكلام."""
+        if not getattr(self, "duplex_enabled", False):
+            return None
+        try:
+            from .duplex import DuplexMonitor, SoundDeviceFrameSource
+
+            factory = getattr(self, "duplex_frame_source_factory", None) or SoundDeviceFrameSource
+            mon = DuplexMonitor(factory(), self.interrupt, profile=getattr(self, "duplex_profile", "normal"))
+            mon.start()
+            return mon
+        except Exception as e:
+            self._emit_log(f"ℹ️ المقاطعة الصوتية غير متاحة ({e}) — وضع الضغط للكلام")
+            return None
+
+    @staticmethod
+    def _stop_duplex_guard(mon) -> None:
+        if mon is not None:
+            try:
+                mon.stop()
+            except Exception:
+                pass
+
     def speak(
+        self,
+        text: str,
+        conversation_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+        voice_id: Optional[str] = None,
+        speed: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        mon = self._start_duplex_guard()
+        try:
+            return self._speak_impl(text, conversation_id, message_id, voice_id, speed)
+        finally:
+            self._stop_duplex_guard(mon)
+
+    def _speak_impl(
         self,
         text: str,
         conversation_id: Optional[str] = None,
