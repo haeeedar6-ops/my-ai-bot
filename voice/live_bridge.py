@@ -31,7 +31,7 @@ LIVE_VOICES = (
     "Achernar", "Gacrux", "Pulcherrima", "Vindemiatrix", "Sulafat",
 )
 DEFAULT_LIVE_VOICE = "Charon"
-FALLBACK_MODELS = ("gemini-3.1-flash-live-preview", "gemini-3.8-live", "gemini-live-2.5-flash-preview")
+FALLBACK_MODELS = ("gemini-3.1-flash-live-preview", "gemini-2.0-flash-exp", "gemini-2.0-flash-live-001", "gemini-live-2.5-flash-preview", "gemini-3.8-live")
 MAX_FRAME_BYTES = 64 * 1024
 MAX_MEMORY_CHARS = 1500
 MAX_HISTORY_TURNS = 8
@@ -68,8 +68,8 @@ def sanitize_voice(v: Any) -> str:
 def build_system_instruction(dialect: str = "syrian", memory: str = "", history: Optional[List[Tuple[str, str]]] = None) -> str:
     name = _DIALECT_NAMES.get(str(dialect or "syrian").lower(), _DIALECT_NAMES["syrian"])
     parts = [
-        "أنت «رين» (RYN)، مساعد صوتي ذكي بيحكي مع صاحبه بمحادثة حية متل مكالمة هاتف.",
-        f"احكي باللهجة {name} بشكل طبيعي وودّي، وبجمل قصيرة وواضحة (جملة أو جملتين غالباً) إلا إذا طلب شرح مفصّل.",
+        "أنت «رين» (RYN)، مساعد صوتي ذكي تم تطويرك بواسطة haydar_xe، عم تحكي مع صاحبك بمحادثة صوتية حية متل مكالمة هاتف.",
+        f"تحدث باللغة العربية بلهجة {name} بأسلوب طبيعي وواضح جداً، وانطق جميع الحروف والكلمات العربية بمخارجها الصحيحة السليمة، وبجمل قصيرة ومختصرة مناسبة للمحادثة الصوتية.",
         "ابدأ بالجواب مباشرة بدون مقدمات طويلة. إذا الطلب غامض اسأل سؤال واحد قصير.",
         "انطق الأرقام والتواريخ بالكلمات، ولا تقرأ رموز أو روابط أو علامات ماركداون بصوت عالي.",
         "إذا قاطعك المستخدم اسكت فوراً وسمّع كلامه. لا تذكر تفاصيل تقنية عن نفسك ولا اسم الموديل.",
