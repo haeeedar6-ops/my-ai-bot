@@ -36,28 +36,21 @@ PORT = int(os.environ.get("PORT", 10000))
 
 # موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
 FAST_MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip(),
-    "gemini-3.5-flash",
-    "gemini-3.8-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-3-flash-preview",
-    "gemini-4-argon",
+    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip(),
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-3-flash-preview",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
 ]
 DEEP_MODELS = [
-    os.environ.get("GEMINI_DEEP_MODEL", "gemini-3.8-flash").strip(),
-    "gemini-3.8-flash",
-    "gemini-4-argon",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-3.1-pro-preview",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
+    os.environ.get("GEMINI_DEEP_MODEL", "gemini-2.5-pro").strip(),
     "gemini-2.5-pro",
     "gemini-2.5-flash",
+    "gemini-3.1-pro-preview",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
 ]
 MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
@@ -257,6 +250,8 @@ def discover_gemini_models():
     return found
 
 
+_last_working_gemini = {"fast": "", "deep": ""}
+
 def make_config(deep, system, use_thinking=True, json_mode=False, model=""):
     kwargs = {
         "system_instruction": system,
@@ -266,9 +261,14 @@ def make_config(deep, system, use_thinking=True, json_mode=False, model=""):
     }
     if json_mode:
         kwargs["response_mime_type"] = "application/json"
-    # thinking_level مدعوم في عائلة Gemini 3 و Gemini 4 فقط، ولا يُرسل لموديلات 2.5 لتجنب خطأ 400
-    is_gen3_or_4 = not str(model or "").startswith(("gemini-2.", "gemini-1."))
-    if use_thinking and is_gen3_or_4:
+    m_str = str(model or "")
+    is_gen3_or_4 = not m_str.startswith(("gemini-2.", "gemini-1."))
+    if not deep and m_str.startswith("gemini-2.5-flash"):
+        try:
+            kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=0)
+        except Exception:
+            _ = None
+    elif use_thinking and is_gen3_or_4:
         try:
             kwargs["thinking_config"] = types.ThinkingConfig(
                 thinking_level="high" if deep else "low"
@@ -280,8 +280,9 @@ def make_config(deep, system, use_thinking=True, json_mode=False, model=""):
 
 def ask_gemini(contents, deep=False, system=None, json_mode=False, preferred_model=None):
     """يستدعي Gemini مباشرة عبر مفتاح GEMINI_API_KEY الموجود على Render مع تبديل ذكي بين موديلات Gemini 3 و 4 و 2.5."""
+    cached_m = _last_working_gemini["deep" if deep else "fast"]
     base_models = list(DEEP_MODELS if deep else FAST_MODELS) + list(FAST_MODELS if deep else DEEP_MODELS)
-    ordered = ([preferred_model] if preferred_model else []) + base_models
+    ordered = ([preferred_model] if preferred_model else ([cached_m] if cached_m else [])) + base_models
     models = []
     for m in ordered:
         if m and m not in models:
@@ -299,6 +300,8 @@ def ask_gemini(contents, deep=False, system=None, json_mode=False, preferred_mod
                     config=make_config(deep, system, use_thinking, json_mode, model=model),
                 )
                 if resp and getattr(resp, "text", None):
+                    if not preferred_model:
+                        _last_working_gemini["deep" if deep else "fast"] = model
                     return resp.text
             except errors.APIError as e:
                 last_err = e
