@@ -1,21 +1,24 @@
 # my-ai-bot ( AI + Ryn)
 
-بوت تيليجرام وتطبيق ويب (Ryn) مع وكيل تحكم بالأجهزة (ويندوز + أندرويد).
+تطبيق ويب (Ryn) مع وكيل تحكم بالأجهزة (ويندوز + أندرويد). تم حذف بوت تيليجرام بالكامل.
 
 ## الملفات
-- `bot.py`: بوت تيليجرام (Gemini + OpenRouter + Groq) — يقرأ `knowledge/` قبل كل جواب.
+- `bot.py`: سيرفر Flask + محرك الموديلات (Gemini + OpenRouter + Groq) وهو اللي بيشغّل الموقع (`webapp.py`). ما فيه أي كود تيليجرام.
 - `webapp.py`: واجهة الويب و API الوكيل (`/api/v1/agent/*`) ومسارات العقل الصوتي الموحّد (`/api/v2/voice/*`).
 - `ryn_agent.py`: نواة الوكيل (إقران، مهام، أوامر، سياسات أمان).
-- `ryn-desktop/`: عميل ويندوز (`python run_desktop.py`).
+- `ryn-desktop/`: عميل ويندوز (`python run_desktop.py`، والـ EXE بيتبني بـ GitHub Actions من `.github/workflows/main.yml`).
 - `ryn-android/`: عميل أندرويد (Android Studio).
 - `visual_brain/`, `image_providers/`, `image_processing/`: توليد وتعديل الصور.
 
 ## التشغيل
 ```bash
 pip install -r requirements.txt
-export BOT_TOKEN=... GEMINI_API_KEY=...   # الباقي اختياري (OPENROUTER_API_KEY, GROQ_API_KEY ...)
-python bot.py
+export GEMINI_API_KEY=... WEB_PASSWORD=...   # الباقي اختياري (OPENROUTER_API_KEY, GROQ_API_KEY, WEB_USERS, WEB_SECRET ...)
+python bot.py            # أو: gunicorn bot:app --workers 1 --threads 8
 ```
+
+على Render: أمر التشغيل `python bot.py`. تقدر تمسح متغيرات `BOT_TOKEN` و `ENABLE_TELEGRAM` من Environment (ما عاد إلها استخدام).
+ملاحظة: مجلد الـ workflow لازم اسمو `.github` (بنقطة) حتى GitHub يشغّله.
 
 ## الاختبارات
 ```bash

@@ -10,12 +10,14 @@ What it gives you:
   build_fix_prompt(code, fs)   -> str             (findings + ready secure patterns for the fixer)
   closed_loop(code, fix_fn)    -> dict            (scan -> fix -> rescan, up to N rounds)
   finalize_report(...)         -> str             (status computed from facts, not from the model)
+  validate_image_upload(data)  -> dict            (magic bytes + size + pixel-bomb check for uploaded images)
 """
 from __future__ import annotations
 
 import ast
 import io
 import re
+import struct
 import sys
 import tokenize
 from dataclasses import dataclass
@@ -753,6 +755,81 @@ def finalize_report(report_text: str, before: list, after: list, gate: GateResul
         tail.extend("- %s \u2014 %s" % (f.rule, f.msg) for f in gate.findings)
     tail.append("\n\u2139\ufe0f \u0645\u0627 \u0634\u063a\u0651\u0644\u062a \u0627\u0644\u0643\u0648\u062f \u062d\u064a\u0627\u064b\u061b \u0627\u0644\u0641\u062d\u0635 \u0647\u0648 \u062a\u062d\u0644\u064a\u0644 \u0633\u0627\u0643\u0646 \u0644\u0644\u0645\u0635\u062f\u0631.")
     return "\n".join(head + [""] + kept + tail)
+
+
+MAX_IMAGE_PIXELS = 100_000_000  # ~10000x10000؛ فوق هيك الصورة بتاكل ذاكرة السيرفر (decompression bomb)
+
+
+def _image_header(b: bytes):
+    """(format, width, height) من الهيدر بس، بدون فك الصورة. الأبعاد -1 = ما قدرنا نعرفها (مو خطأ)."""
+    if b[:8] == b"\x89PNG\r\n\x1a\n":
+        if len(b) >= 24 and b[12:16] == b"IHDR":
+            w, h = struct.unpack(">II", b[16:24])
+            return "png", w, h
+        return "png", 0, 0  # PNG سليم لازم يبدأ بـ IHDR
+    if b[:3] == b"\xff\xd8\xff":
+        i, n = 2, len(b)
+        while i + 9 < n:
+            if b[i] != 0xFF:
+                i += 1
+                continue
+            m = b[i + 1]
+            if m == 0xFF:
+                i += 1
+                continue
+            if m in (0xD8, 0x01) or 0xD0 <= m <= 0xD7:
+                i += 2
+                continue
+            if 0xC0 <= m <= 0xCF and m not in (0xC4, 0xC8, 0xCC):  # SOFn
+                h, w = struct.unpack(">HH", b[i + 5:i + 9])
+                return "jpeg", w, h
+            seg = struct.unpack(">H", b[i + 2:i + 4])[0]
+            if seg < 2:
+                break
+            i += 2 + seg
+        return "jpeg", -1, -1
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        chunk = b[12:16]
+        try:
+            if chunk == b"VP8X" and len(b) >= 30:
+                return "webp", 1 + int.from_bytes(b[24:27], "little"), 1 + int.from_bytes(b[27:30], "little")
+            if chunk == b"VP8 " and len(b) >= 30:
+                return "webp", struct.unpack("<H", b[26:28])[0] & 0x3FFF, struct.unpack("<H", b[28:30])[0] & 0x3FFF
+            if chunk == b"VP8L" and len(b) >= 25 and b[20] == 0x2F:
+                bits = int.from_bytes(b[21:25], "little")
+                return "webp", (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+        except Exception:
+            pass
+        return "webp", -1, -1
+    if b[4:8] == b"ftyp" and b[8:12] in (b"heic", b"heix", b"heim", b"heis", b"mif1", b"msf1"):
+        return "heic", -1, -1
+    return None, 0, 0
+
+
+def validate_image_upload(data, name: str = "", max_bytes: int = 30 * 1024 * 1024,
+                          max_pixels: int = MAX_IMAGE_PIXELS) -> dict:
+    """
+    فحص صورة مرفوعة قبل ما تنبعت للنموذج أو لمكتبة الصور (stdlib فقط، بدون فك الصورة).
+    بيرجّع {"ok", "code", "reason", "format", "width", "height"}؛ code بيكون:
+    empty | too_big | not_image | bad_image | image_huge | "" (سليمة).
+    الفحص بيرفض بس اللي ثابت إنو غلط (حجم/هيدر تالف/أبعاد ضخمة)، وأي صيغة ما قدرنا نقرأ أبعادها بتنقبل.
+    """
+    def fail(code: str, reason: str, fmt=None, w=0, h=0) -> dict:
+        return {"ok": False, "code": code, "reason": reason, "format": fmt, "width": w, "height": h}
+
+    if not isinstance(data, (bytes, bytearray)) or len(data) == 0:
+        return fail("empty", "ملف الصورة فاضي")
+    b = bytes(data)
+    if len(b) > max_bytes:
+        return fail("too_big", "حجم الصورة أكبر من الحد المسموح")
+    fmt, w, h = _image_header(b)
+    if fmt is None:
+        return fail("not_image", "الملف مو صورة مدعومة (JPEG/PNG/WEBP/HEIC)")
+    if w == 0 or h == 0:
+        return fail("bad_image", "هيدر الصورة تالف أو أبعادها صفر", fmt, max(w, 0), max(h, 0))
+    if w > 0 and h > 0 and w * h > max_pixels:
+        return fail("image_huge", "أبعاد الصورة ضخمة (%dx%d)" % (w, h), fmt, w, h)
+    return {"ok": True, "code": "", "reason": "", "format": fmt, "width": max(w, 0), "height": max(h, 0)}
 
 
 def guard_summary(code: str) -> str:

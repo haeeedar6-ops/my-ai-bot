@@ -1,5 +1,5 @@
 """موقع Ryn: واجهة دردشة خاصة (تطبيق ويب PWA) فوق نفس عقل البوت.
-بيشتغل جنب بوت تيليجرام، وبيتفعّل لما تحط WEB_PASSWORD على Render."""
+بيتفعّل لما تحط WEB_PASSWORD (أو WEB_USERS) على Render."""
 import os
 import re
 import hmac
@@ -7411,7 +7411,7 @@ def continue_if_cut(b, answer, contents, call, max_rounds=5):
 
 
 def register(app, b):
-    """بيركّب الموقع على تطبيق Flask تبع البوت. b = وحدة bot.py (للوصول لدوالها)."""
+    """بيركّب الموقع على تطبيق Flask. b = وحدة bot.py (محرك الموديلات: Gemini/Groq/OpenRouter)."""
     def load_users():
         """WEB_USERS = اسم:كلمة_سر,اسم2:كلمة_سر2  (كلمة السر بتحدد مين الشخص). WEB_PASSWORD بيضل شغّال كمستخدم main."""
         us = {}
@@ -7431,7 +7431,7 @@ def register(app, b):
     users = load_users()
     password = "|".join(users.values())   # للمفتاح السري وللتأكد إنو في مستخدمين
     app.secret_key = os.environ.get("WEB_SECRET") or hashlib.sha256(
-        ("astra-web|" + password + "|" + str(getattr(b, "BOT_TOKEN", ""))).encode()).hexdigest()
+        ("astra-web|" + password + "|" + str(getattr(b, "GEMINI_API_KEY", ""))).encode()).hexdigest()
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -8230,7 +8230,8 @@ def register(app, b):
         any_alt = any_img = trunc = False
         n_img = 0
         reasons = {"unsupported": "نوع الملف مو مدعوم", "empty": "فاضي أو ما قدرت أقرأ نصه",
-                   "bad_zip": "ملف zip تالف", "zip_big": "zip كبير كتير", "pdf_big": "PDF كبير وما قدرت أستخرج نصه (يمكن صور ممسوحة)"}
+                   "bad_zip": "ملف zip تالف", "zip_big": "zip كبير كتير", "pdf_big": "PDF كبير وما قدرت أستخرج نصه (يمكن صور ممسوحة)",
+                   "image_huge": "أبعاد الصورة ضخمة كتير", "bad_image": "الصورة تالفة", "too_big": "الصورة كبيرة كتير"}
         first_err = ""
         multi = len(fl) > 1
         for idx, f in enumerate(fl, 1):
@@ -8247,7 +8248,7 @@ def register(app, b):
                     if G is not None and hasattr(G, "validate_image_upload"):
                         up_v = G.validate_image_upload(data, name, max_bytes=MAX_UPLOAD)
                         if not up_v.get("ok"):
-                            raise ValueError("unsupported")
+                            raise ValueError(up_v.get("code") or "unsupported")
                     parts = [T.Part.from_bytes(data=data, mime_type=mime)]
                     any_img = True
                     n_img += 1
@@ -9850,7 +9851,7 @@ def register(app, b):
         except Exception:
             cands = ["gemini-2.0-flash-live-001", "gemini-live-2.5-flash-preview", "gemini-2.0-flash-exp"]
         mdl = cands[0] if cands else "models/gemini-2.0-flash-exp"
-        return jsonify(ok=True, api_key=k, model=mdl, candidate_models=cands[:5], default_voice="Aoede")
+        return jsonify(ok=True, api_key=k, model=mdl, candidate_models=cands[:5], default_voice=_lb.sanitize_voice(""))
 
     @app.get("/api/v2/live/status")
     def api_v2_live_status():
@@ -9862,7 +9863,7 @@ def register(app, b):
             reasons.append("GEMINI_API_KEY ناقص")
         return jsonify(ok=True, available=bool(_live_key()), direct_ws_supported=True, bridge_available=(_Sock is not None),
                        reasons=reasons, voices=list(_lb.LIVE_VOICES),
-                       default_voice="Aoede", active_calls=_live_registry.count())
+                       default_voice=_lb.sanitize_voice(""), active_calls=_live_registry.count())
 
     if _Sock is not None:
         _sock = _Sock(app)

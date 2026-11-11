@@ -1,5 +1,21 @@
 # RYN — ملاحظات الإصدار حسب الخطة (Master Development Roadmap)
 
+## آخر تحديث: حذف تيليجرام + تصحيح الأخطاء
+**حذف تيليجرام:** `bot.py` صار سيرفر Flask + محرك الموديلات بس (بدون `telebot` ولا handlers ولا `BOT_TOKEN`). الاسم نفسو والأمر نفسو (`python bot.py`) حتى ما يتغير شي على Render. الموقع صار ينركّب عند الاستيراد، فـ `gunicorn bot:app` كمان بيشتغل (قبل كان ينركّب بس مع `python bot.py`). `pyTelegramBotAPI` انشال من `requirements.txt`.
+
+**أخطاء انصلحت:**
+- `ryn-desktop/run_desktop.py` كان ناقص (الـ EXE والـ README بيطلبوه)؛ `app/main.py` كان فيه import نسبي بيفشل لما ينشغّل لحالو → صار `main()` + `run_desktop.py` + `build.spec` محدّث.
+- ملف الـ workflow كان بمجلد `github/` (بدون نقطة) فما كان GitHub يشغّلو → صار `.github/workflows/main.yml`، وشلت `pyperclip` من الـ build وزدت `keyring.backends.Windows`.
+- عميل ويندوز: كان يعتبر رد `idle` فشل خطوة (السيرفر بيرجّعو بحروف صغيرة) ويتجاهل `NEEDS_USER_INPUT`؛ ما كان يعيد المحاولة مع 5xx (Render وهو عم يصحى)؛ وكتابة النص العربي كانت ما بتنكتب (`pyautogui.write` بيتجاهل غير ASCII) → صارت عبر `SendInput`.
+- أندرويد: `VoiceController.speak` كان يشغّل صوت الطوارئ فوق صوت السيرفر (صوتين مع بعض).
+- `/api/v2/live/status` كان يرجّع `Aoede` ثابت وما يحترم `GEMINI_LIVE_VOICE` (فشل اختبار) → صار من `voice/live_bridge.py`.
+- `ryn_guard.validate_image_upload` كان الموقع ينده عليها وهي مو موجودة (الفحص ما كان يشتغل) → انكتبت (حجم + هيدر + حماية من الصور الضخمة).
+- `requirements.txt`: ناقص `Pillow` (رفع جودة/توسيع/مقارنة الصور كانت تتعطّل بصمت).
+- انحذف ملف `my-ai-bot-main (30).zip` الداخلي (نسخة قديمة مضغوطة جوّا المشروع).
+- `secret_key` للجلسات ما عاد يعتمد على `BOT_TOKEN` (إذا ما حاطط `WEB_SECRET` رح تسجّل دخول مرة وحدة بعد التحديث).
+
+**الاختبارات:** 211 اختبار كلهم ناجحين (191 قديم + 20 جديد لهالإصلاحات).
+
 ## شو تغيّر
 **Phase A — أساس الصوت**
 - Azure (مدفوع) مقفل افتراضياً: بيشتغل بس مع `TTS_PROVIDER=azure` أو `TTS_ALLOW_PAID=1` (وبيجي آخر خيار).
