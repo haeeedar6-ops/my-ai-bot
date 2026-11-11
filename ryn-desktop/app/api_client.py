@@ -30,7 +30,19 @@ class RynAgentApiClient:
                     json=payload,
                     timeout=self.timeout,
                 )
-                data = r.json() if r.content else {}
+                if r.status_code >= 500:
+                    # Render بيرجّع 502/503 وهو عم يصحى: نعيد المحاولة مثل أخطاء الشبكة
+                    try:
+                        detail = (r.json() or {}).get("error") if r.content else ""
+                    except (ValueError, AttributeError):
+                        detail = ""
+                    raise requests.ConnectionError(str(detail or f"HTTP {r.status_code}"))
+                try:
+                    data = r.json() if r.content else {}
+                except ValueError:
+                    data = {}
+                if not isinstance(data, dict):
+                    data = {}
                 if r.status_code >= 400:
                     raise RuntimeError(data.get("error") or f"HTTP {r.status_code}")
                 return data

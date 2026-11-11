@@ -20,7 +20,8 @@ ALLOWED_CLIENT_ACTIONS = (
 
 BLOCKED_LOCAL_RE = re.compile(
     r"(?i)(\b(?:rm\s+-rf|del\s+/[fsq]|format\s+[a-z](?=:)|powershell|cmd\.exe|regedit|bcdedit|shutdown|taskkill)\b|"
-    r"\b(?:password|credit\s*card|cvv|iban|bank|bitwarden|1password|seed\s*phrase)\b)",
+    r"\b(?:password|credit\s*card|cvv|iban|bank|bitwarden|1password|seed\s*phrase)\b|"
+    r"كلمة\s*المرور|كلمات\s*المرور|بطاقة\s*ائتمان|تحويل\s*بنكي)",
 )
 
 
