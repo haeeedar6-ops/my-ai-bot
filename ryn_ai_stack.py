@@ -863,29 +863,13 @@ class GitHubFileManager:
         re.I,
     )
     _GH_MENTION_RE = re.compile(
-        r"(?:" + _GH_WORD_PAT + r"|المستودع|مستودعي|المشروع|مشروعي|ملفات\s+المشروع|ملفات\s+البوت|بنية\s+المشروع|هيكل\s+المشروع|افهم\s+المشروع|اشرح(?:لي)?\s+المشروع|حلل\s+المشروع|شوف\s+المشروع|تعديل\s+ملف|اقرأ\s+ملف|شوف\s+ملف|عدل\s+ملف|عدلي\s+ملف|عدّل\s+على|احذف\s+ملف|ارفع\s+المشروع|ارفع\s+ملف|repository|repo\b|codebase)",
+        r"(?:" + _GH_WORD_PAT + r"|المستودع|مستودعي|ملفات\s+المشروع|ملفات\s+البوت|تعديل\s+ملف|اقرأ\s+ملف|شوف\s+ملف|عدل\s+ملف|عدلي\s+ملف|احذف\s+ملف|ارفع\s+المشروع|ارفع\s+ملف)",
         re.I,
     )
-    _GH_URL_REPO_RE = re.compile(r"https?://(?:www\.)?github\.com/([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+?)(?:\.git|/|$|\s)", re.I)
-    _SWITCH_REPO_CMD_RE = re.compile(
-        r"(?:افتح|غير|غيّر|بدل|بدّل|حول|حوّل|اربط|شوف|حلل|افهم)\s+(?:مستودع|مشروع|ريبو|repo)\s+(?:https?://github\.com/)?([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)",
-        re.I,
-    )
-    _TOGGLE_ON_CMD_RE = re.compile(r"^(?:شغل|شغّل|فعل|فعّل|افتح)\s+(?:تعديل\s+)?(?:" + _GH_WORD_PAT + r"|المشروع)\s*[.!؟?]*$", re.I)
-    _TOGGLE_OFF_CMD_RE = re.compile(r"^(?:طفي|طفّي|أوقف|اوقف|عطل|عطّل|سكر|سكّر)\s+(?:تعديل\s+)?(?:" + _GH_WORD_PAT + r"|المشروع)\s*[.!؟?]*$", re.I)
     _KNOWN_FILES = (
         "webapp.py", "bot.py", "filegen.py", "requirements.txt", "_worker.js",
         "ryn_ai_stack.py", "ryn_guard.py", "ryn_selftest.py", "README.md",
-        "tts_engine.py", "voice/live_bridge.py", "voice/live_client.js",
         "visual_brain/brain.py", "visual_brain/prompt_engine.py", "visual_brain/realism_engine.py",
-        "package.json", "tsconfig.json", "pyproject.toml", "setup.py", "Cargo.toml",
-        "go.mod", "pom.xml", "build.gradle", "build.gradle.kts", "pubspec.yaml",
-        "composer.json", "Dockerfile", "docker-compose.yml", "Makefile", "index.html",
-        "main.py", "app.py", "server.py", "index.js", "server.js", "app.js", "main.ts", "main.go",
-    )
-    _ANY_FILE_EXT_RE = re.compile(
-        r"\b([A-Za-z0-9_./\-]+\.(?:py|js|jsx|ts|tsx|mjs|cjs|md|txt|json|html|htm|css|scss|sass|less|vue|svelte|astro|yaml|yml|toml|ini|cfg|conf|sh|bash|bat|ps1|java|kt|kts|gradle|c|h|cpp|hpp|cc|cs|go|rs|php|rb|swift|dart|lua|sql|graphql|prisma|proto|xml|dockerfile|makefile))\b",
-        re.I,
     )
 
     def __init__(self, storage_path: Optional[str] = None):
@@ -956,32 +940,33 @@ class GitHubFileManager:
             repo = uc.get("repo") or ""
             branch = uc.get("branch") or "main"
 
-        edit_enabled = bool(uc.get("edit_enabled", True))
         return {
             "repo": repo,
             "branch": branch,
             "has_token": bool(tok),
             "is_owner": owner_ok,
-            "edit_enabled": edit_enabled,
             "token_masked": (tok[:6] + "••••••••" + tok[-4:]) if len(tok) > 10 else ("••••" if tok else ""),
             "_token": tok,
+            "edit_enabled": bool(uc.get("edit_enabled", True)),
         }
 
-    def is_edit_enabled(self, user_id: str = "main") -> bool:
+    # ---------- زر تشغيل/إيقاف تعديل GitHub ----------
+    def get_edit_enabled(self, user_id: str = "main") -> bool:
         u = str(user_id or "main").strip() or "main"
         with self._lock:
-            uc = self._user_configs.get(u) or {}
-            return bool(uc.get("edit_enabled", True))
+            return bool((self._user_configs.get(u) or {}).get("edit_enabled", True))
 
-    def set_edit_enabled(self, user_id: str, enabled: bool) -> Dict[str, Any]:
+    def set_edit_enabled(self, user_id: str, enabled: bool) -> bool:
         u = str(user_id or "main").strip() or "main"
         with self._lock:
             uc = self._user_configs.setdefault(u, {})
             uc["edit_enabled"] = bool(enabled)
             self._save_unlocked()
-        cfg = self.get_config(u)
-        cfg.pop("_token", None)
-        return cfg
+        return bool(enabled)
+
+    def _assert_edit_enabled(self, user_id: str) -> None:
+        if not self.get_edit_enabled(user_id):
+            raise PermissionError("🔒 تعديل GitHub مطفّي (وضع القراءة فقط). شغّله من زر GitHub بالقائمة العائمة.")
 
     def set_config(self, user_id: str, repo: str = "", branch: str = "", token: str = "") -> Dict[str, Any]:
         u = str(user_id or "main").strip() or "main"
@@ -1077,19 +1062,6 @@ class GitHubFileManager:
                     return cached[1]
         url = f"https://api.github.com/repos/{repo}/git/trees/{branch}"
         r = requests.get(url, headers=self._headers(tok), params={"recursive": "1"}, timeout=20)
-        if r.status_code == 404 and not branch_override:
-            alt_branch = "master" if branch == "main" else "main"
-            try:
-                meta_r = requests.get(f"https://api.github.com/repos/{repo}", headers=self._headers(tok), timeout=12)
-                if meta_r.status_code == 200:
-                    alt_branch = (meta_r.json() or {}).get("default_branch") or alt_branch
-            except Exception:
-                pass
-            if alt_branch and alt_branch != branch:
-                r2 = requests.get(f"https://api.github.com/repos/{repo}/git/trees/{alt_branch}", headers=self._headers(tok), params={"recursive": "1"}, timeout=20)
-                if r2.status_code == 200:
-                    r = r2
-                    branch = alt_branch
         if r.status_code != 200:
             raise RuntimeError(f"GitHub HTTP {r.status_code}: تعذر جلب ملفات المستودع ({r.text[:140]})")
         data = r.json() or {}
@@ -1113,12 +1085,6 @@ class GitHubFileManager:
         branch = (branch_override or cfg_branch or "main").strip()
         url = f"https://api.github.com/repos/{repo}/contents/{clean_p}"
         r = requests.get(url, headers=self._headers(tok), params={"ref": branch}, timeout=20)
-        if r.status_code == 404 and not branch_override:
-            alt_branch = "master" if branch == "main" else "main"
-            r2 = requests.get(url, headers=self._headers(tok), params={"ref": alt_branch}, timeout=20)
-            if r2.status_code == 200:
-                r = r2
-                branch = alt_branch
         if r.status_code != 200:
             raise RuntimeError(f"GitHub HTTP {r.status_code}: تعذر قراءة الملف {clean_p}")
         d = r.json() or {}
@@ -1145,6 +1111,7 @@ class GitHubFileManager:
         repo_override: str = "",
         branch_override: str = "",
     ) -> Dict[str, Any]:
+        self._assert_edit_enabled(user_id)
         repo, cfg_branch, clean_p, tok = self._validate_user_access_and_repo(
             user_id, repo_override=repo_override, path=path, require_token=True
         )
@@ -1197,6 +1164,7 @@ class GitHubFileManager:
         repo_override: str = "",
         branch_override: str = "",
     ) -> Dict[str, Any]:
+        self._assert_edit_enabled(user_id)
         repo, cfg_branch, clean_p, tok = self._validate_user_access_and_repo(
             user_id, repo_override=repo_override, path=path, require_token=True
         )
@@ -1231,6 +1199,7 @@ class GitHubFileManager:
 
     def ensure_branch(self, branch: str, base_branch: str = "main", user_id: str = "main", repo_override: str = "") -> Dict[str, Any]:
         """ينشئ فرع عمل من آخر commit بالفرع الأساسي إذا مو موجود (ما بيلمس الفرع الأساسي)."""
+        self._assert_edit_enabled(user_id)
         repo, _cfg, _p, tok = self._validate_user_access_and_repo(user_id, repo_override=repo_override, require_token=True)
         name = str(branch or "").strip()
         if not name or ".." in name or name.startswith("/") or " " in name:
@@ -1305,6 +1274,7 @@ class GitHubFileManager:
         عبر GitHub Git Trees API مع مسار احتياطي تلقائي عبر Contents API.
         يفحص جميع ملفات .py نحوياً (AST) قبل الرفع لضمان عدم كسر المستودع.
         """
+        self._assert_edit_enabled(user_id)
         if not files_map:
             raise ValueError("لا توجد ملفات صالحة للرفع.")
         repo, cfg_branch, _, tok = self._validate_user_access_and_repo(
@@ -1596,118 +1566,16 @@ class GitHubFileManager:
         joined = "\n\n".join(snippets)
         return joined[:max_chars]
 
-    @staticmethod
-    def analyze_project_overview(all_files: List[str]) -> Dict[str, Any]:
-        """
-        يحلل شجرة أي مشروع برمجي على GitHub تلقائياً ويكتشف اللغات، الأطر البرمجية (Frameworks)،
-        ملفات الإعداد والبيئة (Manifests)، نقاط الدخول الرئيسية (Entry Points)، والمجلدات الأساسية.
-        """
-        exts: Dict[str, int] = {}
-        folders: Dict[str, int] = {}
-        manifests: List[str] = []
-        entrypoints: List[str] = []
-        readmes: List[str] = []
-
-        manifest_names = {
-            "package.json", "requirements.txt", "pyproject.toml", "setup.py", "pipfile",
-            "cargo.toml", "go.mod", "pom.xml", "build.gradle", "build.gradle.kts",
-            "settings.gradle", "settings.gradle.kts", "pubspec.yaml", "composer.json",
-            "gemfile", "dockerfile", "docker-compose.yml", "docker-compose.yaml",
-            "makefile", "cmakelists.txt", "vercel.json", "render.yaml", "netlify.toml",
-            "wrangler.toml", "tsconfig.json", "vite.config.js", "vite.config.ts",
-            "next.config.js", "next.config.mjs", "angular.json", "nuxt.config.ts",
-        }
-        entry_stems = {
-            "main", "app", "index", "server", "bot", "webapp", "cli", "run",
-            "manage", "wsgi", "asgi", "_worker", "worker", "program", "application",
-        }
-
-        for p in all_files:
-            low = p.lower()
-            base = os.path.basename(low)
-            stem, ext = os.path.splitext(base)
-            if ext:
-                exts[ext] = exts.get(ext, 0) + 1
-            if "/" in p:
-                top_dir = p.split("/", 1)[0]
-                folders[top_dir] = folders.get(top_dir, 0) + 1
-            if base.startswith("readme"):
-                readmes.append(p)
-            elif base in manifest_names:
-                manifests.append(p)
-            if stem in entry_stems or low in (
-                "src/main.py", "src/app.py", "src/index.js", "src/index.ts", "src/index.tsx",
-                "src/app.js", "src/app.tsx", "src/main.ts", "src/main.tsx", "src/main.go",
-                "src/main.rs", "lib/main.dart", "app/src/main/androidmanifest.xml",
-            ):
-                entrypoints.append(p)
-
-        # ترتيب نقاط الدخول بحيث تكون ملفات الجذر و src أولاً
-        entrypoints.sort(key=lambda x: (x.count("/"), len(x)))
-        manifests.sort(key=lambda x: (x.count("/"), len(x)))
-        readmes.sort(key=lambda x: (x.count("/"), len(x)))
-
-        stack_tags: List[str] = []
-        low_set = {os.path.basename(f.lower()) for f in all_files}
-        if ".py" in exts or "requirements.txt" in low_set or "pyproject.toml" in low_set:
-            stack_tags.append("Python")
-        if "package.json" in low_set or ".js" in exts or ".ts" in exts or ".tsx" in exts or ".jsx" in exts:
-            stack_tags.append("JavaScript/TypeScript (Node.js/Web)")
-        if ".tsx" in exts or ".jsx" in exts or any("next.config" in f for f in low_set):
-            stack_tags.append("React/Next.js")
-        if ".vue" in exts:
-            stack_tags.append("Vue.js")
-        if ".kt" in exts or "build.gradle.kts" in low_set or "androidmanifest.xml" in low_set:
-            stack_tags.append("Android/Kotlin/Gradle")
-        if ".dart" in exts or "pubspec.yaml" in low_set:
-            stack_tags.append("Flutter/Dart")
-        if ".go" in exts or "go.mod" in low_set:
-            stack_tags.append("Go (Golang)")
-        if ".rs" in exts or "cargo.toml" in low_set:
-            stack_tags.append("Rust")
-        if ".php" in exts or "composer.json" in low_set:
-            stack_tags.append("PHP")
-        if ".java" in exts or "pom.xml" in low_set:
-            stack_tags.append("Java")
-        if ".cs" in exts:
-            stack_tags.append("C#/.NET")
-        if ".cpp" in exts or ".c" in exts or "cmakelists.txt" in low_set:
-            stack_tags.append("C/C++")
-        if ".html" in exts or ".css" in exts:
-            stack_tags.append("HTML/CSS")
-        if "dockerfile" in low_set or "docker-compose.yml" in low_set:
-            stack_tags.append("Docker")
-
-        top_exts = sorted(exts.items(), key=lambda kv: kv[1], reverse=True)[:8]
-        top_folders = sorted(folders.items(), key=lambda kv: kv[1], reverse=True)[:12]
-
-        return {
-            "tech_stack": stack_tags or ["General Software Project"],
-            "top_extensions": [f"{k} ({v})" for k, v in top_exts],
-            "top_folders": [f"{k}/ ({v} ملف)" for k, v in top_folders],
-            "readmes": readmes[:3],
-            "manifests": manifests[:5],
-            "entrypoints": entrypoints[:6],
-        }
-
     def handle_direct_chat_command(self, user_id: str, text: str) -> Optional[str]:
         """
         يعالج الأوامر الفورية في الشات:
-        1) تشغيل أو إيقاف تعديل GitHub من الشات.
-        2) التبديل لأي مستودع/مشروع (owner/repo) لدراسته أو التعديل عليه.
-        3) ربط أو حذف التوكن، التراجع الفوري، أو اعتماد التعديلات المعلّقة.
+        1) إذا أرسل المستخدم توكن ghp_... (مع أو بدون اسم مستودع username/repo)، يحفظه لحسابه هو فقط.
+        2) إذا كتب «اعتمد التعديل» أو «ارفعه على جيتهاب»، يرفع التعديل المعلّق لحسابه.
+        3) إذا طلب مستخدم في WEB_USERS الوصول لـ GitHub ولم يربط التوكن الخاص به بعد، يرشده لإدخال توكنه الخاص.
         """
         t = (text or "").strip()
         if not t:
             return None
-
-        # 0. أوامر تشغيل / إيقاف تعديل GitHub
-        if self._TOGGLE_ON_CMD_RE.match(t):
-            cfg = self.set_edit_enabled(user_id, True)
-            return f"✅ **تم تشغيل وضع القراءة والتعديل على GitHub!** (المستودع النشط: `{cfg.get('repo') or 'غير محدد'}`)"
-        if self._TOGGLE_OFF_CMD_RE.match(t):
-            self.set_edit_enabled(user_id, False)
-            return "🔕 **تم إيقاف التعديل التلقائي على GitHub مؤقتاً.** يمكنك إعادة تشغيله بأي وقت من زر **GitHub ON/OFF** في القائمة العائمة."
 
         # 1. ربط توكن من الشات: لحسابات غير المالك فقط، لكل حساب توكنه المنفصل
         m_tok = self._GH_TOKEN_RE.search(t)
@@ -1728,16 +1596,6 @@ class GitHubFileManager:
             if not cfg["repo"]:
                 return "🔐 انحفظ توكنك لحسابك بس. ابعتلي اسم مستودعك `username/repo`."
             return f"🔐 انربط حسابك بمستودع `{cfg['repo']}` (الفرع `{cfg['branch']}`). التوكن محفوظ لحسابك بس."
-
-        # التبديل السريع لأي مستودع/مشروع بالاسم (مثل: اربط مستودع owner/repo أو غير المستودع لـ owner/repo)
-        m_sw = self._SWITCH_REPO_CMD_RE.match(t)
-        if m_sw and len(t) < 160:
-            target_repo = m_sw.group(1).strip().strip("/")
-            try:
-                cfg = self.set_config(user_id, repo=target_repo)
-                return f"🐙 **تم التبديل إلى المشروع `{cfg['repo']}` (الفرع `{cfg['branch']}`)!** اسألني أي شيء عن المشروع أو اطلب تعديل أي ملف فيه."
-            except Exception as e:
-                return f"⛔ {e}"
 
         # حذف توكن الحساب من الشات (لغير المالك)
         if re.match(r"^(?:احذف|امسح|شيل|افصل)\s+(?:توكني|مفتاحي|ربط\s+(?:جيتهاب|غيتهاب|github)|(?:جيتهاب|غيتهاب|github))\s*[.!؟?]*$", t, re.I):
@@ -1796,60 +1654,172 @@ class GitHubFileManager:
 
         return None
 
+    # ---------- فهم أي مشروع: لغات/أطر/نقاط دخول/اختبارات/نشر ----------
+    _LANG_EXT = {
+        ".py": "Python", ".js": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript", ".jsx": "JavaScript (React)", ".ts": "TypeScript",
+        ".tsx": "TypeScript (React)", ".kt": "Kotlin", ".kts": "Kotlin", ".java": "Java", ".go": "Go", ".rs": "Rust", ".php": "PHP",
+        ".rb": "Ruby", ".c": "C", ".h": "C/C++", ".cpp": "C++", ".cc": "C++", ".hpp": "C++", ".cs": "C#", ".swift": "Swift",
+        ".dart": "Dart", ".vue": "Vue", ".svelte": "Svelte", ".sh": "Shell", ".sql": "SQL", ".lua": "Lua", ".scala": "Scala",
+        ".ex": "Elixir", ".exs": "Elixir", ".r": "R", ".html": "HTML", ".css": "CSS", ".scss": "SCSS", ".gd": "GDScript",
+    }
+    _IGNORE_DIRS = {"node_modules", ".git", "dist", "build", "vendor", "__pycache__", ".venv", "venv", "target", ".gradle",
+                    "Pods", ".idea", ".next", ".dart_tool", "coverage", ".pytest_cache"}
+    _MANIFESTS = ("package.json", "requirements.txt", "pyproject.toml", "Pipfile", "pom.xml", "build.gradle", "build.gradle.kts",
+                  "Cargo.toml", "go.mod", "composer.json", "Gemfile", "pubspec.yaml", "README.md", "README.rst", "README.txt", "readme.md")
+    _FRAMEWORK_HINTS = (
+        ("react-native", "React Native"), ("next", "Next.js"), ("react", "React"), ("vue", "Vue"), ("svelte", "Svelte"),
+        ("@angular/core", "Angular"), ("express", "Express"), ("@nestjs/core", "NestJS"), ("electron", "Electron"), ("vite", "Vite"),
+        ("flask", "Flask"), ("django", "Django"), ("fastapi", "FastAPI"), ("telebot", "Telegram bot (pyTelegramBotAPI)"),
+        ("pytelegrambotapi", "Telegram bot (pyTelegramBotAPI)"), ("aiogram", "Aiogram"), ("python-telegram-bot", "python-telegram-bot"),
+        ("torch", "PyTorch"), ("tensorflow", "TensorFlow"), ("pandas", "pandas"), ("numpy", "NumPy"), ("google-genai", "Google Gemini SDK"),
+        ("openai", "OpenAI SDK"), ("laravel", "Laravel"), ("rails", "Rails"), ("spring-boot", "Spring Boot"), ("flutter", "Flutter"),
+        ("pygame", "Pygame"), ("discord", "Discord bot"), ("tkinter", "Tkinter"), ("pyqt", "PyQt"), ("kivy", "Kivy"),
+    )
+    _ENTRY_NAMES = ("main.py", "app.py", "bot.py", "server.py", "manage.py", "run.py", "wsgi.py", "index.js", "server.js", "app.js",
+                    "main.js", "index.ts", "main.ts", "main.go", "main.rs", "main.dart", "Main.kt", "MainActivity.kt", "Main.java",
+                    "Program.cs", "index.html", "index.php", "main.lua", "Dockerfile", "Procfile")
+
+    @classmethod
+    def analyze_project(cls, paths: List[str], manifests: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        """تحليل نقي (بدون شبكة) لهيكل أي مشروع: لغات، أطر، نقاط دخول، اختبارات، CI/نشر، مجلدات رئيسية."""
+        manifests = manifests or {}
+        files = []
+        for pth in paths:
+            parts = str(pth).strip("/").split("/")
+            if any(x in cls._IGNORE_DIRS for x in parts[:-1]):
+                continue
+            files.append("/".join(parts))
+        langs: Dict[str, int] = {}
+        for f in files:
+            ext = os.path.splitext(f)[1].lower()
+            if ext in cls._LANG_EXT:
+                langs[cls._LANG_EXT[ext]] = langs.get(cls._LANG_EXT[ext], 0) + 1
+        top_langs = sorted(langs.items(), key=lambda kv: -kv[1])[:6]
+        lower_all = {f.lower() for f in files}
+        base_all = {os.path.basename(f) for f in files}
+
+        blob = "\n".join(v.lower() for k, v in manifests.items() if not k.lower().startswith("readme"))[:60000]
+        frameworks: List[str] = []
+        for needle, label in cls._FRAMEWORK_HINTS:
+            if needle in blob and label not in frameworks:
+                frameworks.append(label)
+        if "androidmanifest.xml" in {os.path.basename(f).lower() for f in files}:
+            frameworks.append("Android (Gradle)")
+        if any(f.lower().endswith(".csproj") for f in files):
+            frameworks.append(".NET")
+        if "project.godot" in lower_all:
+            frameworks.append("Godot")
+
+        managers = [n for n, m in (("npm/yarn", "package.json"), ("pip", "requirements.txt"), ("poetry/pyproject", "pyproject.toml"),
+                                    ("Maven", "pom.xml"), ("Gradle", "build.gradle"), ("Gradle (Kotlin DSL)", "build.gradle.kts"),
+                                    ("Cargo", "Cargo.toml"), ("Go modules", "go.mod"), ("Composer", "composer.json"),
+                                    ("Bundler", "Gemfile"), ("pub", "pubspec.yaml")) if m in base_all]
+        entries = [f for f in files if os.path.basename(f) in cls._ENTRY_NAMES and (f.count("/") <= 3 or os.path.basename(f) in ("MainActivity.kt", "MainActivity.java", "Main.kt", "Main.java", "Program.cs"))][:8]
+        test_dirs = sorted({f.split("/")[0] for f in files if re.match(r"^(tests?|__tests__|spec)/", f.lower())})[:3]
+        _test_file_re = r"(_test\.py|\.test\.[jt]sx?|\.spec\.[jt]sx?|Test\.java|Test\.kt)$"
+        tests = test_dirs
+        has_tests = bool(test_dirs) or any(re.search(_test_file_re, f) for f in files)
+        ci = [f for f in files if f.startswith(".github/workflows/") or f in (".gitlab-ci.yml", "Jenkinsfile", ".travis.yml")][:4]
+        deploy = [n for n in ("Dockerfile", "docker-compose.yml", "render.yaml", "Procfile", "vercel.json", "netlify.toml", "fly.toml",
+                              "app.yaml", "serverless.yml") if n in base_all]
+        top_dirs: Dict[str, int] = {}
+        for f in files:
+            if "/" in f:
+                d = f.split("/")[0]
+                top_dirs[d] = top_dirs.get(d, 0) + 1
+        notable = sorted(top_dirs.items(), key=lambda kv: -kv[1])[:8]
+        scripts: List[str] = []
+        pj = manifests.get("package.json")
+        if pj:
+            try:
+                scripts = list((json.loads(pj).get("scripts") or {}).keys())[:8]
+            except Exception:
+                scripts = []
+        readme = ""
+        for k, v in manifests.items():
+            if k.lower().startswith("readme"):
+                readme = re.sub(r"\s+", " ", v)[:500]
+                break
+        return {"total_files": len(files), "languages": top_langs, "frameworks": frameworks[:8], "package_managers": managers,
+                "entry_points": entries, "has_tests": has_tests, "test_locations": tests, "ci": ci, "deploy": deploy,
+                "top_dirs": notable, "npm_scripts": scripts, "readme_head": readme}
+
+    @staticmethod
+    def format_project_profile(pr: Dict[str, Any]) -> str:
+        lines = [f"ملف تعريف المشروع (محلَّل تلقائياً): {pr.get('total_files', 0)} ملف."]
+        if pr.get("languages"):
+            lines.append("اللغات: " + "، ".join(f"{n} ({c})" for n, c in pr["languages"]))
+        if pr.get("frameworks"):
+            lines.append("الأطر/المكتبات الأساسية: " + "، ".join(pr["frameworks"]))
+        if pr.get("package_managers"):
+            lines.append("إدارة الحزم/البناء: " + "، ".join(pr["package_managers"]))
+        if pr.get("entry_points"):
+            lines.append("نقاط الدخول المحتملة: " + "، ".join(pr["entry_points"]))
+        if pr.get("npm_scripts"):
+            lines.append("سكربتات npm: " + "، ".join(pr["npm_scripts"]))
+        lines.append("الاختبارات: " + ("موجودة" + (f" ({'، '.join(pr['test_locations'])})" if pr.get("test_locations") else "") if pr.get("has_tests") else "ما لقيت اختبارات"))
+        if pr.get("ci"):
+            lines.append("CI: " + "، ".join(pr["ci"]))
+        if pr.get("deploy"):
+            lines.append("النشر: " + "، ".join(pr["deploy"]))
+        if pr.get("top_dirs"):
+            lines.append("المجلدات الرئيسية: " + "، ".join(f"{d}/ ({c})" for d, c in pr["top_dirs"]))
+        if pr.get("readme_head"):
+            lines.append("من README: " + pr["readme_head"])
+        return "\n".join(lines)
+
+    def project_profile(self, user_id: str, use_cache: bool = True) -> Dict[str, Any]:
+        cfg = self.get_config(user_id)
+        key = f"{cfg.get('repo')}@{cfg.get('branch')}"
+        cache = getattr(self, "_profile_cache", None)
+        if cache is None:
+            cache = self._profile_cache = {}
+        hit = cache.get(key)
+        if use_cache and hit and time.time() - hit[0] < 600:
+            return hit[1]
+        tree = self.list_files(user_id, use_cache=True)
+        paths = [f["path"] for f in tree.get("files", [])]
+        wanted = [p for p in paths if os.path.basename(p) in self._MANIFESTS and p.count("/") <= 2][:8]
+        manifests: Dict[str, str] = {}
+        for p in wanted:
+            try:
+                manifests[p] = str(self.get_file(p, user_id).get("content", ""))[:20000]
+            except Exception:
+                continue
+        pr = self.analyze_project(paths, {os.path.basename(k): v for k, v in manifests.items()})
+        pr["repo"], pr["branch"] = cfg.get("repo"), cfg.get("branch")
+        cache[key] = (time.time(), pr)
+        return pr
+
     def build_chat_github_context(self, user_id: str, text: str, history: Optional[List[Tuple[str, str]]] = None) -> str:
         """
-        يفهم ويحلل أي مشروع برمجي متصل على GitHub (بأي لغة أو بنية)، ويسحب شجرة المشروع،
-        ملخص البنية المعمارية، والملفات ذات الصلة (أو ملفات البداية والـ README عند السؤال العام عن المشروع)
-        ويحقنها في سياق المحادثة. يتوقف تلقائياً إذا كان زر تعديل GitHub مطفأً (OFF).
+        يسحب شجرة الملفات والملف المطلوب من مستودع المستخدم المتصل (مستودع المالك لـ WEB_PASSWORD،
+        أو المستودع الشخصي لأي مستخدم آخر ربط التوكن الخاص به) ويحقنه في سياق المحادثة.
         """
-        if not self.is_edit_enabled(user_id):
-            return ""
         cfg = self.get_config(user_id)
-        t = (text or "").strip()
-
-        # دعم قراءة أي مستودع يُذكر رابطه أو اسمه صراحةً في الرسالة
-        repo_override = ""
-        url_m = self._GH_URL_REPO_RE.search(t)
-        if url_m:
-            repo_override = url_m.group(1).strip().strip("/")
-        else:
-            sw_m = self._SWITCH_REPO_CMD_RE.search(t)
-            if sw_m:
-                repo_override = sw_m.group(1).strip().strip("/")
-
-        active_repo = repo_override or cfg.get("repo") or ""
-        if not active_repo:
+        if not cfg.get("repo"):
             return ""
         if not cfg.get("has_token"):
             return ""
 
+        t = (text or "").strip()
         recent_hist_text = " ".join(m[1] for m in (history or [])[-4:] if isinstance(m, (list, tuple)) and len(m) >= 2)
         combined_search = f"{t}\n{recent_hist_text}"
 
-        has_gh_kw = bool(self._GH_MENTION_RE.search(combined_search)) or bool(repo_override)
-        has_edit_or_project_kw = bool(self._IMMEDIATE_PUSH_RE.search(t)) or bool(re.search(
-            r"(?:افهم|اشرح|حلل|شوف|فحص|بنية|هيكل|ملفات|مشروع|المشروع|الكود|المستودع|كيف\s+بيشتغل|شو\s+فيه|عدّل|عدل|تعديل|ضفلي|أضف|صلّح|صلح)",
-            t,
-            re.I,
-        ))
+        has_gh_kw = bool(self._GH_MENTION_RE.search(t))
         mentioned_known = [f for f in self._KNOWN_FILES if f.lower() in combined_search.lower()]
-        file_regex_hits = self._ANY_FILE_EXT_RE.findall(combined_search)
+        file_regex_hits = re.findall(r"\b([A-Za-z0-9_./\-]+\.(?:py|js|mjs|jsx|ts|tsx|kt|kts|java|go|rs|php|rb|c|h|cpp|hpp|cs|swift|dart|vue|svelte|sh|sql|lua|scala|md|txt|json|yml|yaml|toml|xml|gradle|html|css|scss))\b", combined_search)
 
-        if not has_gh_kw and not has_edit_or_project_kw and not mentioned_known and not file_regex_hits:
+        if not has_gh_kw and not mentioned_known and not file_regex_hits:
             return ""
 
         try:
-            tree_info = self.list_files(user_id, repo_override=repo_override, use_cache=True)
+            tree_info = self.list_files(user_id, use_cache=True)
             all_files = [f["path"] for f in tree_info.get("files", [])]
-            used_repo = tree_info.get("repo", active_repo)
-            used_branch = tree_info.get("branch", cfg.get("branch", "main"))
         except Exception as e:
-            return f"[تنبيه GitHub: تعذر جلب شجرة المستودع {active_repo}: {e}]\n\n"
+            return f"[تنبيه GitHub: تعذر جلب شجرة المستودع {cfg['repo']}: {e}]\n\n"
 
-        overview = self.analyze_project_overview(all_files)
-
-        candidates: List[str] = []
-        # 1) مطابقة صريحة لأسماء الملفات المذكورة في الرسالة أو السياق
+        candidates = []
         for cand in (file_regex_hits + mentioned_known):
             c_low = cand.lower().lstrip("/")
             for rf in all_files:
@@ -1857,54 +1827,20 @@ class GitHubFileManager:
                     if rf not in candidates:
                         candidates.append(rf)
 
-        # 2) مطابقة ذكية لأي ملف في المشروع يُذكر اسمه بدون امتداد (Stem Match) أو مجلده
-        query_words = {
-            w.lower()
-            for w in re.findall(r"[A-Za-z_][A-Za-z0-9_\-]{2,}", combined_search)
-            if len(w) >= 3 and w.lower() not in {"github", "main", "master", "the", "and", "for", "with", "from", "code", "file"}
-        }
-        if query_words and len(candidates) < 4:
-            scored_files: List[Tuple[int, str]] = []
-            for rf in all_files:
-                if rf in candidates:
-                    continue
-                rf_low = rf.lower()
-                base_no_ext = os.path.splitext(os.path.basename(rf_low))[0]
-                path_tokens = set(re.split(r"[/._\-]+", rf_low))
-                score = 0
-                if base_no_ext in query_words:
-                    score += 5
-                overlap = len(query_words & path_tokens)
-                if overlap:
-                    score += overlap * 2
-                if score > 0:
-                    scored_files.append((score, rf))
-            scored_files.sort(key=lambda item: (-item[0], item[1].count("/"), len(item[1])))
-            for _, rf in scored_files[:4 - len(candidates)]:
-                if rf not in candidates:
-                    candidates.append(rf)
-
-        # 3) إذا سأل المستخدم عن فهم/تحليل المشروع بشكل عام أو لم يحدد ملفاً بعينه، نقرأ تلقائياً README + ملف الإعداد + نقطة الدخول الرئيسية
-        if len(candidates) == 0:
-            auto_starters = overview["readmes"][:1] + overview["manifests"][:1] + overview["entrypoints"][:2]
-            for st_f in auto_starters:
-                if st_f not in candidates and len(candidates) < 3:
-                    candidates.append(st_f)
-
         blocks = [
-            f"[اتصال حي بمستودع GitHub: {used_repo} (الفرع: {used_branch} · وضع تعديل GitHub: مفعّل ON)]",
-            f"• **التقنيات واللغات المكتشفة بالمشروع**: {', '.join(overview['tech_stack'])} ({', '.join(overview['top_extensions'][:6])})",
-            f"• **المجلدات الرئيسية**: {', '.join(overview['top_folders']) if overview['top_folders'] else '(جذر المشروع مباشرة)'}",
-            f"• **نقاط الدخول وملفات الإعداد**: {', '.join((overview['manifests'] + overview['entrypoints'])[:8]) or '(تلقائي)'}",
-            f"• **قائمة ملفات المستودع ({len(all_files)} ملف)**: " + ", ".join(all_files[:120]),
+            f"[اتصال حي بمستودع GitHub: {cfg['repo']} (الفرع: {cfg['branch']})]",
+            f"قائمة ملفات المستودع الحالية ({len(all_files)} ملف): " + ", ".join(all_files[:60]),
         ]
+        try:
+            blocks.append(self.format_project_profile(self.project_profile(user_id)))
+        except Exception:
+            pass
 
-        per_file_budget = 22000 if len(candidates) <= 2 else 14000
-        for path in candidates[:4]:
+        for path in candidates[:2]:
             try:
-                f_data = self.get_file(path, user_id, repo_override=repo_override, branch_override=used_branch)
+                f_data = self.get_file(path, user_id)
                 raw_c = f_data.get("content", "")
-                excerpt = self._extract_relevant_window(raw_c, t, max_chars=per_file_budget)
+                excerpt = self._extract_relevant_window(raw_c, t, max_chars=24000)
                 blocks.append(
                     f"--- محتوى الملف الحي من GitHub: `{path}` (الحجم: {f_data.get('size', 0)} بايت) ---\n"
                     f"```\n{excerpt}\n```"
@@ -1912,10 +1848,16 @@ class GitHubFileManager:
             except Exception as e:
                 blocks.append(f"--- ملاحظة: الملف `{path}` غير موجود حالياً في المستودع أو تعذر قراءته ({e}) ---")
 
+        if not cfg.get("edit_enabled", True):
+            blocks.append(
+                "تعليمات هامة: تعديل GitHub حالياً **مطفّي** (قراءة فقط). اشرح واقترح التعديل نصياً بالعربية "
+                "وبدون أي بلوك <github_patch> أو <github_create> أو <github_delete>. وذكّر المستخدم يشغّل زر GitHub إذا بدو تنفيذ فعلي."
+            )
+            return "\n\n".join(blocks) + "\n\n"
         blocks.append(
-            "تعليمات هامة لفهم وتعديل أي مشروع على GitHub داخل هذه المحادثة:\n"
-            "1. أنت تفهم بنية هذا المشروع بالكامل بغض النظر عن لغته البرمجية. ناقش المستخدم بالعربية بشكل طبيعي وواضح حول بنية المشروع أو الكود أو التعديل المطلوب.\n"
-            "2. إذا طلب المستخدم تعديل أي ملف موجود في GitHub (أو اقترحت أنت تعديلاً عليه)، اشرح التعديل ثم أدرج في نهاية ردك بلوك التعديل الجراحي التالي بالضبط:\n"
+            "تعليمات هامة للتفاعل مع GitHub داخل هذه المحادثة:\n"
+            "1. ناقش المستخدم بالعربية بشكل طبيعي وواضح حول الكود أو التعديل المطلوب.\n"
+            "2. إذا طلب المستخدم تعديل ملف موجود في GitHub (أو اقترحت أنت تعديلاً عليه أثناء النقاش)، اشرح التعديل ثم أدرج في نهاية ردك بلوك التعديل الجراحي التالي بالضبط:\n"
             "<github_patch path=\"مسار_الملف\" commit=\"وصف التعديل بالعربية\">\n"
             "<<<< SEARCH\n"
             "الأسطر الأصلية حرفياً من الملف المراد تعديلها\n"
@@ -1923,21 +1865,29 @@ class GitHubFileManager:
             "الأسطر الجديدة بعد التعديل\n"
             ">>>> REPLACE\n"
             "</github_patch>\n"
-            "3. إذا طلب إنشاء ملف جديد كلياً أو استبدال ملف بالكامل في أي مشروع، استخدم:\n"
+            "3. إذا طلب إنشاء ملف جديد كلياً أو استبدال ملف صغير بالكامل، استخدم:\n"
             "<github_create path=\"مسار_الملف\" commit=\"وصف التحديث\">\n"
             "محتوى الملف الكامل هنا\n"
             "</github_create>\n"
             "4. إذا طلب حذف ملف من المستودع، استخدم:\n"
             "<github_delete path=\"مسار_الملف\" commit=\"سبب الحذف\"/>\n"
-            "سيقوم النظام تلقائياً بفحص التعديل وتطبيقه على GitHub مباشرة (طالما زر GitHub بوضع ON)!"
+            "سيقوم النظام تلقائياً بفحص التعديل نحوياً (AST) وتطبيقه أو تجهيزه لاعتماد المستخدم المباشر من داخل المحادثة!"
         )
         return "\n\n".join(blocks) + "\n\n"
 
     def apply_chat_github_actions(self, user_id: str, user_text: str, bot_answer: str) -> Tuple[str, bool]:
-        if not bot_answer or not self.is_edit_enabled(user_id):
+        if not bot_answer:
             return bot_answer, False
         cfg = self.get_config(user_id)
         if not cfg.get("repo") or not cfg.get("has_token"):
+            return bot_answer, False
+
+        if not cfg.get("edit_enabled", True):
+            # تعديل GitHub مطفّي: نشيل بلوكات التعديل ونعلم المستخدم، بدون أي كتابة
+            tag_re = re.compile(r"<github_(?:patch|create)\b.*?</github_(?:patch|create)>|<github_delete\b[^>]*/>", re.DOTALL | re.I)
+            if tag_re.search(bot_answer):
+                cleaned = tag_re.sub("", bot_answer).strip()
+                return cleaned + "\n\n🔒 **تعديل GitHub مطفّي (قراءة فقط)** — ما انلمس أي ملف. شغّل زر GitHub من القائمة العائمة إذا بدك أنفّذ التعديل.", False
             return bot_answer, False
 
         ans = bot_answer
@@ -1968,8 +1918,6 @@ class GitHubFileManager:
                     continue
                 if path.endswith(".py"):
                     ast.parse(new_content, filename=path)
-                elif path.endswith(".json"):
-                    json.loads(new_content)
                 self.record_backup(user_id, path, orig["content"], orig.get("sha", ""))
                 if use_batch_commit:
                     batch_ready[path] = new_content
@@ -1977,7 +1925,7 @@ class GitHubFileManager:
                 elif push_now and cfg.get("has_token"):
                     saved = self.save_file(path, new_content, commit_message=commit_msg, sha=orig.get("sha"), user_id=user_id)
                     status_notes.append(
-                        f"✅ **تم تعديل `{path}` ورفعه مباشرة إلى GitHub!**\n"
+                        f"✅ **تم تعديل `{path}` ورفعه مباشرة إلى GitHub!** (تطابق وفحص AST ✅)\n"
                         f"• **التحديث**: {commit_msg}\n"
                         f"• **الرابط**: [عرض الملف المحدّث على GitHub]({saved.get('commit_url', '')}) *(للتراجع اكتب: `تراجع عن تعديل جيتهاب`)*"
                     )
@@ -1992,7 +1940,7 @@ class GitHubFileManager:
                     })
                     has_pending = True
                     status_notes.append(
-                        f"💡 **جهّزت التعديل وفحصته برمجياً على ملف `{path}`!**\n"
+                        f"💡 **جهّزت التعديل وفحصته نحوياً (AST ✅) على ملف `{path}`!**\n"
                         f"• اكتب **«اعتمد وارفعه»** ليتم رفعه فوراً إلى مستودعك."
                     )
             except SyntaxError as se:
@@ -2008,12 +1956,9 @@ class GitHubFileManager:
             path = m.group(1).strip().lstrip("/")
             commit_msg = (m.group(2) or f"إنشاء/تحديث {path} عبر محادثة Ryn").strip()
             new_content = re.sub(r"^```[a-zA-Z0-9_\-]*\r?\n|\r?\n```$", "", m.group(3).strip())
-            ext_lang = os.path.splitext(path)[1].lstrip(".").lower() or "text"
             try:
                 if path.endswith(".py"):
                     ast.parse(new_content, filename=path)
-                elif path.endswith(".json"):
-                    json.loads(new_content)
                 if use_batch_commit:
                     batch_ready[path] = new_content
                     batch_commits.append(commit_msg)
@@ -2037,7 +1982,7 @@ class GitHubFileManager:
                     )
             except Exception as e:
                 status_notes.append(f"⚠️ تعذر تجهيز الملف `{path}`: {e}")
-            ans = ans.replace(m.group(0), f"\n```{ext_lang}\n# {path}\n{new_content}\n```\n", 1)
+            ans = ans.replace(m.group(0), f"\n```python\n# {path}\n{new_content}\n```\n", 1)
 
         # تنفيذ الرفع الذري الموحد إذا كان هناك تعديل على عدة ملفات معاً
         if use_batch_commit and batch_ready:

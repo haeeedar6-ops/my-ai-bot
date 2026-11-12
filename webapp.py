@@ -1,5 +1,5 @@
 """موقع Ryn: واجهة دردشة خاصة (تطبيق ويب PWA) فوق نفس عقل البوت.
-بيتفعّل لما تحط WEB_PASSWORD (أو WEB_USERS) على Render."""
+بيشتغل جنب بوت تيليجرام، وبيتفعّل لما تحط WEB_PASSWORD على Render."""
 import os
 import re
 import hmac
@@ -893,47 +893,6 @@ textarea::placeholder{color:var(--sub)}
   </div>
 </div>
 
-<div id="ryn-live-modal" hidden style="position:fixed;inset:0;z-index:10000;background:radial-gradient(circle at 50% 30%,rgba(16,185,129,.24),rgba(5,7,20,.98) 72%);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:26px 20px 34px;user-select:none">
-  <div style="width:100%;max-width:540px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(0,255,157,.3);padding:6px 14px;border-radius:999px;font-size:12.5px;color:#eef0ff">
-      <span id="rynLiveDot" style="width:9px;height:9px;border-radius:50%;background:#00ff9d;box-shadow:0 0 10px #00ff9d;display:inline-block"></span>
-      <b id="rynLiveBadge">Gemini Live · Ryn Live ⚡</b>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <select id="rynLiveVoiceSel" title="صوت Gemini Live" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#eef0ff;padding:5px 10px;border-radius:999px;font-size:12px;cursor:pointer">
-        <option value="Aoede">🎙️ Aoede (سلس وطبيعي)</option>
-        <option value="Puck">⚡ Puck (حيوي وشبابي)</option>
-        <option value="Charon">🦁 Charon (هادئ وعميق)</option>
-        <option value="Kore">🌷 Kore (دافئ وواضح)</option>
-        <option value="Fenrir">🔥 Fenrir (جهوري)</option>
-        <option value="Orus">✨ Orus (متوازن)</option>
-      </select>
-      <button type="button" id="rynLiveKeyBtn" title="إعداد مفتاح Gemini API المباشر (اختياري للـ APK)" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#eef0ff;padding:5px 10px;border-radius:999px;font-size:12px;cursor:pointer">🔑</button>
-    </div>
-  </div>
-
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;max-width:500px;text-align:center">
-    <div id="rynLiveAura" style="position:relative;width:236px;height:236px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle,rgba(0,255,157,.22),rgba(139,92,246,.12) 55%,transparent 72%);transition:transform .18s ease,box-shadow .18s ease">
-      <div id="rynLiveBotBox" style="width:195px;height:195px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 14px 36px rgba(0,255,157,.32))"></div>
-    </div>
-    <div id="rynLiveWave" style="display:flex;align-items:center;justify-content:center;gap:5px;height:28px;margin-top:10px">
-      <span style="width:4px;height:10px;border-radius:4px;background:#00ff9d;transition:height .1s"></span>
-      <span style="width:4px;height:18px;border-radius:4px;background:#38bdf8;transition:height .1s"></span>
-      <span style="width:4px;height:24px;border-radius:4px;background:#a855f7;transition:height .1s"></span>
-      <span style="width:4px;height:16px;border-radius:4px;background:#00ff9d;transition:height .1s"></span>
-      <span style="width:4px;height:10px;border-radius:4px;background:#38bdf8;transition:height .1s"></span>
-    </div>
-    <div id="rynLiveStatusTitle" style="margin-top:12px;font-size:19px;font-weight:800;color:#ffffff;letter-spacing:.3px">جاري الاتصال بـ Gemini Live... ⚡</div>
-    <div id="rynLiveTranscriptBox" style="margin-top:10px;min-height:48px;max-height:130px;overflow-y:auto;font-size:14.5px;line-height:1.6;color:rgba(238,240,255,.9);padding:8px 16px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);max-width:440px;width:100%">بث صوتي ثنائي الاتجاه بالوقت الفعلي (PCM 16kHz ⇄ 24kHz) مع دعم المقاطعة الفورية...</div>
-  </div>
-
-  <div style="display:flex;align-items:center;justify-content:center;gap:22px;width:100%;max-width:420px">
-    <button type="button" id="rynLiveMuteBtn" title="كتم / تشغيل الميكروفون (Mute)" style="width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center">🎤</button>
-    <button type="button" id="rynLiveInterruptBtn" title="مقاطعة فورية والتحدث الآن" style="width:78px;height:78px;border-radius:50%;border:2px solid #00ff9d;background:linear-gradient(135deg,rgba(0,255,157,.28),rgba(56,189,248,.35));color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 28px rgba(0,255,157,.38)">⚡</button>
-    <button type="button" id="rynLiveCloseBtn" title="إنهاء المكالمة المباشرة وإغلاق الاتصال" style="width:58px;height:58px;border-radius:50%;border:0;background:#ff5d6c;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(255,93,108,.45)">✕</button>
-  </div>
-</div>
-
 <div id="liveVoiceOverlay" hidden style="position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 50% 35%,rgba(139,92,246,.26),rgba(7,8,22,.98) 70%);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:28px 20px 36px;user-select:none">
   <div style="width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between">
     <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:6px 14px;border-radius:999px;font-size:12.5px;color:#eef0ff">
@@ -1025,7 +984,7 @@ textarea::placeholder{color:var(--sub)}
 <script>
 const $=s=>document.querySelector(s);
 const msgs=$('#msgs'),inp=$('#inp'),sendBtn=$('#send'),botEl_tpl=$('#botTpl');
-let busy=false,models=[],current='gemini',ghEditOn=(()=>{try{return localStorage.getItem('ryn_gh_edit')!=='0'}catch(e){return true}})(),hasGroq=false;
+let busy=false,models=[],current='gemini',codeAuto=false,hasGroq=false;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){const el=$('#toast');el.textContent=t;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',2600)}
@@ -1445,26 +1404,8 @@ function speakWithBrowser(cleanTxt,vid,prof,finalRate,done,targetLang){
     window.speechSynthesis.speak(ut);
   }catch(e){done()}
 }
-function prepareClientArabicSpeech(raw){
-  let t=String(raw||'').replace(/```[\s\S]*?```/g,' كود برمجي جاهز بالشات. ');
-  t=t.replace(/!\[[^\]]*\]\([^)]*\)/g,' ').replace(/\[([^\]]+)\]\((?:https?:\/\/)[^)]*\)/g,'$1');
-  t=t.replace(/https?:\/\/\S+/g,' رابط ');
-  t=t.replace(/[*#_`~>|•—–]+/g,' ، ');
-  t=t.replace(/\bالـ+\s*/g,'ال').replace(/ـ/g,'');
-  t=t.replace(/\bانشاء\s+الله\b/g,'إن شاء الله').replace(/\bماشاء\s+الله\b/g,'ما شاء الله');
-  const arL={'ا':'الأَلِف','أ':'الأَلِف','إ':'الأَلِف','آ':'الأَلِف المَمْدُودَة','ب':'البَاء','ت':'التَاء','ث':'الثَاء','ج':'الجِيم','ح':'الحَاء','خ':'الخَاء','د':'الدَال','ذ':'الذَال','ر':'الرَاء','ز':'الزَاي','س':'السِين','ش':'الشِين','ص':'الصَاد','ض':'الضَاد','ط':'الطَاء','ظ':'الظَاء','ع':'العَيْن','غ':'الغَيْن','ف':'الفَاء','ق':'القَاف','ك':'الكَاف','ل':'اللَام','م':'المِيم','ن':'النُون','ه':'الهَاء','هـ':'الهَاء','و':'الوَاو','ي':'اليَاء','ة':'التَاء المَرْبُوطَة','ء':'الهَمْزَة'};
-  t=t.replace(/(?:^|\s)([وفبل]?حرف|الحرف)\s+[«"'(\[]?([ابتثجحخدذرزسشصضطظعغفقكلمنهوىيأإآءة]|هـ)[»"')\]]?(?=\s|[،,.!?؟؛:]|$)/g,(m,p,ch)=>arL[ch]?(p+' '+arL[ch]):m);
-  if((t.match(/[\u0600-\u06FF]/g)||[]).length>=(t.match(/[A-Za-z]/g)||[]).length){
-    t=t.replace(/\bhaydar_xe\b/gi,'حيدر إكس إي').replace(/\bGemini\s+Live\b/gi,'جيميناي لايف').replace(/\bLive\s+Voice\b/gi,'لايف فويس')
-       .replace(/\bRyn\b/gi,'رين').replace(/\bChatGPT\b/gi,'تشات جي بي تي').replace(/\bGPT\b/gi,'جي بي تي')
-       .replace(/\bGemini\b/gi,'جيميناي').replace(/\bGitHub\b/gi,'غيت هاب').replace(/\bWebSockets?\b/gi,'ويب سوكيت')
-       .replace(/\bPython\b/gi,'بايثون').replace(/\bJavaScript\b/gi,'جافاسكربت').replace(/\bAPI\b/g,'إيه بي آي')
-       .replace(/\bAPK\b/g,'إيه بي كيه').replace(/\bZIP\b/gi,'زيب').replace(/\bPDF\b/gi,'بي دي إف');
-  }
-  return t.replace(/\s+/g,' ').trim();
-}
 async function speakTextWithRyn(txt,btnEl,onDoneCb,msgId){
-  const cleanTxt=prepareClientArabicSpeech(txt);
+  const cleanTxt=String(txt||'').replace(/```[\s\S]*?```/g,' كود برمجي جاهز بالشات. ').replace(/[*#_`~>]/g,' ').replace(/\s+/g,' ').trim();
   if(!cleanTxt){if(onDoneCb)onDoneCb();return;}
   if(btnEl&&btnEl.dataset.speaking==='1'){
     stopAllRynSpeech(false);
@@ -1655,43 +1596,52 @@ function liveMemText(){
 }
 async function startGeminiLive(){
   if(!window.RynLive||!RynLive.supported())return false;
-  try{if(localStorage.getItem('ryn_live_mode')==='classic')return false;}catch(e){}
   let st=null;
   try{const r=await api('/api/v2/live/status');st=await r.json();}catch(e){return false;}
   if(!st||!st.available)return false;
+  const useDirect=!!st.direct;
+  if(!useDirect&&!st.proxy)return false;
   let ready=false,fellBack=false;
   const box=t=>{const b=$('#lvTranscriptBox');if(b&&t!==undefined)b.textContent=t;};
   const hist=()=>M().filter(m=>m.role==='user'||m.role==='model').slice(-8).map(m=>({role:m.role==='user'?'user':'bot',text:String(m.text||'').slice(0,300)}));
-  const fallback=()=>{
+  const lsGet=(k,d)=>{try{return localStorage.getItem(k)||d}catch(e){return d}};
+  const fallback=(why)=>{
     if(fellBack||!liveVoiceActive)return;fellBack=true;
     try{RynLive.stop()}catch(e){}
-    rynLiveOn=false;toast('تعذّر الوضع الحي، رجعنا للوضع التقليدي');
+    rynLiveOn=false;toast('Gemini Live ما اشتغل'+(why?(' ('+String(why).slice(0,60)+')'):'')+' — رجعنا لـ Live Voice');
     if(window.RynDuplex&&RynDuplex.enabled())RynDuplex.open();
     setLvUiState('listening','تحدث الآن... أنا أسمعك 👋');startLiveListeningTurn();
   };
-  let userBuf='',botBuf='';
+  let botBuf='';
   rynLiveOn=true;
   const ok=await RynLive.start({
-    voice:(function(){try{return localStorage.getItem('ryn_live_voice')||''}catch(e){return ''}})(),
-    dialect:(function(){try{return localStorage.getItem('ryn_dialect')||'syrian'}catch(e){return 'syrian'}})(),
+    mode:useDirect?'direct':'proxy',
+    voice:lsGet('ryn_live_voice',''),
+    dialect:lsGet('ryn_dialect','syrian'),
     memory:liveMemText(),
     getHistory:hist,
+    getDirectConfig:async()=>{
+      const r=await api('/api/v2/live/token',{method:'POST',body:JSON.stringify({voice:lsGet('ryn_live_voice',''),dialect:lsGet('ryn_dialect','syrian'),memory:liveMemText(),history:hist()})});
+      const d=await r.json();
+      if(!r.ok)throw new Error(d.error||('HTTP '+r.status));
+      return d;
+    },
     onReady:()=>{ready=true;},
     onState:s=>{
       if(!liveVoiceActive||!rynLiveOn)return;
-      if(s==='listening'){userBuf='';setLvUiState('listening',botBuf?('رين: '+botBuf):undefined);}
+      if(s==='listening'){setLvUiState('listening',botBuf?('رين: '+botBuf):undefined);}
       else if(s==='speaking'){setLvUiState('speaking',botBuf||undefined);}
       else if(s==='connecting'||s==='reconnecting'){setLvUiState('thinking',s==='connecting'?'عم نوصّل... ⏳':'عم نعيد الاتصال... ⏳');}
     },
-    onUserText:t=>{userBuf+=t;botBuf='';box('«'+userBuf.trim()+'»');},
-    onBotText:t=>{botBuf+=t;box(botBuf);},
+    onUserText:t=>{botBuf='';const b=$('#lvTranscriptBox');box('«'+((b&&b.dataset.u||'')+t).trim()+'»');if(b)b.dataset.u=((b.dataset.u||'')+t);},
+    onBotText:t=>{botBuf+=t;const b=$('#lvTranscriptBox');if(b)b.dataset.u='';box(botBuf);},
     onTurn:(u,b)=>{
       if(u)M().push({role:'user',text:u});
       if(b)M().push({role:'model',text:b});
       touch();render();saveStore();botBuf='';
     },
     onError:(code,msg)=>{
-      if(!ready&&(code==='connect_failed'||code==='ws_lost'||code==='no_key'||code==='start_timeout')){fallback();return;}
+      if(!ready&&(code==='connect_failed'||code==='ws_lost'||code==='no_key'||code==='start_timeout'||code==='token_failed')){fallback(msg||code);return;}
       if(code==='mic_denied'){toast('لازم تسمح للميكروفون');stopLiveVoiceChat();return;}
       toast(msg||'مشكلة بالمكالمة الحية');
     },
@@ -1700,29 +1650,13 @@ async function startGeminiLive(){
   if(!ok){rynLiveOn=false;return false;}
   return true;
 }
-/* فحص صدى صوت البوت لمنع مقاطعة البوت لنفسه على سبيكر الهاتف، مع السماح الفوري لمقاطعة المستخدم بالكلام */
-let currentBotSpeakingText='';
-function isBotSelfEcho(heardTxt,botTxt){
-  const h=String(heardTxt||'').replace(/[،,.!?؟؛:"'«»]/g,'').trim();
-  const b=String(botTxt||'').replace(/[،,.!?؟؛:"'«»]/g,'').trim();
-  if(!h)return true;
-  /* كلمات المقاطعة الصريحة تقاطع البوت دائماً فوراً */
-  if(/(?:وقف|اسكت|خلص|لحظة|ثواني|مهلا|استنى|طيب|لا |اسمع|رين|يا رين)/.test(h))return false;
-  if(b&&h.length>=4&&b.indexOf(h)>=0)return true;
-  return false;
-}
-
-let liveSilenceTimer=null,liveAccumulatedText='',liveInterimText='',liveBargeInMode=false;
-const LIVE_SILENCE_MS=2100; /* ينتظر 2.1 ثانية بعد توقفك عن الكلام حتى يتأكد أنك أنهيت فكرتك بالكامل */
-
-async function startLiveVoiceChat(){
+async function startLiveVoiceChat(mode){
   ensureLvRobotCloned();
-  liveVoiceActive=true;liveMuted=false;liveBargeInMode=false;
-  liveAccumulatedText='';liveInterimText='';
+  liveVoiceActive=true;liveMuted=false;
   if($('#lvMuteBtn'))$('#lvMuteBtn').textContent='🎤';
   const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
   const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
-  if($('#lvVoiceLabel'))$('#lvVoiceLabel').textContent='Live Voice · '+prof.label;
+  if($('#lvVoiceLabel'))$('#lvVoiceLabel').textContent=(mode==='gemini'?'Gemini Live ✨':'Live Voice · '+prof.label);
   $('#liveVoiceOverlay').hidden=false;
   acquireWakeLock();
   try{
@@ -1730,13 +1664,20 @@ async function startLiveVoiceChat(){
     const d=await r.json();
     if(d&&d.session)rynActiveSessionId=d.session.session_id;
   }catch(e){}
-  setLvUiState('listening','تحدث الآن براحتك... سأنتظرك حتى تكمل كلامك 🎙️');
-  startLiveListeningTurn(false);
+  if(mode==='gemini'){
+    if(await startGeminiLive()){
+      setLvUiState('thinking','عم نوصّل بـ Gemini Live... ⏳');
+      return;
+    }
+    toast('Gemini Live مو متاح هلأ — فتحنا Live Voice');
+    if($('#lvVoiceLabel'))$('#lvVoiceLabel').textContent='Live Voice · '+prof.label;
+  }
+  if(window.RynDuplex&&RynDuplex.enabled())RynDuplex.open();
+  setLvUiState('listening','تحدث الآن... أنا أسمعك مباشرة 👋');
+  startLiveListeningTurn();
 }
 function stopLiveVoiceChat(){
-  liveVoiceActive=false;liveBargeInMode=false;
-  if(liveSilenceTimer){clearTimeout(liveSilenceTimer);liveSilenceTimer=null;}
-  liveAccumulatedText='';liveInterimText='';
+  liveVoiceActive=false;
   if(rynLiveOn){try{RynLive.stop()}catch(e){}rynLiveOn=false;}
   if(window.RynDuplex)RynDuplex.close();
   stopAllRynSpeech();
@@ -1746,24 +1687,12 @@ function stopLiveVoiceChat(){
   setBot('idle');
   api('/api/v2/voice/stop',{method:'POST',body:JSON.stringify({session_id:rynActiveSessionId,action:'stop'})}).catch(()=>{});
 }
-function commitLiveUserSpeechNow(){
-  if(liveSilenceTimer){clearTimeout(liveSilenceTimer);liveSilenceTimer=null;}
-  const full=(liveAccumulatedText+' '+liveInterimText).replace(/\s+/g,' ').trim();
-  liveAccumulatedText='';liveInterimText='';
-  if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}liveRecog=null;}
-  if(full&&liveVoiceActive&&!liveMuted){
-    handleLiveUserUtterance(full);
-  }
-}
 async function handleLiveUserUtterance(userText){
   const clean=String(userText||'').trim();
   if(!clean||!liveVoiceActive)return;
-  if(liveSilenceTimer){clearTimeout(liveSilenceTimer);liveSilenceTimer=null;}
-  liveBargeInMode=false;
-  if(window.RynDuplex)RynDuplex.close();
   stopAllRynSpeech();
   setLvUiState('thinking','أنت: «'+clean+'»');
-  const hist=M().filter(m=>m.role!=='sys').slice(-10).map(m=>({role:m.role,text:m.text}));
+  const hist=M().filter(m=>m.role!=='sys').slice(-14).map(m=>({role:m.role,text:m.text}));
   M().push({role:'user',text:clean});touch();render();saveStore();
   try{
     const r=await api('/api/chat',{method:'POST',body:JSON.stringify({
@@ -1777,12 +1706,13 @@ async function handleLiveUserUtterance(userText){
     const d=await r.json();
     if(!r.ok||!d.job){
       setLvUiState('listening','⚠️ تعذر الاتصال، احكي مرة ثانية...');
-      if(liveVoiceActive&&!liveMuted)setTimeout(()=>startLiveListeningTurn(false),500);
+      if(liveVoiceActive&&!liveMuted)setTimeout(startLiveListeningTurn,800);
       return;
     }
+    /* نتابع مهمة الرد بالخلفية حتى تجهز ثم ننطقها فوراً بالروبوت وريأكشناته */
     let replyText='',replyNote='';
-    for(let i=0;i<600&&liveVoiceActive;i++){
-      await sleep(200);
+    for(let i=0;i<300&&liveVoiceActive;i++){
+      await sleep(750);
       const jr=await api('/api/job/'+d.job);
       const jd=await jr.json();
       if(jd.status==='running')continue;
@@ -1797,140 +1727,78 @@ async function handleLiveUserUtterance(userText){
     }
     if(!liveVoiceActive)return;
     moodFromNote(replyNote);
-    currentBotSpeakingText=replyText;
     setLvUiState('speaking',replyText);
-    /* تفعيل المقاطعة الصوتية بالكلام (Voice Barge-in) أثناء تحدث Ryn */
-    setTimeout(()=>{
-      if(liveVoiceActive&&!liveMuted&&((rynTtsAudio&&!rynTtsAudio.paused)||(window.speechSynthesis&&window.speechSynthesis.speaking))){
-        startLiveListeningTurn(true);
-      }
-    },350);
     await speakTextWithRyn(replyText,null,()=>{
-      currentBotSpeakingText='';
-      if(liveVoiceActive&&!liveMuted&&!liveBargeInMode){
-        setLvUiState('listening','تحدث الآن براحتك... عم أسمعك 🎙️');
-        startLiveListeningTurn(false);
+      if(liveVoiceActive&&!liveMuted){
+        setLvUiState('listening','تحدث الآن... عم أسمعك 🎙️');
+        startLiveListeningTurn();
       }
     });
   }catch(e){
     if(liveVoiceActive&&!liveMuted){
       setLvUiState('listening','احكي مرة ثانية... 🎙️');
-      setTimeout(()=>startLiveListeningTurn(false),600);
+      setTimeout(startLiveListeningTurn,1000);
     }
   }
 }
-function startLiveListeningTurn(isDuringBotSpeech){
+function startLiveListeningTurn(){
   if(!liveVoiceActive||liveMuted)return;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(SR){
     try{
-      if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}liveRecog=null;}
+      if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}}
       const recog=new SR();
       liveRecog=recog;
       const asrPref=getAsrLanguagePref();
       const vid=($('#vVoiceSelect')&&$('#vVoiceSelect').value)||'ar-SY-LaithNeural';
       const prof=VOICE_PROFILES[vid]||VOICE_PROFILES['ar-SY-LaithNeural'];
       recog.lang=(asrPref&&asrPref!=='auto')?asrPref:(prof.lang||'ar-SY');
-      /* continuous=true يمنع المتصفح من قطع كلامك عند أول وقفة تنفس قصيرة */
-      recog.continuous=true;
+      recog.continuous=false;
       recog.interimResults=true;
+      let finalBuf='';
       recog.onresult=e=>{
-        if(!liveVoiceActive||liveMuted)return;
-        let segFinal='',segInterim='';
+        let interim='';
         for(let i=e.resultIndex;i<e.results.length;i++){
           const tr=e.results[i][0].transcript;
-          if(e.results[i].isFinal)segFinal+=tr+' ';
-          else segInterim+=tr;
+          if(e.results[i].isFinal)finalBuf+=tr+' ';
+          else interim+=tr;
         }
-        const candidate=(segFinal+' '+segInterim).trim();
-        const botSpeaking=(rynTtsAudio&&!rynTtsAudio.paused)||(window.speechSynthesis&&window.speechSynthesis.speaking);
-        if(botSpeaking){
-          if(isBotSelfEcho(candidate,currentBotSpeakingText))return;
-          /* مقاطعة فورية بمجرد أن يتحدث المستخدم! */
-          liveBargeInMode=true;
-          currentBotSpeakingText='';
-          stopAllRynSpeech(true);
-        }
-        if(segFinal.trim()){
-          liveAccumulatedText=(liveAccumulatedText+' '+segFinal.trim()).replace(/\s+/g,' ').trim();
-          liveInterimText='';
-        }else{
-          liveInterimText=segInterim.trim();
-        }
-        const shown=(liveAccumulatedText+' '+liveInterimText).replace(/\s+/g,' ').trim();
+        const shown=(finalBuf+' '+interim).trim();
         if(shown){
-          setLvUiState('listening','«'+shown+'» (كمل حكي براحتك...)');
-          if(liveSilenceTimer)clearTimeout(liveSilenceTimer);
-          liveSilenceTimer=setTimeout(()=>{
-            commitLiveUserSpeechNow();
-          },LIVE_SILENCE_MS);
+          /* إذا كان الروبوت عم يحكي والمستخدم بلّش يحكي، نقاطع الصوت فوراً (Barge-in) */
+          if((rynTtsAudio&&!rynTtsAudio.paused)||(window.speechSynthesis&&window.speechSynthesis.speaking))stopAllRynSpeech(true);
+          setLvUiState('listening','«'+shown+'»');
         }
       };
       recog.onend=()=>{
         if(!liveVoiceActive||liveMuted)return;
-        /* إذا أغلق المتصفح جلسة التعرف والمستخدم في وسط جملته (مؤقت الصمت لم ينتهِ بعد)، نعيد فتح المايك فوراً ليكمل كلامه */
-        if(liveSilenceTimer||(liveAccumulatedText+' '+liveInterimText).trim()){
-          try{recog.start();return;}catch(err){}
+        if(finalBuf.trim()){
+          handleLiveUserUtterance(finalBuf.trim());
+        }else{
+          /* إذا ما التقط كلام، يرجع يستمع بهدوء طالما المستخدم بوضع الاتصال */
+          if(!window.speechSynthesis||!window.speechSynthesis.speaking){
+            setTimeout(()=>{if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();},350);
+          }
         }
-        setTimeout(()=>{if(liveVoiceActive&&!liveMuted)startLiveListeningTurn(false);},250);
       };
       recog.onerror=()=>{};
       recog.start();
       return;
     }catch(e){}
   }
-  /* إذا لم يتوفر SpeechRecognition اثناء كلام البوت، نستخدم RynDuplex لكشف المقاطعة الصوتية بالطاقة الصوتية */
-  if(isDuringBotSpeech){
-    if(window.RynDuplex){
-      RynDuplex.open().then(ok=>{
-        if(ok&&liveVoiceActive&&!liveMuted){
-          RynDuplex.arm(()=>{
-            if(!liveVoiceActive)return;
-            liveBargeInMode=true;
-            RynDuplex.close();
-            stopAllRynSpeech(true);
-            setLvUiState('listening','سمعتك — كمل كلامك أنا معك 🎙️');
-            startLiveListeningTurn(false);
-          });
-        }
-      });
-    }
-    return;
-  }
-  /* مسار احتياطي للمتصفحات بدون SpeechRecognition مع كشف صمت ذكي بدل القطع العشوائي */
+  /* مسار احتياطي للمتصفحات التي لا تدعم Web Speech Recognition: يسجل مقطعاً صوتياً ويفرغه عبر /api/transcribe */
   if(navigator.mediaDevices&&window.MediaRecorder){
-    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}).then(stream=>{
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
       if(!liveVoiceActive||liveMuted){stream.getTracks().forEach(t=>t.stop());return;}
       const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m))||'';
       const mr=new MediaRecorder(stream,mt?{mimeType:mt}:{});
       liveMediaRec=mr;liveChunks=[];
-      const AC=window.AudioContext||window.webkitAudioContext;
-      let actx=null,silCheckIv=null,heardSpeech=false,lastVoiceTs=Date.now(),startTs=Date.now();
-      try{
-        actx=new AC();
-        const src=actx.createMediaStreamSource(stream),an=actx.createAnalyser();
-        an.fftSize=512;src.connect(an);
-        const buf=new Float32Array(512);
-        silCheckIv=setInterval(()=>{
-          if(mr.state!=='recording')return;
-          an.getFloatTimeDomainData(buf);
-          let s=0;for(let i=0;i<buf.length;i++)s+=buf[i]*buf[i];
-          const rms=Math.sqrt(s/buf.length);
-          if(rms>0.035){heardSpeech=true;lastVoiceTs=Date.now();}
-          /* لا يوقف التسجيل إلا بعد أن يتحدث المستخدم ثم يصمت لمدة 2.2 ثانية كاملة */
-          if(heardSpeech&&(Date.now()-lastVoiceTs>2200)){mr.stop();}
-          else if(!heardSpeech&&(Date.now()-startTs>8000)){mr.stop();}
-          else if(Date.now()-startTs>25000){mr.stop();}
-        },100);
-      }catch(e){setTimeout(()=>{if(mr.state==='recording')mr.stop()},7000);}
       mr.ondataavailable=e=>{if(e.data&&e.data.size)liveChunks.push(e.data)};
       mr.onstop=async()=>{
-        if(silCheckIv)clearInterval(silCheckIv);
-        if(actx){try{actx.close();}catch(e){}}
         stream.getTracks().forEach(t=>t.stop());
         if(!liveVoiceActive||liveMuted)return;
         const blob=new Blob(liveChunks,{type:mr.mimeType||mt||'audio/webm'});
-        if(!heardSpeech||blob.size<1500){if(liveVoiceActive&&!liveMuted)startLiveListeningTurn(false);return;}
+        if(blob.size<1500){if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();return;}
         setLvUiState('thinking','جاري فهم كلامك...');
         const ext=blob.type.indexOf('mp4')>=0?'m4a':'webm';
         const fd=new FormData();fd.append('audio',blob,'voice.'+ext);fd.append('language',getAsrLanguagePref());
@@ -1938,10 +1806,11 @@ function startLiveListeningTurn(isDuringBotSpeech){
           const r=await api('/api/transcribe',{method:'POST',body:fd});
           const d=await r.json();
           if(r.ok&&d.text)handleLiveUserUtterance(d.text);
-          else if(liveVoiceActive&&!liveMuted)startLiveListeningTurn(false);
-        }catch(e){if(liveVoiceActive&&!liveMuted)startLiveListeningTurn(false);}
+          else if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();
+        }catch(e){if(liveVoiceActive&&!liveMuted)startLiveListeningTurn();}
       };
       mr.start();
+      setTimeout(()=>{if(mr.state==='recording')mr.stop()},5500);
     }).catch(()=>{toast('يرجى السماح بإذن الميكروفون للمحادثة الصوتية')});
   }
 }
@@ -1951,660 +1820,29 @@ if($('#lvMuteBtn'))$('#lvMuteBtn').onclick=()=>{
   liveMuted=!liveMuted;
   $('#lvMuteBtn').textContent=liveMuted?'🔇':'🎤';
   $('#lvMuteBtn').style.background=liveMuted?'rgba(255,93,108,.28)':'rgba(255,255,255,.08)';
-  if(liveSilenceTimer){clearTimeout(liveSilenceTimer);liveSilenceTimer=null;}
+  if(rynLiveOn){
+    RynLive.setMuted(liveMuted);
+    if(liveMuted)setLvUiState('muted','تم كتم الميكروفون مؤقتاً — اضغط 🔇 لإعادة تشغيله');
+    else setLvUiState('listening','عم أسمعك... احكي براحتك 🎙️');
+    return;
+  }
   if(liveMuted){
-    if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}liveRecog=null;}
+    if(liveRecog){try{liveRecog.onend=null;liveRecog.stop()}catch(e){}}
     if(liveMediaRec&&liveMediaRec.state==='recording'){try{liveMediaRec.stop()}catch(e){}}
     setLvUiState('muted','تم كتم الميكروفون مؤقتاً — اضغط 🔇 لإعادة تشغيله');
   }else{
     setLvUiState('listening','عم أسمعك... احكي براحتك 🎙️');
-    startLiveListeningTurn(false);
+    startLiveListeningTurn();
   }
 };
 if($('#lvInterruptBtn'))$('#lvInterruptBtn').onclick=()=>{
-  /* إذا كان المستخدم قد تكلم بجملة وضغط الزر، يرسلها فوراً؛ وإذا كان البوت يتكلم يقاطعه فوراً */
-  if((liveAccumulatedText+' '+liveInterimText).trim()){
-    commitLiveUserSpeechNow();
-    return;
-  }
-  stopAllRynSpeech(true);
+  if(rynLiveOn){RynLive.interrupt();setLvUiState('listening','احكي... 🎙️');return;}
+  /* مقاطعة فورية (Barge-in) أو إنهاء جملة التسجيل الحالية والبدء بالاستماع */
+  stopAllRynSpeech();
   if(liveMediaRec&&liveMediaRec.state==='recording'){try{liveMediaRec.stop();return}catch(e){}}
   liveMuted=false;if($('#lvMuteBtn'))$('#lvMuteBtn').textContent='🎤';
   setLvUiState('listening','قاطعت الصوت — تفضّل احكي أنا عم أسمعك 🎙️');
-  startLiveListeningTurn(false);
-};
-
-/* ===== ميزة المحادثة الصوتية المباشرة Gemini Live (Ryn Live) وفق الخطة الهندسية ===== */
-let rynLiveWs=null,rynLiveAudioCtx=null,rynLiveMicStream=null,rynLiveMicProc=null,rynLiveMicSource=null;
-let rynLiveNextPlayTime=0,rynLiveAudioQueue=[],rynLiveActive=false,rynLiveMuted=false,rynLiveSetupDone=false;
-let rynLiveUsingBridge=false,rynLiveSmartLoopOn=false,rynLiveSmartRecog=null,rynLiveSmartMediaRec=null;
-let rynLiveUserBuf='',rynLiveBotBuf='',rynDirectWsBlocked=false;
-let rynSmartSilenceTimer=null,rynSmartAccumText='',rynSmartInterimText='',rynSmartBargeIn=false;
-
-function ensureRynLiveRobot(){
-  const box=$('#rynLiveBotBox');
-  if(box&&!box.querySelector('.robot')&&botEl_tpl){
-    box.appendChild(botEl_tpl.content.cloneNode(true));
-  }
-}
-function setRynLiveUi(state,titleTxt,subTxt){
-  const tEl=$('#rynLiveStatusTitle'),bEl=$('#rynLiveTranscriptBox'),dot=$('#rynLiveDot'),aura=$('#rynLiveAura');
-  const r=$('#rynLiveBotBox .robot');
-  if(r)r.setAttribute('class','robot '+(state==='connecting'?'thinking':(state==='muted'?'idle':state)));
-  if(state==='listening'){
-    if(dot){dot.style.background='#00ff9d';dot.style.boxShadow='0 0 12px #00ff9d';}
-    if(aura)aura.style.transform='scale(1.04)';
-  }else if(state==='speaking'){
-    if(dot){dot.style.background='#38bdf8';dot.style.boxShadow='0 0 16px #38bdf8';}
-    if(aura)aura.style.transform='scale(1.14)';
-  }else if(state==='connecting'){
-    if(dot){dot.style.background='#a855f7';dot.style.boxShadow='0 0 12px #a855f7';}
-    if(aura)aura.style.transform='scale(0.96)';
-  }else if(state==='muted'){
-    if(dot){dot.style.background='#ff5d6c';dot.style.boxShadow='none';}
-    if(aura)aura.style.transform='scale(1)';
-  }
-  if(titleTxt!==undefined&&tEl)tEl.textContent=titleTxt;
-  if(subTxt!==undefined&&bEl)bEl.textContent=subTxt;
-}
-function animateRynLiveWave(level){
-  const bars=document.querySelectorAll('#rynLiveWave span');
-  if(!bars.length)return;
-  const base=Math.max(0.08,Math.min(1,level||0));
-  bars.forEach((b,idx)=>{
-    const h=Math.round(6+base*24*(0.55+0.45*Math.sin(Date.now()/110+idx*1.3)));
-    b.style.height=h+'px';
-  });
-}
-function flushRynLiveAudioQueue(){
-  rynLiveAudioQueue.slice().forEach(src=>{try{src.onended=null;src.stop();}catch(e){}});
-  rynLiveAudioQueue=[];
-  if(rynLiveAudioCtx)rynLiveNextPlayTime=rynLiveAudioCtx.currentTime;
-  else rynLiveNextPlayTime=0;
-}
-function releaseRynLiveMicOnly(){
-  if(rynLiveMicProc){try{rynLiveMicProc.disconnect();}catch(e){}rynLiveMicProc=null;}
-  if(rynLiveMicSource){try{rynLiveMicSource.disconnect();}catch(e){}rynLiveMicSource=null;}
-  if(rynLiveMicStream){
-    rynLiveMicStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}});
-    rynLiveMicStream=null;
-  }
-}
-function arrayBufferToBase64(ab){
-  const bytes=new Uint8Array(ab);
-  let bin='';
-  for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
-  return btoa(bin);
-}
-function base64ToInt16Array(b64){
-  const bin=atob(String(b64||'').trim());
-  const len=bin.length&~1;
-  const u8=new Uint8Array(len);
-  for(let i=0;i<len;i++)u8[i]=bin.charCodeAt(i);
-  return new Int16Array(u8.buffer);
-}
-
-/* 3. استقبال وتشغيل الرد الصوتي بتردد 24kHz مع جدولته للتشغيل المتصل بدون تقطيع */
-function playPcmChunk(base64Data){
-  if(!rynLiveActive||!base64Data)return;
-  try{
-    const AC=window.AudioContext||window.webkitAudioContext;
-    if(!rynLiveAudioCtx)rynLiveAudioCtx=new AC({sampleRate:24000});
-    if(rynLiveAudioCtx.state==='suspended')rynLiveAudioCtx.resume().catch(()=>{});
-    const i16=base64ToInt16Array(base64Data);
-    if(!i16.length)return;
-    const f32=new Float32Array(i16.length);
-    let sumSq=0;
-    for(let i=0;i<i16.length;i++){
-      const v=i16[i]/32768.0;
-      f32[i]=v;
-      sumSq+=v*v;
-    }
-    const rms=Math.sqrt(sumSq/f32.length);
-    animateRynLiveWave(Math.min(1,rms*4.5));
-    const audioBuf=rynLiveAudioCtx.createBuffer(1,f32.length,24000);
-    audioBuf.copyToChannel(f32,0);
-    const source=rynLiveAudioCtx.createBufferSource();
-    source.buffer=audioBuf;
-    source.connect(rynLiveAudioCtx.destination);
-    const now=rynLiveAudioCtx.currentTime;
-    if(rynLiveNextPlayTime<now+0.015)rynLiveNextPlayTime=now+0.015;
-    source.start(rynLiveNextPlayTime);
-    rynLiveNextPlayTime+=audioBuf.duration;
-    rynLiveAudioQueue.push(source);
-    setRynLiveUi('speaking','Ryn يتحدث معك مباشرة... (قاطعه بالكلام بأي لحظة ⚡)');
-    source.onended=()=>{
-      const idx=rynLiveAudioQueue.indexOf(source);
-      if(idx>=0)rynLiveAudioQueue.splice(idx,1);
-      if(!rynLiveAudioQueue.length&&rynLiveActive&&!rynLiveMuted){
-        animateRynLiveWave(0.1);
-        setRynLiveUi('listening','عم أسمعك مباشرة... احكي براحتك 🎙️');
-      }
-    };
-  }catch(e){}
-}
-
-/* 2. تشغيل المايكروفون، تحويل الصوت إلى PCM 16kHz، وبثه إلى جوجل بعد اكتمال التهيئة (setupComplete) */
-async function startMicCapture(){
-  if(!rynLiveActive)return false;
-  try{
-    releaseRynLiveMicOnly();
-    rynLiveMicStream=await navigator.mediaDevices.getUserMedia({
-      audio:{sampleRate:16000,channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}
-    });
-    const AC=window.AudioContext||window.webkitAudioContext;
-    if(!rynLiveAudioCtx)rynLiveAudioCtx=new AC({sampleRate:16000});
-    if(rynLiveAudioCtx.state==='suspended')await rynLiveAudioCtx.resume().catch(()=>{});
-    rynLiveMicSource=rynLiveAudioCtx.createMediaStreamSource(rynLiveMicStream);
-    const inRate=rynLiveAudioCtx.sampleRate||16000;
-    const down=window.RynLive&&RynLive._makeDown?RynLive._makeDown(inRate,16000,640):null;
-    rynLiveMicProc=rynLiveAudioCtx.createScriptProcessor(2048,1,1);
-    let speechFrames=0;
-    rynLiveMicProc.onaudioprocess=(ev)=>{
-      if(!rynLiveActive||rynLiveMuted)return;
-      const input=ev.inputBuffer.getChannelData(0);
-      let s=0;for(let i=0;i<input.length;i++)s+=input[i]*input[i];
-      const rms=Math.sqrt(s/(input.length||1));
-      if(!rynLiveAudioQueue.length)animateRynLiveWave(Math.min(1,rms*6));
-      /* مقاطعة محلية فورية إذا بدأ المستخدم بالتحدث أثناء كلام Ryn */
-      if(rynLiveAudioQueue.length>0&&rms>0.05){
-        speechFrames++;
-        if(speechFrames>=2){flushRynLiveAudioQueue();speechFrames=0;}
-      }else{speechFrames=0;}
-      if(!rynLiveSetupDone||!rynLiveWs||rynLiveWs.readyState!==WebSocket.OPEN)return;
-      let pcmChunks=[];
-      if(down){
-        pcmChunks=down.push(input);
-      }else{
-        const i16=new Int16Array(input.length);
-        for(let i=0;i<input.length;i++){
-          const c=Math.max(-1,Math.min(1,input[i]));
-          i16[i]=c<0?c*32768:c*32767;
-        }
-        pcmChunks=[i16];
-      }
-      for(let k=0;k<pcmChunks.length;k++){
-        const b64=arrayBufferToBase64(pcmChunks[k].buffer);
-        rynLiveWs.send(JSON.stringify({
-          realtimeInput:{
-            mediaChunks:[{mimeType:'audio/pcm;rate=16000',data:b64}]
-          }
-        }));
-      }
-    };
-    rynLiveMicSource.connect(rynLiveMicProc);
-    const zeroGain=rynLiveAudioCtx.createGain();
-    zeroGain.gain.value=0;
-    rynLiveMicProc.connect(zeroGain);
-    zeroGain.connect(rynLiveAudioCtx.destination);
-    return true;
-  }catch(e){
-    toast('⚠️ يرجى السماح بإذن الميكروفون (RECORD_AUDIO) لتشغيل Gemini Live');
-    return false;
-  }
-}
-
-function commitRynSmartSpeechNow(){
-  if(rynSmartSilenceTimer){clearTimeout(rynSmartSilenceTimer);rynSmartSilenceTimer=null;}
-  const full=(rynSmartAccumText+' '+rynSmartInterimText).replace(/\s+/g,' ').trim();
-  rynSmartAccumText='';rynSmartInterimText='';
-  if(rynLiveSmartRecog){try{rynLiveSmartRecog.onend=null;rynLiveSmartRecog.stop();}catch(e){}rynLiveSmartRecog=null;}
-  if(full&&rynLiveActive&&!rynLiveMuted){
-    handleRynLiveSmartUtterance(full);
-  }
-}
-
-/* محرك Gemini Live السريع المستمر (مع انتظار اكتمال كلامك + مقاطعة فورية بالكلام أثناء رد Ryn) */
-async function startRynLiveSmartContinuousMode(){
-  if(!rynLiveActive)return;
-  releaseRynLiveMicOnly();
-  rynLiveSmartLoopOn=true;rynSmartBargeIn=false;
-  rynSmartAccumText='';rynSmartInterimText='';
-  setRynLiveUi('listening','متصل بـ Gemini Live — احكي براحتك 🎙️','بث صوتي تفاعلي فوري مع مقاطعة ذكية بالكلام · المطور: haydar_xe');
-  runRynLiveSmartTurn(false);
-}
-function runRynLiveSmartTurn(isDuringBotSpeech){
-  if(!rynLiveActive||!rynLiveSmartLoopOn||rynLiveMuted)return;
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(SR){
-    try{
-      if(rynLiveSmartRecog){try{rynLiveSmartRecog.onend=null;rynLiveSmartRecog.stop();}catch(e){}rynLiveSmartRecog=null;}
-      const rec=new SR();
-      rynLiveSmartRecog=rec;
-      const asrPref=getAsrLanguagePref();
-      rec.lang=(asrPref&&asrPref!=='auto')?asrPref:'ar-SY';
-      /* continuous=true حتى لا يقطع كلامك عند التوقف البسيط بين الكلمات */
-      rec.continuous=true;
-      rec.interimResults=true;
-      rec.onresult=e=>{
-        if(!rynLiveActive||!rynLiveSmartLoopOn||rynLiveMuted)return;
-        let segFinal='',segInterim='';
-        for(let i=e.resultIndex;i<e.results.length;i++){
-          const tr=e.results[i][0].transcript;
-          if(e.results[i].isFinal)segFinal+=tr+' ';
-          else segInterim+=tr;
-        }
-        const cand=(segFinal+' '+segInterim).trim();
-        const botSpeaking=(rynTtsAudio&&!rynTtsAudio.paused)||(window.speechSynthesis&&window.speechSynthesis.speaking);
-        if(botSpeaking){
-          if(isBotSelfEcho(cand,currentBotSpeakingText))return;
-          /* مقاطعة فورية بالكلام أثناء رد Ryn! */
-          rynSmartBargeIn=true;
-          currentBotSpeakingText='';
-          stopAllRynSpeech(true);
-        }
-        if(segFinal.trim()){
-          rynSmartAccumText=(rynSmartAccumText+' '+segFinal.trim()).replace(/\s+/g,' ').trim();
-          rynSmartInterimText='';
-        }else{
-          rynSmartInterimText=segInterim.trim();
-        }
-        const shown=(rynSmartAccumText+' '+rynSmartInterimText).replace(/\s+/g,' ').trim();
-        if(shown){
-          animateRynLiveWave(0.68);
-          setRynLiveUi('listening','عم أسمعك... كمل كلامك براحتك 🎙️','أنت: «'+shown+'»');
-          if(rynSmartSilenceTimer)clearTimeout(rynSmartSilenceTimer);
-          rynSmartSilenceTimer=setTimeout(()=>{
-            commitRynSmartSpeechNow();
-          },LIVE_SILENCE_MS);
-        }
-      };
-      rec.onend=()=>{
-        animateRynLiveWave(0.1);
-        if(!rynLiveActive||!rynLiveSmartLoopOn||rynLiveMuted)return;
-        if(rynSmartSilenceTimer||(rynSmartAccumText+' '+rynSmartInterimText).trim()){
-          try{rec.start();return;}catch(err){}
-        }
-        setTimeout(()=>{if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted)runRynLiveSmartTurn(false);},250);
-      };
-      rec.onerror=()=>{
-        if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted&&!rynSmartSilenceTimer){
-          setTimeout(()=>{if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted)runRynLiveSmartTurn(false);},500);
-        }
-      };
-      rec.start();
-      return;
-    }catch(e){}
-  }
-  if(isDuringBotSpeech){
-    if(window.RynDuplex){
-      RynDuplex.open().then(ok=>{
-        if(ok&&rynLiveActive&&!rynLiveMuted){
-          RynDuplex.arm(()=>{
-            if(!rynLiveActive)return;
-            rynSmartBargeIn=true;
-            RynDuplex.close();
-            stopAllRynSpeech(true);
-            setRynLiveUi('listening','سمعتك — كمل كلامك أنا معك ⚡');
-            runRynLiveSmartTurn(false);
-          });
-        }
-      });
-    }
-    return;
-  }
-  if(navigator.mediaDevices&&window.MediaRecorder){
-    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}).then(stream=>{
-      if(!rynLiveActive||!rynLiveSmartLoopOn||rynLiveMuted){stream.getTracks().forEach(t=>t.stop());return;}
-      const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m))||'';
-      const mr=new MediaRecorder(stream,mt?{mimeType:mt}:{});
-      rynLiveSmartMediaRec=mr;
-      const chunks=[];
-      const AC=window.AudioContext||window.webkitAudioContext;
-      let actx=null,silIv=null,heard=false,lastV=Date.now(),t0=Date.now();
-      try{
-        actx=new AC();
-        const src=actx.createMediaStreamSource(stream),an=actx.createAnalyser();
-        an.fftSize=512;src.connect(an);
-        const buf=new Float32Array(512);
-        silIv=setInterval(()=>{
-          if(mr.state!=='recording')return;
-          an.getFloatTimeDomainData(buf);
-          let s=0;for(let i=0;i<buf.length;i++)s+=buf[i]*buf[i];
-          const rms=Math.sqrt(s/buf.length);
-          animateRynLiveWave(Math.min(1,rms*6));
-          if(rms>0.035){heard=true;lastV=Date.now();}
-          if(heard&&(Date.now()-lastV>2200))mr.stop();
-          else if(!heard&&(Date.now()-t0>8000))mr.stop();
-          else if(Date.now()-t0>25000)mr.stop();
-        },100);
-      }catch(e){setTimeout(()=>{if(mr.state==='recording')mr.stop();},7000);}
-      mr.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
-      mr.onstop=async()=>{
-        if(silIv)clearInterval(silIv);
-        if(actx){try{actx.close();}catch(e){}}
-        stream.getTracks().forEach(t=>t.stop());
-        if(!rynLiveActive||!rynLiveSmartLoopOn||rynLiveMuted)return;
-        const blob=new Blob(chunks,{type:mr.mimeType||mt||'audio/webm'});
-        if(!heard||blob.size<1500){if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted)runRynLiveSmartTurn(false);return;}
-        setRynLiveUi('connecting','جاري الرد فوراً... ⚡');
-        const ext=blob.type.indexOf('mp4')>=0?'m4a':'webm';
-        const fd=new FormData();fd.append('audio',blob,'voice.'+ext);fd.append('language',getAsrLanguagePref());
-        try{
-          const r=await api('/api/transcribe',{method:'POST',body:fd});
-          const d=await r.json();
-          if(r.ok&&d.text)handleRynLiveSmartUtterance(d.text);
-          else if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted)runRynLiveSmartTurn(false);
-        }catch(e){if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted)runRynLiveSmartTurn(false);}
-      };
-      mr.start();
-    }).catch(()=>{toast('⚠️ يرجى السماح بإذن الميكروفون');});
-  }
-}
-async function handleRynLiveSmartUtterance(userText){
-  const clean=String(userText||'').trim();
-  if(!clean||!rynLiveActive)return;
-  if(rynSmartSilenceTimer){clearTimeout(rynSmartSilenceTimer);rynSmartSilenceTimer=null;}
-  rynSmartBargeIn=false;
-  if(window.RynDuplex)RynDuplex.close();
-  stopAllRynSpeech();
-  setRynLiveUi('connecting','Ryn يرد عليك... ⚡','أنت: «'+clean+'»');
-  const hist=M().filter(m=>m.role!=='sys').slice(-8).map(m=>({role:m.role,text:m.text}));
-  M().push({role:'user',text:clean});touch();render();saveStore();
-  try{
-    const r=await api('/api/chat',{method:'POST',body:JSON.stringify({
-      message:clean,
-      conversation_id:store.cur,
-      modality:'voice',
-      history:hist,
-      memory:mem,
-      emo:emo
-    })});
-    const d=await r.json();
-    if(!r.ok||!d.job){
-      if(rynLiveActive&&!rynLiveMuted){setRynLiveUi('listening','تحدث الآن... 🎙️');setTimeout(()=>runRynLiveSmartTurn(false),400);}
-      return;
-    }
-    let replyText='',replyNote='';
-    for(let i=0;i<500&&rynLiveActive;i++){
-      await sleep(200);
-      const jr=await api('/api/job/'+d.job);
-      const jd=await jr.json();
-      if(jd.status==='running')continue;
-      if(jd.status==='done'){
-        replyText=jd.text||'';replyNote=jd.note||'';
-        await applyCompletedJobPayload(jd,store.cur);
-        touch();render();saveStore();
-      }else{
-        replyText=jd.text||'احكيلي مرة تانية يا غالي.';
-      }
-      break;
-    }
-    if(!rynLiveActive)return;
-    moodFromNote(replyNote);
-    currentBotSpeakingText=replyText;
-    setRynLiveUi('speaking','Ryn يتحدث معك الآن... (احكي بأي لحظة لمقاطعته فوراً ⚡)',replyText);
-    /* تشغيل الاستماع للمقاطعة الصوتية الفورية (Voice Barge-in) أثناء كلام Ryn */
-    setTimeout(()=>{
-      if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted&&((rynTtsAudio&&!rynTtsAudio.paused)||(window.speechSynthesis&&window.speechSynthesis.speaking))){
-        runRynLiveSmartTurn(true);
-      }
-    },350);
-    const waveIv=setInterval(()=>{if(rynLiveActive)animateRynLiveWave(0.75);},120);
-    await speakTextWithRyn(replyText,null,()=>{
-      clearInterval(waveIv);
-      currentBotSpeakingText='';
-      animateRynLiveWave(0.1);
-      if(window.RynDuplex)RynDuplex.close();
-      if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted&&!rynSmartBargeIn){
-        setRynLiveUi('listening','عم أسمعك مباشرة... احكي براحتك 🎙️');
-        runRynLiveSmartTurn(false);
-      }
-    });
-  }catch(e){
-    if(rynLiveActive&&rynLiveSmartLoopOn&&!rynLiveMuted){
-      setRynLiveUi('listening','تحدث الآن... 🎙️');
-      setTimeout(()=>runRynLiveSmartTurn(false),500);
-    }
-  }
-}
-
-/* 1. فتح اتصال الـ WebSocket، قراءة الذاكرة من localStorage، وإرسال رسالة الـ setup مع هوية المطور haydar_xe */
-async function initRynLiveSocket(){
-  /* إذا ثبت مسبقاً أن شبكة الهاتف تحجب WebSocket جوجل المباشر، ندخل فوراً بالمحرك السريع بدون انتظار */
-  if(rynDirectWsBlocked){
-    await startRynLiveSmartContinuousMode();
-    return;
-  }
-  let apiKey='',candidateModels=['models/gemini-2.0-flash-live-001','models/gemini-live-2.5-flash-preview','models/gemini-2.0-flash-exp'];
-  try{apiKey=(localStorage.getItem('ryn_gemini_api_key')||'').trim();}catch(e){}
-  if(!apiKey){
-    try{
-      const r=await api('/api/v2/live/key');
-      if(r.ok){
-        const d=await r.json();
-        apiKey=(d.api_key||'').trim();
-        if(Array.isArray(d.candidate_models)&&d.candidate_models.length){
-          candidateModels=d.candidate_models.map(m=>m.startsWith('models/')?m:('models/'+m));
-        }else if(d.model){
-          const m0=d.model.startsWith('models/')?d.model:('models/'+d.model);
-          candidateModels=[m0,...candidateModels.filter(x=>x!==m0)];
-        }
-      }
-    }catch(e){}
-  }
-  const chosenVoice=($('#rynLiveVoiceSel')&&$('#rynLiveVoiceSel').value)||'Aoede';
-  try{localStorage.setItem('ryn_live_voice',chosenVoice);}catch(e){}
-  const memSummary=liveMemText()||'لا توجد ذاكرة محفوظة بعد';
-  const histLines=M().filter(m=>m.role==='user'||m.role==='model').slice(-6).map(m=>(m.role==='user'?'المستخدم: ':'Ryn: ')+String(m.text||'').slice(0,220)).join('\n');
-  const sysText='أنت Ryn، مساعد ذكي تم تطويرك بواسطة haydar_xe. تحدث باللغة العربية بأسلوب طبيعي ومختصر مناسب للمحادثة الصوتية، وانطق جميع الحروف والكلمات العربية بشكل سليم وواضح تماماً. الذاكرة السابقة للمستخدم: '+memSummary+(histLines?('\nملخص آخر الحوار:\n'+histLines):'');
-
-  if(!apiKey){
-    await startRynLiveSmartContinuousMode();
-    return;
-  }
-
-  setRynLiveUi('connecting','جاري الاتصال السريع بـ Gemini Live... ⚡','يتم تهيئة البث الصوتي وحقن ذاكرة Ryn وهوية المطور haydar_xe...');
-
-  const tryDirectModel=(modelName,apiVer)=>new Promise((resolve)=>{
-    if(!rynLiveActive){resolve(false);return;}
-    let settled=false;
-    const done=(ok)=>{if(!settled){settled=true;resolve(ok);}};
-    const wsUrl='wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.'+apiVer+'.GenerativeService.BidiGenerateContent?key='+encodeURIComponent(apiKey);
-    let ws=null;
-    try{ws=new WebSocket(wsUrl);}catch(e){done(false);return;}
-    const timer=setTimeout(()=>{if(!rynLiveSetupDone){try{ws.close();}catch(e){}done(false);}},1400);
-
-    ws.onopen=()=>{
-      if(!rynLiveActive){clearTimeout(timer);try{ws.close();}catch(e){}done(false);return;}
-      const setupMsg={
-        setup:{
-          model:modelName,
-          generationConfig:{
-            responseModalities:['AUDIO'],
-            speechConfig:{
-              voiceConfig:{
-                prebuiltVoiceConfig:{voiceName:chosenVoice}
-              }
-            }
-          },
-          systemInstruction:{
-            parts:[{text:sysText}]
-          }
-        }
-      };
-      try{ws.send(JSON.stringify(setupMsg));}catch(e){clearTimeout(timer);done(false);}
-    };
-
-    ws.onmessage=async(ev)=>{
-      if(!rynLiveActive)return;
-      try{
-        let rawStr='';
-        if(typeof ev.data==='string')rawStr=ev.data;
-        else if(ev.data instanceof Blob)rawStr=await ev.data.text();
-        else if(ev.data instanceof ArrayBuffer)rawStr=(new TextDecoder('utf-8')).decode(ev.data);
-        if(!rawStr)return;
-        const msg=JSON.parse(rawStr);
-        if(msg.setupComplete!==undefined||msg.serverContent!==undefined||msg.server_content!==undefined){
-          if(!rynLiveSetupDone){
-            clearTimeout(timer);
-            rynLiveSetupDone=true;
-            rynLiveWs=ws;
-            await startMicCapture();
-            setRynLiveUi('listening','متصل بـ Gemini Live — احكي الآن مباشرة 🎙️','بث صوتي حي بدون وسيط (Zero Latency) · المطور: haydar_xe');
-            done(true);
-          }
-        }
-        const sc=msg.serverContent||msg.server_content;
-        if(!sc)return;
-        if(sc.interrupted===true){
-          flushRynLiveAudioQueue();
-          setRynLiveUi('listening','سمعتك — كمل كلامك أنا معك 🎙️');
-          return;
-        }
-        const inTr=(sc.inputTranscription&&sc.inputTranscription.text)||(sc.input_transcription&&sc.input_transcription.text);
-        if(inTr){
-          rynLiveUserBuf+=inTr;
-          setRynLiveUi('listening',undefined,'أنت: «'+rynLiveUserBuf.trim()+'»');
-        }
-        const outTr=(sc.outputTranscription&&sc.outputTranscription.text)||(sc.output_transcription&&sc.output_transcription.text);
-        if(outTr){
-          rynLiveBotBuf+=outTr;
-          setRynLiveUi('speaking',undefined,rynLiveBotBuf.trim());
-        }
-        const mt=sc.modelTurn||sc.model_turn;
-        if(mt&&Array.isArray(mt.parts)){
-          for(const p of mt.parts){
-            const inl=p.inlineData||p.inline_data;
-            if(inl&&inl.data){
-              playPcmChunk(inl.data);
-            }
-            if(p.text){
-              rynLiveBotBuf+=p.text;
-              setRynLiveUi('speaking',undefined,rynLiveBotBuf.trim());
-            }
-          }
-        }
-        if(sc.turnComplete||sc.turn_complete){
-          if(rynLiveUserBuf.trim()||rynLiveBotBuf.trim()){
-            if(rynLiveUserBuf.trim())M().push({role:'user',text:rynLiveUserBuf.trim()});
-            if(rynLiveBotBuf.trim())M().push({role:'model',text:rynLiveBotBuf.trim()});
-            touch();render();saveStore();
-            rynLiveUserBuf='';rynLiveBotBuf='';
-          }
-        }
-      }catch(e){}
-    };
-
-    ws.onerror=()=>{};
-    ws.onclose=()=>{
-      clearTimeout(timer);
-      if(!rynLiveSetupDone){
-        done(false);
-      }else if(rynLiveActive&&rynLiveWs===ws){
-        rynLiveSetupDone=false;
-        startRynLiveSmartContinuousMode();
-      }
-    };
-  });
-
-  const firstMdl=candidateModels[0]||'models/gemini-2.0-flash-live-001';
-  const apiVer=(firstMdl.indexOf('exp')>=0)?'v1alpha':'v1beta';
-  if(await tryDirectModel(firstMdl,apiVer))return;
-
-  rynDirectWsBlocked=true;
-  await startRynLiveSmartContinuousMode();
-}
-
-/* 0. فتح نافذة Gemini Live (Ryn Live) */
-async function openRynLive(){
-  ensureRynLiveRobot();
-  rynLiveActive=true;rynLiveMuted=false;rynLiveSetupDone=false;
-  rynLiveUsingBridge=false;rynLiveSmartLoopOn=false;rynSmartBargeIn=false;
-  rynSmartAccumText='';rynSmartInterimText='';
-  rynLiveUserBuf='';rynLiveBotBuf='';
-  if($('#rynLiveMuteBtn')){
-    $('#rynLiveMuteBtn').textContent='🎤';
-    $('#rynLiveMuteBtn').style.background='rgba(255,255,255,.08)';
-  }
-  try{
-    const savedV=localStorage.getItem('ryn_live_voice');
-    if(savedV&&$('#rynLiveVoiceSel')&&[...$('#rynLiveVoiceSel').options].some(o=>o.value===savedV)){
-      $('#rynLiveVoiceSel').value=savedV;
-    }
-  }catch(e){}
-  $('#ryn-live-modal').hidden=false;
-  acquireWakeLock();
-  await initRynLiveSocket();
-}
-
-/* 4. إغلاق اتصال الـ WebSocket، إيقاف المايكروفون لتحرير موارد الهاتف، وإخفاء نافذة الـ Overlay */
-function closeRynLive(){
-  rynLiveActive=false;rynLiveSetupDone=false;rynLiveSmartLoopOn=false;rynSmartBargeIn=false;
-  if(rynSmartSilenceTimer){clearTimeout(rynSmartSilenceTimer);rynSmartSilenceTimer=null;}
-  rynSmartAccumText='';rynSmartInterimText='';
-  currentBotSpeakingText='';
-  if(rynLiveUsingBridge&&window.RynLive){try{RynLive.stop();}catch(e){}rynLiveUsingBridge=false;}
-  if(window.RynDuplex)RynDuplex.close();
-  stopAllRynSpeech();
-  if(rynLiveSmartRecog){try{rynLiveSmartRecog.onend=null;rynLiveSmartRecog.stop();}catch(e){}rynLiveSmartRecog=null;}
-  if(rynLiveSmartMediaRec&&rynLiveSmartMediaRec.state!=='inactive'){try{rynLiveSmartMediaRec.stop();}catch(e){}rynLiveSmartMediaRec=null;}
-  if(rynLiveWs){try{rynLiveWs.onclose=null;rynLiveWs.close();}catch(e){}rynLiveWs=null;}
-  flushRynLiveAudioQueue();
-  releaseRynLiveMicOnly();
-  if(rynLiveAudioCtx){try{rynLiveAudioCtx.close();}catch(e){}rynLiveAudioCtx=null;}
-  if($('#ryn-live-modal'))$('#ryn-live-modal').hidden=true;
-  setBot('idle');
-}
-
-window.openRynLive=openRynLive;
-window.initRynLiveSocket=initRynLiveSocket;
-window.startMicCapture=startMicCapture;
-window.playPcmChunk=playPcmChunk;
-window.closeRynLive=closeRynLive;
-
-if($('#rynLiveCloseBtn'))$('#rynLiveCloseBtn').onclick=closeRynLive;
-if($('#rynLiveMuteBtn'))$('#rynLiveMuteBtn').onclick=()=>{
-  rynLiveMuted=!rynLiveMuted;
-  $('#rynLiveMuteBtn').textContent=rynLiveMuted?'🔇':'🎤';
-  $('#rynLiveMuteBtn').style.background=rynLiveMuted?'rgba(255,93,108,.28)':'rgba(255,255,255,.08)';
-  if(rynSmartSilenceTimer){clearTimeout(rynSmartSilenceTimer);rynSmartSilenceTimer=null;}
-  if(rynLiveUsingBridge&&window.RynLive){RynLive.setMuted(rynLiveMuted);}
-  if(rynLiveMicStream){rynLiveMicStream.getAudioTracks().forEach(t=>{t.enabled=!rynLiveMuted;});}
-  if(rynLiveMuted){
-    flushRynLiveAudioQueue();
-    stopAllRynSpeech();
-    if(rynLiveSmartRecog){try{rynLiveSmartRecog.onend=null;rynLiveSmartRecog.stop();}catch(e){}rynLiveSmartRecog=null;}
-    if(rynLiveSmartMediaRec&&rynLiveSmartMediaRec.state==='recording'){try{rynLiveSmartMediaRec.stop();}catch(e){}}
-    setRynLiveUi('muted','تم كتم الميكروفون مؤقتاً 🔇 — اضغط لإعادة تشغيله');
-  }else{
-    setRynLiveUi('listening','عم أسمعك مباشرة... احكي براحتك 🎙️');
-    if(rynLiveSmartLoopOn)runRynLiveSmartTurn(false);
-  }
-};
-if($('#rynLiveInterruptBtn'))$('#rynLiveInterruptBtn').onclick=()=>{
-  /* إذا كان المستخدم قد تكلم بجملة وضغط الزر، يرسلها فوراً؛ وإذا كان البوت يتكلم يقاطعه فوراً */
-  if((rynSmartAccumText+' '+rynSmartInterimText).trim()){
-    commitRynSmartSpeechNow();
-    return;
-  }
-  if(rynLiveUsingBridge&&window.RynLive){RynLive.interrupt();}
-  flushRynLiveAudioQueue();
-  stopAllRynSpeech(true);
-  if(rynLiveSmartMediaRec&&rynLiveSmartMediaRec.state==='recording'){try{rynLiveSmartMediaRec.stop();}catch(e){}}
-  rynLiveMuted=false;
-  if($('#rynLiveMuteBtn')){$('#rynLiveMuteBtn').textContent='🎤';$('#rynLiveMuteBtn').style.background='rgba(255,255,255,.08)';}
-  setRynLiveUi('listening','تمت المقاطعة فوراً — احكي الآن أنا أسمعك ⚡');
-  if(rynLiveSmartLoopOn)runRynLiveSmartTurn(false);
-};
-if($('#rynLiveVoiceSel'))$('#rynLiveVoiceSel').onchange=async()=>{
-  const v=$('#rynLiveVoiceSel').value;
-  try{localStorage.setItem('ryn_live_voice',v);}catch(e){}
-  if(rynLiveActive){
-    toast('🔄 تم تحديث صوت Gemini Live إلى '+v);
-    if(!rynLiveSmartLoopOn){closeRynLive();await openRynLive();}
-  }
-};
-if($('#rynLiveKeyBtn'))$('#rynLiveKeyBtn').onclick=()=>{
-  let cur='';try{cur=localStorage.getItem('ryn_gemini_api_key')||'';}catch(e){}
-  const inpKey=prompt('🔑 (اختياري لتطبيق APK أو الاتصال المباشر) أدخل مفتاح GEMINI_API_KEY الخاص بك، أو اتركه فارغاً لاستخدام مفتاح السيرفر تلقائياً:',cur);
-  if(inpKey===null)return;
-  try{
-    rynDirectWsBlocked=false;
-    if(inpKey.trim())localStorage.setItem('ryn_gemini_api_key',inpKey.trim());
-    else localStorage.removeItem('ryn_gemini_api_key');
-    toast(inpKey.trim()?'✅ تم حفظ مفتاح Gemini Live محلياً في الجهاز':'✅ سيتم استخدام مفتاح السيرفر تلقائياً');
-  }catch(e){}
+  startLiveListeningTurn();
 };
 
 if($('#dVoiceReadBtn'))$('#dVoiceReadBtn').onclick=async()=>{
@@ -3122,28 +2360,24 @@ function drawFloating(){
   if(img)h+=f(img)+'<span>رسم<br>🎨</span></button>';
   if(gem)h+=f(gem)+'<span>Gemini</span></button>';
   if(qw)h+=f(qw)+'<span>Ryn<br>mix</span></button>';
-  h+='<button class="dia" data-m="__gemini_live" title="Gemini Live (Ryn Live) — محادثة صوتية مباشرة بالوقت الفعلي"><span>Gemini<br>Live ⚡</span></button>';
-  h+='<button class="dia" data-m="__live_voice" title="محادثة صوتية حية بنطق عربي سليم"><span>Live<br>Voice 🎙️</span></button>';
+  h+='<button class="dia" data-m="__gemini_live" title="Gemini Live: محادثة حية مباشرة (متل ChatGPT)"><span>Gemini<br>Live ✨</span></button>';
+  h+='<button class="dia" data-m="__live_voice" title="محادثة صوتية حية مع الروبوت"><span>Live<br>Voice 🎙️</span></button>';
   if(models.length>2)h+='<button class="dia" data-m="__all"><span>كل<br>الموديلات</span></button>';
-  h+='<button class="dia'+(ghEditOn?' on':'')+'" data-m="__gh_toggle" title="تشغيل / إيقاف التعديل على GitHub وفهم أي مشروع برمجي"><span>GitHub<br>'+(ghEditOn?'ON 🐙':'OFF')+'</span></button>';
+  h+='<button class="dia'+(ghEdit?' on':'')+'" data-m="__gh_edit" title="تشغيل/إيقاف تعديل GitHub"><span>GitHub<br>'+(ghEdit?'ON':'OFF')+'</span></button>';
   $('#floating').innerHTML=h;
 }
 function setPh(){inp.placeholder=current==='img:flux'?'RYN Visual Brain: أنشئ صورة أو ارفع صورة وعدّلها (خلفية، إضاءة، ملابس، حذف عنصر، ترميم)...':'اكتب رسالة...'}
 $('#floating').addEventListener('click',async e=>{
   const b=e.target.closest('.dia');if(!b)return;e.stopPropagation();
   const m=b.dataset.m;
-  if(m==='__gemini_live'){$('#floating').classList.add('off');openRynLive();return}
-  if(m==='__live_voice'){$('#floating').classList.add('off');startLiveVoiceChat();return}
+  if(m==='__gemini_live'){$('#floating').classList.add('off');startLiveVoiceChat('gemini');return}
+  if(m==='__live_voice'){$('#floating').classList.add('off');startLiveVoiceChat('classic');return}
   if(m==='__all'){$('#floating').classList.add('off');openSheet();return}
-  if(m==='__gh_toggle'){
+  if(m==='__gh_edit'){
     try{
-      const nextOn=!ghEditOn;
-      await api('/api/github/toggle',{method:'POST',body:JSON.stringify({on:nextOn})});
-      ghEditOn=nextOn;
-      try{localStorage.setItem('ryn_gh_edit',ghEditOn?'1':'0');}catch(err){}
-      drawFloating();
-      sfx.switchModel();
-      toast(ghEditOn?'🐙 تعديل وفهم مشاريع GitHub: شغّال ✅':'🐙 تعديل GitHub: مطفّي 🔕');
+      const r=await api('/api/github/edit-mode',{method:'POST',body:JSON.stringify({on:!ghEdit})});const d=await r.json();
+      if(!r.ok){toast(d.error||'ما انبدّل');return}
+      ghEdit=!!d.enabled;drawFloating();toast('تعديل GitHub: '+(ghEdit?'شغّال ✅':'مطفّي 🔒 (قراءة فقط)'));
     }catch(x){}
     return;
   }
@@ -3166,7 +2400,7 @@ async function setModel(id){
 async function loadModels(){
   try{
     const d=await (await api('/api/models')).json();
-    models=d.options;current=d.current;hasGroq=!!d.groq;if(d.gh_edit_on!==undefined){ghEditOn=!!d.gh_edit_on;try{localStorage.setItem('ryn_gh_edit',ghEditOn?'1':'0')}catch(err){}}
+    models=d.options;current=d.current;hasGroq=!!d.groq;codeAuto=false;ghEdit=(d.github_edit!==false);
     $('#mname').textContent=label(current);drawFloating();setPh();applyFx(current);
     if(d.file)showChip(d.file,!!d.file_image);
   }catch(e){}
@@ -7411,7 +6645,7 @@ def continue_if_cut(b, answer, contents, call, max_rounds=5):
 
 
 def register(app, b):
-    """بيركّب الموقع على تطبيق Flask. b = وحدة bot.py (محرك الموديلات: Gemini/Groq/OpenRouter)."""
+    """بيركّب الموقع على تطبيق Flask تبع البوت. b = وحدة bot.py (للوصول لدوالها)."""
     def load_users():
         """WEB_USERS = اسم:كلمة_سر,اسم2:كلمة_سر2  (كلمة السر بتحدد مين الشخص). WEB_PASSWORD بيضل شغّال كمستخدم main."""
         us = {}
@@ -7431,7 +6665,7 @@ def register(app, b):
     users = load_users()
     password = "|".join(users.values())   # للمفتاح السري وللتأكد إنو في مستخدمين
     app.secret_key = os.environ.get("WEB_SECRET") or hashlib.sha256(
-        ("astra-web|" + password + "|" + str(getattr(b, "GEMINI_API_KEY", ""))).encode()).hexdigest()
+        ("astra-web|" + password + "|" + str(getattr(b, "BOT_TOKEN", ""))).encode()).hexdigest()
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -7728,7 +6962,7 @@ def register(app, b):
             if p == "/":
                 resp.headers["Content-Security-Policy"] = (
                     "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-                    "img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' wss://generativelanguage.googleapis.com https://generativelanguage.googleapis.com; base-uri 'none'; form-action 'self'")
+                    "img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; form-action 'self'")
         return resp
 
     # ---------- صفحات ثابتة ----------
@@ -7841,7 +7075,7 @@ def register(app, b):
             if j and j.get("status") == "running":
                 j["progress"] = str(t)[:80]
 
-    def run_job(job_id, text, history, mem_prompt="", emo=False, u="main", net=False, conv_id=None, idem_key="", is_voice=False):
+    def run_job(job_id, text, history, mem_prompt="", emo=False, u="main", net=False, conv_id=None, idem_key=""):
         try:
             T = b.types
             W = wid(u)
@@ -7872,7 +7106,7 @@ def register(app, b):
                     return
                 # إذا أرفق المستخدم ملف .zip أو ملفات كود وطلب رفعها مباشرة على GitHub
                 ctx_att = b.get_doc(W)
-                if ctx_att and gh_mgr.is_edit_enabled(u) and gh_mgr._PROJECT_UPLOAD_CMD_RE.search(text) and gh_mgr._GH_MENTION_RE.search(text):
+                if ctx_att and gh_mgr._PROJECT_UPLOAD_CMD_RE.search(text) and gh_mgr._GH_MENTION_RE.search(text):
                     if ctx_att.get("zip_bytes"):
                         set_progress(job_id, "🐙 جاري فحص ورفع أرشيف المشروع كاملاً إلى GitHub...")
                         up_res = gh_mgr.extract_and_push_zip(ctx_att["zip_bytes"], commit_message=f"رفع المشروع ({ctx_att.get('name', 'zip')}) عبر Ryn", user_id=u)
@@ -7900,7 +7134,7 @@ def register(app, b):
                 mem_prompt = pctx + mem_prompt
             if AIStack is not None:
                 try:
-                    gh_ctx = ("" if (is_voice and not AIStack.get_github_manager()._GH_MENTION_RE.search(text)) else AIStack.get_github_manager().build_chat_github_context(u, text, history))
+                    gh_ctx = AIStack.get_github_manager().build_chat_github_context(u, text, history)
                     if gh_ctx:
                         gh_ctx_active = True
                         set_progress(job_id, "🐙 عم اقرأ ملفات مستودع GitHub وأجهز النقاش/التعديل...")
@@ -7957,7 +7191,7 @@ def register(app, b):
             else:
                 parts = [T.Part(text=full_user_text)]
             contents.append(T.Content(role="user", parts=parts))
-            deep = False if is_voice else b.is_deep_question(text)
+            deep = b.is_deep_question(text)
             big = contents_size(contents) > BIG_CHARS
             is_mix_mode = bool(wm(u)["mix"])
             code_req = (is_mix_engineering_request(text, ctx) if is_mix_mode else (fix_intent or b.is_code_request(text)))
@@ -7966,7 +7200,7 @@ def register(app, b):
             mix_meta = {}
             yt = [m.group(0) for m in YT_RE.finditer(text)]
             net_fail = ""
-            if not is_voice and not net and not is_mix_mode and not gh_ctx_active and b.client and len(text) < 1500 and "```" not in text:
+            if not net and not is_mix_mode and not gh_ctx_active and b.client and len(text) < 1500 and "```" not in text:
                 net = needs_web(text)
             if (net or yt) and b.client:
                 try:
@@ -7990,7 +7224,7 @@ def register(app, b):
             if answer:
                 pass
             else:
-                answer, note = b.ask_model(W, contents, deep=deep, code=False)
+                answer, note = b.ask_model(W, contents, deep=deep, code=b.is_code_request(text))
             if net_fail:
                 log.info("الإنترنت ما اشتغل، جاوب من معلوماته")
             plain = (kind != "clean") and not note   # جواب عادي بدون أي توجيه خاص
@@ -8011,7 +7245,7 @@ def register(app, b):
             verified = None
             if answer and not has_gh_action_tags and (code_req or big or "```" in answer):
                 call = (lambda m: big_gemini(b, m, BIG_HINT)) if (big and b.client) else \
-                       (lambda m: b.ask_model(W, m, deep=False, code=False)[0])
+                       (lambda m: b.ask_model(W, m, deep=False, code=True)[0])
                 answer = continue_if_cut(b, answer, contents, call)   # كمّل إذا انقطع بنص كود
                 if code_req:
                     answer, verified = verify_code(b, answer, contents, call)
@@ -8142,13 +7376,9 @@ def register(app, b):
             mem_prompt = EMO_PROMPT + mem_prompt
         if str(data.get("modality") or "") == "voice":
             mem_prompt = (
-                "\n[وضع المحادثة الصوتية الحية (Live Voice): جاوب بأسلوب كلام منطوق طبيعي وسلس وواضح جداً كأنك عم تحكي صوتياً وجهاً لوجه مع صديقك. "
-                "قواعد ذهبية لنطق عربي متقن 100% بدون أي كلمة خاطئة: "
-                "1) ضع حركات التشكيل الأساسية (الفتحة والضمة والكسرة والشدة) على الكلمات الشامية والكلمات التي قد يلتبس نطقها (مثل: هَلَّق، شُو بِدَّك، مْنِيح، قُلِّي، عِلْم، تَفَضَّل)، وتجنب تنوين أواخر الكلمات. "
-                "2) افصل الكلمات المدمجة دائماً (اكتب «عَلَى البَيْت» وليس «عالبيت»، واكتب «شُو بِدَّك» وليس «شوبدك»، واكتب «مَا بِدِّي» وليس «مابدي»، واكتب «إِنَّك» و«إِجَا» بهمزة واضحة). "
-                "3) إذا ذكرت أي حرف عربي مفرد اكتبه باسمه الكامل المشكول (مثل: حَرْف الأَلِف، حَرْف البَاء، حَرْف العَيْن، حَرْف الضَّاد). "
-                "4) اكتب المصطلحات الأجنبية بالحروف العربية الصوتية (مثل: غِيت هَاب، جِيمِينَاي، جِي بِي تِي، بَايْثُون). "
-                "احكي بلهجة شامية سورية بيضاء عفوية ودافئة، وبجمل قصيرة ومنسابة مع فواصل تنفس طبيعية (،) وبدون أي رموز ماركداون أو قوائم مرقمة.]\n"
+                "\n[وضع المحادثة الصوتية الحية (Live Voice): جاوب بأسلوب كلام منطوق طبيعي وسلس جداً كأنك عم تحكي صوتياً وجهاً لوجه مع صديقك. "
+                "إذا كان الكلام بالعربي، احكي بلهجة شامية سورية بيضاء عفوية ودافئة ومترابطة (استخدم عبارات طبيعية متل: هلق، شوف يا غالي، تماماً، ولا يهمك، فيني ساعدك)، "
+                "واكتب جمل قصيرة ومنسابة مع فواصل تنفس طبيعية (،) وبدون قوائم نقطية مرقمة أو رموز ماركداون صامتة.]\n"
             ) + mem_prompt
         else:
             md().update(state="normal", reason="", since=0.0)
@@ -8180,8 +7410,7 @@ def register(app, b):
                 return jsonify(error="في عدة طلبات شغّالة بالخلفية، استنى لحظة"), 429
             job_id = uuid.uuid4().hex
             jobs[job_id] = {"status": "running", "ts": now, "uid": cur_u, "prompt": text[:160], "conversation_id": conv_id}
-        is_voice_turn = (str(data.get("modality") or "") == "voice")
-        threading.Thread(target=run_job, args=(job_id, text[:400000], clean_history(data.get("history")), mem_prompt, emo_on, cur_u, False, conv_id, idem_key, is_voice_turn),
+        threading.Thread(target=run_job, args=(job_id, text[:400000], clean_history(data.get("history")), mem_prompt, emo_on, cur_u, False, conv_id, idem_key),
                          daemon=True).start()
         return jsonify(job=job_id, conversation_id=conv_id, message_id=(user_msg_rec.get("message_id") if user_msg_rec else ""))
 
@@ -8230,8 +7459,7 @@ def register(app, b):
         any_alt = any_img = trunc = False
         n_img = 0
         reasons = {"unsupported": "نوع الملف مو مدعوم", "empty": "فاضي أو ما قدرت أقرأ نصه",
-                   "bad_zip": "ملف zip تالف", "zip_big": "zip كبير كتير", "pdf_big": "PDF كبير وما قدرت أستخرج نصه (يمكن صور ممسوحة)",
-                   "image_huge": "أبعاد الصورة ضخمة كتير", "bad_image": "الصورة تالفة", "too_big": "الصورة كبيرة كتير"}
+                   "bad_zip": "ملف zip تالف", "zip_big": "zip كبير كتير", "pdf_big": "PDF كبير وما قدرت أستخرج نصه (يمكن صور ممسوحة)"}
         first_err = ""
         multi = len(fl) > 1
         for idx, f in enumerate(fl, 1):
@@ -8248,7 +7476,7 @@ def register(app, b):
                     if G is not None and hasattr(G, "validate_image_upload"):
                         up_v = G.validate_image_upload(data, name, max_bytes=MAX_UPLOAD)
                         if not up_v.get("ok"):
-                            raise ValueError(up_v.get("code") or "unsupported")
+                            raise ValueError("unsupported")
                     parts = [T.Part.from_bytes(data=data, mime_type=mime)]
                     any_img = True
                     n_img += 1
@@ -8393,9 +7621,8 @@ def register(app, b):
         if cur not in [o["id"] for o in opts]:
             cur = "gemini"
         ctx = b.get_doc(wid())
-        gh_on = AIStack.get_github_manager().is_edit_enabled(uid()) if AIStack is not None else True
         return jsonify(current=cur, options=opts, groq=bool(b._groq_ready()),
-                       code_auto=False, gh_edit_on=gh_on, file=(ctx["name"] if ctx else ""),
+                       code_auto=False, github_edit=_gh_edit_flag(), file=(ctx["name"] if ctx else ""),
                        file_image=bool(ctx and ctx.get("image")))
 
     @app.post("/api/model")
@@ -8785,6 +8012,12 @@ def register(app, b):
         except Exception as e:
             return jsonify(error=redact_secrets(str(e))), 400
 
+    def _gh_edit_flag():
+        try:
+            return bool(AIStack.get_github_manager().get_edit_enabled(uid())) if AIStack is not None else True
+        except Exception:
+            return True
+
     def _gh_gate_create(op, body):
         """يبني طلب تعديل (diff + فحوصات) بدل الكتابة المباشرة. الرفع الفعلي بس بعد موافقة صريحة."""
         svc = AIStack.get_github_engineering_service()
@@ -8806,6 +8039,39 @@ def register(app, b):
             original_file_sha=cur.get("sha", ""), base_branch=cur.get("branch") or branch or "main",
             request_text=str(body.get("message") or ""), operation=op,
         )
+
+    @app.get("/api/github/edit-mode")
+    def api_github_edit_mode_get():
+        bad = guard()
+        if bad:
+            return bad
+        return jsonify(enabled=_gh_edit_flag())
+
+    @app.post("/api/github/edit-mode")
+    def api_github_edit_mode_set():
+        """زر تشغيل/إيقاف تعديل GitHub. مطفّي = قراءة وفهم فقط، بدون أي كتابة."""
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        on = bool((request.get_json(silent=True) or {}).get("on"))
+        return jsonify(ok=True, enabled=AIStack.get_github_manager().set_edit_enabled(uid(), on))
+
+    @app.get("/api/github/project-profile")
+    def api_github_project_profile():
+        """فهم أي مشروع: لغات/أطر/نقاط دخول/اختبارات/نشر من شجرة المستودع المتصل."""
+        bad = guard()
+        if bad:
+            return bad
+        if AIStack is None:
+            return jsonify(error="وحدة GitHub غير متاحة"), 503
+        try:
+            mgr = AIStack.get_github_manager()
+            pr = mgr.project_profile(uid(), use_cache=request.args.get("fresh") != "1")
+            return jsonify(ok=True, profile=pr, summary=mgr.format_project_profile(pr))
+        except Exception as e:
+            return jsonify(error=redact_secrets(str(e))), 400
 
     @app.post("/api/github/save")
     def api_github_save_file():
@@ -8903,26 +8169,16 @@ def register(app, b):
                 j["status"] = "cancelled"
         return jsonify(ok=True)
 
-    @app.post("/api/github/toggle")
-    def api_github_toggle():
-        bad = guard()
-        if bad:
-            return bad
-        body = request.get_json(silent=True) or {}
-        on = bool(body.get("on", True))
-        if AIStack is not None:
-            cfg = AIStack.get_github_manager().set_edit_enabled(uid(), on)
-            return jsonify(ok=True, gh_edit_on=cfg.get("edit_enabled", on), repo=cfg.get("repo", ""))
-        return jsonify(ok=True, gh_edit_on=on)
-
     @app.post("/api/code")
     def api_code():
         bad = guard()
         if bad:
             return bad
-        # تم إلغاء التوجيه التلقائي للكود إلى GPT في الموقع واستبداله بزر تعديل GitHub
-        b.code_route_off.add(wid())
-        return jsonify(ok=True, code_auto=False)
+        if (request.get_json(silent=True) or {}).get("on"):
+            b.code_route_off.discard(wid())
+        else:
+            b.code_route_off.add(wid())
+        return jsonify(ok=True)
 
     @app.get("/api/mix-benchmark")
     def api_mix_benchmark():
@@ -9836,34 +9092,40 @@ def register(app, b):
     def _live_key() -> str:
         return os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'").strip()
 
-    @app.get("/api/v2/live/key")
-    def api_v2_live_key():
-        """نقطة نهاية محمية بكلمة سر الجلسة لتزويد واجهة Gemini Live بالمفتاح والموديلات المتاحة عند بدء المكالمة."""
-        bad = guard()
-        if bad:
-            return bad
-        k = _live_key()
-        if not k:
-            return jsonify(ok=False, error="GEMINI_API_KEY غير مضاف في إعدادات البيئة على Render"), 404
-        cands = []
-        try:
-            cands = _lb.GeminiLiveFactory(k, client=getattr(b, "client", None)).candidate_models()
-        except Exception:
-            cands = ["gemini-2.0-flash-live-001", "gemini-live-2.5-flash-preview", "gemini-2.0-flash-exp"]
-        mdl = cands[0] if cands else "models/gemini-2.0-flash-exp"
-        return jsonify(ok=True, api_key=k, model=mdl, candidate_models=cands[:5], default_voice=_lb.sanitize_voice(""))
-
     @app.get("/api/v2/live/status")
     def api_v2_live_status():
         bad = guard()
         if bad:
             return bad
-        reasons = []
-        if not _live_key():
-            reasons.append("GEMINI_API_KEY ناقص")
-        return jsonify(ok=True, available=bool(_live_key()), direct_ws_supported=True, bridge_available=(_Sock is not None),
-                       reasons=reasons, voices=list(_lb.LIVE_VOICES),
-                       default_voice=_lb.sanitize_voice(""), active_calls=_live_registry.count())
+        has_key = bool(_live_key())
+        reasons = [] if has_key else ["GEMINI_API_KEY ناقص"]
+        return jsonify(ok=True, available=has_key, direct=has_key, proxy=bool(has_key and _Sock is not None), reasons=reasons,
+                       voices=list(_lb.LIVE_VOICES), default_voice=_lb.DEFAULT_LIVE_VOICE, active_calls=_live_registry.count())
+
+    @app.post("/api/v2/live/token")
+    def api_v2_live_token():
+        """اتصال مباشر (متصفح ← Google) حسب خطة Gemini: بيرجّع توكن مؤقت (أو المفتاح إذا مسموح) + تعليمات الشخصية والذاكرة."""
+        bad = guard()
+        if bad:
+            return bad
+        key = _live_key()
+        if not key:
+            return jsonify(error="GEMINI_API_KEY ناقص"), 503
+        body = request.get_json(silent=True) or {}
+        hist = []
+        for h in (body.get("history") or [])[-_lb.MAX_HISTORY_TURNS:]:
+            if isinstance(h, dict) and h.get("role") in ("user", "bot", "model", "assistant"):
+                hist.append(("user" if h["role"] == "user" else "bot", str(h.get("text") or "")[:300]))
+        voice = _lb.sanitize_voice(body.get("voice"))
+        si = _lb.build_system_instruction(str(body.get("dialect") or "syrian"), str(body.get("memory") or "")[:1500], hist)
+        try:
+            creds = _lb.create_direct_credentials(key)
+            models = _lb.GeminiLiveFactory(key).candidate_models()
+        except PermissionError as e:
+            return jsonify(error=redact_secrets(str(e))), 403
+        except Exception as e:
+            return jsonify(error=redact_secrets(f"{type(e).__name__}: {e}")[:200]), 502
+        return jsonify(ok=True, **creds, **_lb.build_direct_session_config(si, voice, models))
 
     if _Sock is not None:
         _sock = _Sock(app)

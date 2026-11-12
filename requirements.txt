@@ -1,9 +1,10 @@
 flask
-flask-sock
+pyTelegramBotAPI
 google-genai
-requests
 pypdf
 pyflakes
-Pillow
+requests
 edge-tts
 gTTS
+
+flask-sock
