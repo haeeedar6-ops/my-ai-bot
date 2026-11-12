@@ -31,7 +31,7 @@ LIVE_VOICES = (
     "Achernar", "Gacrux", "Pulcherrima", "Vindemiatrix", "Sulafat",
 )
 DEFAULT_LIVE_VOICE = "Charon"
-FALLBACK_MODELS = ("gemini-2.0-flash-live-001", "gemini-live-2.5-flash-preview", "gemini-2.5-flash-native-audio-preview-12-2025", "gemini-2.0-flash-exp", "gemini-3.1-flash-live-preview", "gemini-3.8-live")
+FALLBACK_MODELS = ("gemini-3.1-flash-live-preview", "gemini-3.8-live", "gemini-live-2.5-flash-preview")
 MAX_FRAME_BYTES = 64 * 1024
 MAX_MEMORY_CHARS = 1500
 MAX_HISTORY_TURNS = 8
@@ -65,12 +65,18 @@ def sanitize_voice(v: Any) -> str:
     return v if v in LIVE_VOICES else (os.environ.get("GEMINI_LIVE_VOICE", "").strip() if os.environ.get("GEMINI_LIVE_VOICE", "").strip() in LIVE_VOICES else DEFAULT_LIVE_VOICE)
 
 
+DEVELOPER_NAME = "haydar_xe"
+
+
 def build_system_instruction(dialect: str = "syrian", memory: str = "", history: Optional[List[Tuple[str, str]]] = None) -> str:
     name = _DIALECT_NAMES.get(str(dialect or "syrian").lower(), _DIALECT_NAMES["syrian"])
     parts = [
-        "أنت «رين» (RYN)، مساعد صوتي ذكي تم تطويرك بواسطة haydar_xe، عم تحكي مع صاحبك بمحادثة صوتية حية متل مكالمة هاتف.",
-        f"تحدث باللغة العربية بلهجة {name} بأسلوب طبيعي وواضح جداً، وانطق جميع الحروف والكلمات العربية بمخارجها الصحيحة السليمة، وبجمل قصيرة ومختصرة مناسبة للمحادثة الصوتية.",
+        f"أنت «رين» (RYN)، مساعد صوتي ذكي طوّرك {DEVELOPER_NAME}. بتحكي مع صاحبك بمحادثة حية متل مكالمة هاتف.",
+        f"احكي باللهجة {name} بشكل طبيعي وودّي، وبجمل قصيرة وواضحة (جملة أو جملتين غالباً) إلا إذا طلب شرح مفصّل.",
         "ابدأ بالجواب مباشرة بدون مقدمات طويلة. إذا الطلب غامض اسأل سؤال واحد قصير.",
+        "النطق: انطق كل حرف عربي بمخرجه الصحيح وبوضوح (ق غير ك، ض غير د، ظ غير ذ، ع غير ء، ح غير ه، خ غير غ، ث غير س، ص غير س)، "
+        "ولا تبتلع الحروف ولا تستبدلها. أخرج التاء المربوطة والهمزة والتنوين بشكل صحيح. "
+        "انطق الكلمات التقنية والأسماء الأجنبية بحروف عربية واضحة وبسرعة معتدلة. إذا طلب منك المستخدم تهجئة كلمة، انطق أسماء الحروف (ألف، باء، تاء...).",
         "انطق الأرقام والتواريخ بالكلمات، ولا تقرأ رموز أو روابط أو علامات ماركداون بصوت عالي.",
         "إذا قاطعك المستخدم اسكت فوراً وسمّع كلامه. لا تذكر تفاصيل تقنية عن نفسك ولا اسم الموديل.",
         "لا تدّعي أنك نفّذت شي ما نفّذته فعلاً. إذا ما بتعرف قول ما بعرف.",
@@ -235,6 +241,46 @@ class GeminiLiveFactory:
                     except Exception:
                         pass
         raise ConnectionError(redact_secrets(f"live_connect_failed: {last_err}"))
+
+
+# ---------------------------------------------------------------- اتصال مباشر (متصفح ← Google) — خطة Gemini
+DIRECT_WS_BASE = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService."
+
+
+def raw_key_allowed() -> bool:
+    """للاستخدام الخاص (3 أشخاص): السماح بإرسال المفتاح الخام للمتصفح إذا فشل التوكن المؤقت. LIVE_ALLOW_RAW_KEY=0 لمنعه."""
+    return os.environ.get("LIVE_ALLOW_RAW_KEY", "1").strip().lower() in ("1", "true", "yes", "on")
+
+
+def create_direct_credentials(api_key: str, client: Any = None) -> Dict[str, Any]:
+    """يرجّع بيانات اتصال المتصفح المباشر: توكن مؤقت (مفضّل) أو المفتاح الخام (إذا مسموح). ما بيرمي إلا إذا ما في أي خيار."""
+    err = ""
+    try:
+        if client is None:
+            from google import genai  # type: ignore
+            client = genai.Client(api_key=api_key, http_options={"api_version": "v1alpha"})
+        import datetime as _dt
+        now = _dt.datetime.now(tz=_dt.timezone.utc)
+        tok = client.auth_tokens.create(config={
+            "uses": 1,
+            "expire_time": now + _dt.timedelta(minutes=30),
+            "new_session_expire_time": now + _dt.timedelta(minutes=2),
+        })
+        name = str(getattr(tok, "name", "") or "")
+        if name:
+            return {"ephemeral": True, "auth_param": "access_token", "token": name,
+                    "endpoint": DIRECT_WS_BASE + "BidiGenerateContentConstrained"}
+    except Exception as e:
+        err = redact_secrets(f"{type(e).__name__}: {e}")[:160]
+    if raw_key_allowed() and api_key:
+        return {"ephemeral": False, "auth_param": "key", "token": api_key,
+                "endpoint": DIRECT_WS_BASE + "BidiGenerateContent", "ephemeral_error": err}
+    raise PermissionError("ما قدرت أجهّز توكن مؤقت، والمفتاح الخام ممنوع (LIVE_ALLOW_RAW_KEY=0). " + err)
+
+
+def build_direct_session_config(system_instruction: str, voice: str, models: List[str]) -> Dict[str, Any]:
+    """كل شي بدو المتصفح ليبني رسالة setup بنفسه (مع أكتر من صياغة للتوافق)."""
+    return {"system_instruction": system_instruction, "voice": voice, "models": list(models)[:4]}
 
 
 # ---------------------------------------------------------------- سجل الجلسات (حماية الذاكرة)

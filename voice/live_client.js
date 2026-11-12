@@ -32,6 +32,44 @@
   }
   function rmsOf(f32){var s=0;for(var i=0;i<f32.length;i++)s+=f32[i]*f32[i];return f32.length?Math.sqrt(s/f32.length):0;}
 
+  function b64FromBuffer(ab){
+    var u=new Uint8Array(ab),s='';
+    for(var i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
+    return btoa(s);
+  }
+  function b64ToBuffer(b64){
+    var bin=atob(b64),u=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    return u.buffer;
+  }
+  /* رسالة setup بأكتر من صياغة (الأسماء بتتغير بين نسخ الـ API): نجرّب بالترتيب لحد ما setupComplete توصل */
+  function buildSetupVariants(model,voice,si){
+    var m=model.indexOf('models/')===0?model:'models/'+model;
+    var sys={parts:[{text:si}]};
+    var speech={voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}};
+    return [
+      {setup:{model:m,generationConfig:{responseModalities:['AUDIO'],speechConfig:speech},systemInstruction:sys,inputAudioTranscription:{},outputAudioTranscription:{}}},
+      {setup:{model:m,generationConfig:{responseModalities:['AUDIO']},systemInstruction:sys}},
+      {setup:{model:m,responseModalities:['AUDIO'],speechConfig:speech,systemInstruction:sys,inputAudioTranscription:{},outputAudioTranscription:{}}}
+    ];
+  }
+  /* رسالة Google الخام → أحداث بسيطة */
+  function parseServerMessage(o){
+    var ev=[];if(!o||typeof o!=='object')return ev;
+    if(o.setupComplete!==undefined)ev.push({k:'ready'});
+    var sc=o.serverContent;
+    if(sc){
+      var parts=(sc.modelTurn&&sc.modelTurn.parts)||[];
+      for(var i=0;i<parts.length;i++){var d=parts[i].inlineData&&parts[i].inlineData.data;if(d)ev.push({k:'audio',b64:d});}
+      if(sc.inputTranscription&&sc.inputTranscription.text)ev.push({k:'user_text',text:sc.inputTranscription.text});
+      if(sc.outputTranscription&&sc.outputTranscription.text)ev.push({k:'bot_text',text:sc.outputTranscription.text});
+      if(sc.interrupted)ev.push({k:'interrupted'});
+      if(sc.turnComplete)ev.push({k:'turn_complete'});
+    }
+    if(o.goAway!==undefined)ev.push({k:'go_away'});
+    return ev;
+  }
+
   var WORKLET_SRC=function(){
     return "var makeDown="+makeDown.toString()+";"+
     "class P extends AudioWorkletProcessor{constructor(){super();this.d=makeDown(sampleRate,16000,640);}"+
@@ -52,7 +90,7 @@
     o=o||{};
     var cb=function(n,a,b){try{o[n]&&o[n](a,b);}catch(e){}};
     var AC=root.AudioContext||root.webkitAudioContext;
-    var st={o:o,cb:cb,stopped:false,muted:false,ws:null,ctx:null,stream:null,node:null,src:null,analyser:null,
+    var st={o:o,cb:cb,mode:(o.mode==='direct'?'direct':'proxy'),ready:false,q:Promise.resolve(),userBuf:'',botBuf:'',dReconnects:0,stopped:false,muted:false,ws:null,ctx:null,stream:null,node:null,src:null,analyser:null,
       nextT:0,active:[],dropAudio:false,speaking:false,retry:0,vad:null,vadTimer:null,pingTimer:null,vis:null,micBuf:null};
     S=st;
     try{
@@ -63,7 +101,11 @@
     st.src=st.ctx.createMediaStreamSource(st.stream);
     st.analyser=st.ctx.createAnalyser();st.analyser.fftSize=1024;st.micBuf=new Float32Array(1024);
     st.src.connect(st.analyser);
-    var sendPcm=function(ab){if(st.ws&&st.ws.readyState===1&&!st.muted)st.ws.send(ab);};
+    var sendPcm=function(ab){
+      if(!st.ws||st.ws.readyState!==1||st.muted)return;
+      if(st.mode==='direct'){if(st.ready)st.ws.send(JSON.stringify({realtimeInput:{audio:{data:b64FromBuffer(ab),mimeType:'audio/pcm;rate=16000'}}}));}
+      else st.ws.send(ab);
+    };
     try{
       if(!st.ctx.audioWorklet)throw new Error('noworklet');
       var url=URL.createObjectURL(new Blob([WORKLET_SRC()],{type:'application/javascript'}));
@@ -90,13 +132,13 @@
         if(st.vad.step(rmsOf(st.micBuf),30)){st.vad=null;localInterrupt();}
       },30);
     }
-    st.pingTimer=setInterval(function(){if(st.ws&&st.ws.readyState===1&&st.muted)st.ws.send(JSON.stringify({type:'ping'}));},20000);
+    st.pingTimer=setInterval(function(){if(st.mode!=='direct'&&st.ws&&st.ws.readyState===1&&st.muted)st.ws.send(JSON.stringify({type:'ping'}));},20000);
     st.vis=function(){
       if(!document.hidden&&st.ctx&&st.ctx.state==='suspended')st.ctx.resume().catch(function(){});
       if(!document.hidden&&st.stream&&st.stream.getAudioTracks().some(function(t){return t.readyState==='ended';}))cb('onError','mic_lost','الميكروفون انقطع (الصفحة راحت بالخلفية). اضغط إنهاء وابدأ من جديد.');
     };
     document.addEventListener('visibilitychange',st.vis);
-    connectWs(st);
+    if(st.mode==='direct')connectDirect(st,false);else connectWs(st);
     return true;
   }
 
@@ -132,6 +174,71 @@
     ws.onerror=function(){};
   }
 
+  /* ---------- اتصال مباشر متصفح ← Google (خطة Gemini) ---------- */
+  async function decodeMsg(data){
+    if(typeof data==='string')return data;
+    if(typeof Blob!=='undefined'&&data instanceof Blob)return await data.text();
+    if(data&&data.byteLength!==undefined)return new TextDecoder().decode(data);
+    return '';
+  }
+  async function connectDirect(st,isReconnect){
+    if(st.stopped)return;
+    st.cb('onState',isReconnect?'reconnecting':'connecting');
+    var cfg;
+    try{cfg=await st.o.getDirectConfig();}catch(e){st.cb('onError','token_failed',String(e&&e.message||e));return;}
+    if(st.stopped)return;
+    if(!cfg||!cfg.endpoint||!cfg.token){st.cb('onError','token_failed','ما وصل توكن الاتصال');return;}
+    var url=cfg.endpoint+'?'+(cfg.auth_param||'key')+'='+encodeURIComponent(cfg.token);
+    var attempts=[];
+    (cfg.models&&cfg.models.length?cfg.models:['gemini-3.1-flash-live-preview']).slice(0,3).forEach(function(m){
+      buildSetupVariants(m,cfg.voice||'Charon',cfg.system_instruction||'').forEach(function(v,i){attempts.push({m:m,v:v,i:i});});
+    });
+    attempts=attempts.slice(0,5);
+    var idx=0,lastErr='';
+    function tryNext(){
+      if(st.stopped)return;
+      if(idx>=attempts.length){st.cb('onError','connect_failed',lastErr||'تعذّر الاتصال بـ Gemini Live');return;}
+      var at=attempts[idx++],ws=new WebSocket(url),done=false,timer=null;
+      st.ws=ws;st.ready=false;
+      var fail=function(why){if(done)return;done=true;clearTimeout(timer);lastErr=why||lastErr;try{ws.onclose=null;ws.close();}catch(e){}tryNext();};
+      ws.onopen=function(){ws.send(JSON.stringify(at.v));timer=setTimeout(function(){fail('timeout setup');},8000);};
+      ws.onerror=function(){};
+      ws.onclose=function(ev){
+        if(!done){fail('close '+(ev&&ev.code)+' '+String(ev&&ev.reason||'').slice(0,120));return;}
+      };
+      ws.onmessage=function(ev){
+        st.q=st.q.then(function(){return decodeMsg(ev.data);}).then(function(txt){
+          if(!txt)return;var o;try{o=JSON.parse(txt);}catch(e){return;}
+          var evs=parseServerMessage(o);
+          for(var i=0;i<evs.length;i++){
+            var e=evs[i];
+            if(e.k==='ready'&&!done){
+              done=true;clearTimeout(timer);st.ready=true;st.retry=0;
+              ws.onclose=function(){onDirectClosed(st);};
+              st.cb('onReady',{model:at.m,variant:at.i});st.cb('onState','listening');
+            }else if(e.k==='audio'){playChunk(st,b64ToBuffer(e.b64));}
+            else if(e.k==='user_text'){st.userBuf+=e.text;st.cb('onUserText',e.text);}
+            else if(e.k==='bot_text'){st.botBuf+=e.text;st.cb('onBotText',e.text);}
+            else if(e.k==='interrupted'){stopPlayback(st);st.dropAudio=false;st.cb('onState','listening');}
+            else if(e.k==='turn_complete'){
+              st.dropAudio=false;
+              var u=st.userBuf.trim(),b=st.botBuf.trim();st.userBuf='';st.botBuf='';
+              if(u||b)st.cb('onTurn',u,b);
+              st.cb('onTurnComplete');
+            }else if(e.k==='go_away'){st.goAway=true;}
+          }
+        }).catch(function(){});
+      };
+    }
+    tryNext();
+  }
+  function onDirectClosed(st){
+    if(st.stopped)return;
+    st.ready=false;
+    if(st.dReconnects<4){st.dReconnects++;setTimeout(function(){connectDirect(st,true);},600*st.dReconnects);}
+    else st.cb('onError','ws_lost','انقطع الاتصال بـ Gemini');
+  }
+
   function playChunk(st,ab){
     if(st.dropAudio||st.stopped||!st.ctx)return;
     var f=pcm16ToFloat32(ab);if(!f.length)return;
@@ -160,12 +267,19 @@
   function setMuted(v){
     if(!S)return;S.muted=!!v;
     S.stream.getAudioTracks().forEach(function(t){t.enabled=!v;});
-    if(v)localInterrupt();
+    if(v){
+      localInterrupt();
+      if(S.mode==='direct'&&S.ws&&S.ws.readyState===1)S.ws.send(JSON.stringify({realtimeInput:{audioStreamEnd:true}}));
+    }
   }
-  function sendText(t){if(S&&S.ws&&S.ws.readyState===1)S.ws.send(JSON.stringify({type:'text',text:String(t||'')}));}
+  function sendText(t){
+    if(!S||!S.ws||S.ws.readyState!==1)return;
+    if(S.mode==='direct')S.ws.send(JSON.stringify({realtimeInput:{text:String(t||'')}}));
+    else S.ws.send(JSON.stringify({type:'text',text:String(t||'')}));
+  }
   function stop(){
     var st=S;if(!st)return;S=null;st.stopped=true;
-    try{if(st.ws&&st.ws.readyState===1)st.ws.send(JSON.stringify({type:'end'}));}catch(e){}
+    try{if(st.mode!=='direct'&&st.ws&&st.ws.readyState===1)st.ws.send(JSON.stringify({type:'end'}));}catch(e){}
     try{st.ws&&st.ws.close();}catch(e){}
     stopPlayback(st);
     if(st.vadTimer)clearInterval(st.vadTimer);if(st.pingTimer)clearInterval(st.pingTimer);
@@ -177,7 +291,7 @@
   }
 
   var api={supported:supported,start:start,stop:stop,setMuted:setMuted,interrupt:localInterrupt,sendText:sendText,
-    isActive:function(){return !!S;},_makeDown:makeDown,_pcm16ToFloat32:pcm16ToFloat32};
+    isActive:function(){return !!S;},_makeDown:makeDown,_pcm16ToFloat32:pcm16ToFloat32,_b64FromBuffer:b64FromBuffer,_b64ToBuffer:b64ToBuffer,_buildSetupVariants:buildSetupVariants,_parseServerMessage:parseServerMessage};
   root.RynLive=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

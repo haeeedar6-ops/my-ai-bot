@@ -33,7 +33,9 @@
   var api={
     createVad:createVad, CFG:CFG, PROFILES:PROFILES,
     supported:function(){return !!(root.navigator&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&(root.AudioContext||root.webkitAudioContext));},
-    enabled:function(){try{var v=localStorage.getItem('ryn_duplex');if(v==='off')return false;return true;}catch(e){return true;}},
+    enabled:function(){try{var v=localStorage.getItem('ryn_duplex');if(v==='off')return false;if(v==='on')return true;
+      /* على أندرويد كروم: ميكروفون ثاني مع SpeechRecognition بيعمل تعارض؛ لهيك مطفي افتراضياً هناك */
+      return !/Android/i.test((root.navigator&&navigator.userAgent)||'');}catch(e){return true;}},
     setProfile:function(p){if(PROFILES[p]){profile=p;try{localStorage.setItem('ryn_duplex_profile',p);}catch(e){}}},
     getProfile:function(){try{return localStorage.getItem('ryn_duplex_profile')||profile;}catch(e){return profile;}},
     isOpen:function(){return !!stream;},
