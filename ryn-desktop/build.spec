@@ -1,30 +1,28 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec لعميل ويندوز RYN (بيشتغل مع PyInstaller 5 و 6):
-#   cd ryn-desktop && pyinstaller --noconfirm build.spec
-# نقطة البناء هي run_desktop.py (مو app/main.py لأنو بيستعمل imports نسبية).
+# PyInstaller specification for RYN Desktop Agent (Section 8 & 14)
+block_cipher = None
 
 a = Analysis(
-    ['run_desktop.py'],
+    ['app/main.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[
-        'mss', 'PIL', 'pyautogui', 'keyring', 'keyring.backends.Windows',
-        'pynput.keyboard._win32', 'pynput.mouse._win32',
-    ],
+    hiddenimports=['mss', 'PIL', 'pyautogui', 'keyring'],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
+    cipher=block_cipher,
     noarchive=False,
 )
-pyz = PYZ(a.pure)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
+    a.zipfiles,
     a.datas,
     [],
-    name='RYN-Agent-PC',
+    name='RYN-Desktop-Agent',
     debug=False,
     strip=False,
     upx=True,

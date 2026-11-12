@@ -98,3 +98,60 @@ class TestLiveClientBehaviour(unittest.TestCase):
         self.assertTrue(self.r["sentEnd"])
         self.assertTrue(self.r["micReleased"])
         self.assertFalse(self.r["active"])
+
+
+DIRECT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_direct_harness.js")
+
+
+@unittest.skipUnless(shutil.which("node"), "node غير متوفر")
+class TestLiveClientDirect(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        out = subprocess.run(["node", DIRECT, JS], capture_output=True, text=True, timeout=30)
+        assert out.returncode == 0, out.stderr
+        cls.r = json.loads(out.stdout)
+        assert "crash" not in cls.r, cls.r
+
+    def test_falls_through_setup_variants(self):
+        r = self.r
+        self.assertTrue(r["ok"])
+        self.assertGreaterEqual(r["nSockets"], 2)
+        self.assertTrue(r["variant1HasGenCfg"])
+        self.assertTrue(r["variant2Minimal"])
+        self.assertEqual(r["model"], "models/m-one")
+        self.assertEqual(r["si"], "SI")
+
+    def test_url_uses_right_auth_param(self):
+        self.assertIn("?access_token=T0KEN", self.r["urlEphemeral"])
+        self.assertIn("?key=T0KEN", self.r["urlRaw"])
+
+    def test_audio_sent_as_realtime_input(self):
+        self.assertTrue(self.r["audioSent"])
+
+    def test_blob_and_text_messages_handled(self):
+        self.assertTrue(self.r["played"])
+        self.assertTrue(self.r["turnDelivered"])
+        self.assertTrue(self.r["stoppedOnInterrupt"])
+
+    def test_mute(self):
+        self.assertTrue(self.r["noAudioWhenMuted"])
+        self.assertTrue(self.r["audioStreamEnd"])
+
+    def test_reconnect_fetches_fresh_token(self):
+        self.assertTrue(self.r["reconnected"])
+
+    def test_failure_paths(self):
+        self.assertTrue(self.r["failEvent"])
+        self.assertLessEqual(self.r["failAttempts"], 5)
+        self.assertTrue(self.r["tokenFailed"])
+        self.assertTrue(self.r["micReleased"])
+
+    def test_pure_helpers(self):
+        r = node("""const ab=new Int16Array([1,-2,300]).buffer;const b=L._b64FromBuffer(ab);
+        const back=new Int16Array(L._b64ToBuffer(b));
+        const ev=L._parseServerMessage({setupComplete:{},serverContent:{interrupted:true,turnComplete:true,modelTurn:{parts:[{inlineData:{data:'AAA='}}]}},goAway:{}});
+        console.log(JSON.stringify({back:Array.from(back),kinds:ev.map(e=>e.k),variants:L._buildSetupVariants('x','Charon','S').length,prefixed:L._buildSetupVariants('x','C','S')[0].setup.model}))""")
+        self.assertEqual(r["back"], [1, -2, 300])
+        self.assertEqual(r["kinds"], ["ready", "audio", "interrupted", "turn_complete", "go_away"])
+        self.assertEqual(r["variants"], 3)
+        self.assertEqual(r["prefixed"], "models/x")

@@ -369,3 +369,39 @@ class TestServeWs(unittest.TestCase):
         self.assertTrue(sess.closed)
         self.assertEqual(res["end"], "client_closed")
         self.assertEqual(reg.count(), 0)
+
+
+class TestDirectCredentials(unittest.TestCase):
+    def test_ephemeral_preferred(self):
+        client = mock.Mock()
+        client.auth_tokens.create.return_value = types.SimpleNamespace(name="auth_tokens/abc123")
+        c = lb.create_direct_credentials("KEY", client=client)
+        self.assertTrue(c["ephemeral"])
+        self.assertEqual(c["token"], "auth_tokens/abc123")
+        self.assertEqual(c["auth_param"], "access_token")
+        self.assertTrue(c["endpoint"].endswith("BidiGenerateContentConstrained"))
+        self.assertNotIn("KEY", json.dumps(c))
+
+    def test_falls_back_to_raw_key_when_allowed(self):
+        client = mock.Mock()
+        client.auth_tokens.create.side_effect = RuntimeError("not supported AIza" + "q" * 35)
+        with mock.patch.dict(os.environ, {"LIVE_ALLOW_RAW_KEY": "1"}):
+            c = lb.create_direct_credentials("KEY", client=client)
+        self.assertFalse(c["ephemeral"])
+        self.assertEqual(c["auth_param"], "key")
+        self.assertTrue(c["endpoint"].endswith("BidiGenerateContent"))
+        self.assertNotIn("q" * 35, json.dumps(c))  # سبب الفشل بدون أسرار
+
+    def test_raw_key_blocked_when_disabled(self):
+        client = mock.Mock()
+        client.auth_tokens.create.side_effect = RuntimeError("nope")
+        with mock.patch.dict(os.environ, {"LIVE_ALLOW_RAW_KEY": "0"}):
+            with self.assertRaises(PermissionError):
+                lb.create_direct_credentials("KEY", client=client)
+
+    def test_instruction_has_identity_and_pronunciation_and_memory(self):
+        si = lb.build_system_instruction("syrian", "اسمه حيدر", [("user", "هلا"), ("bot", "أهلين")])
+        self.assertIn("haydar_xe", si)
+        self.assertIn("بمخرجه الصحيح", si)
+        self.assertIn("اسمه حيدر", si)
+        self.assertIn("المستخدم: هلا", si)

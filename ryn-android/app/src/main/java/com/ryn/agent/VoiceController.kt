@@ -421,7 +421,6 @@ class VoiceController(private val context: Context) {
         val detectedLang = detectLanguageFromText(cleanInput, asrLanguage)
 
         thread {
-            var served = false  // true = صوت السيرفر انبعت للتشغيل، فما منحتاج صوت الطوارئ فوقو
             try {
                 val baseUrl = pairing.getServerUrl().trim().trimEnd('/')
                 val tok = pairing.getDeviceToken()
@@ -482,7 +481,6 @@ class VoiceController(private val context: Context) {
                         isPlaying = true
                         isPaused = false
                         notifyServerPlaybackState("playback_started")
-                        served = true
                         playAudioChunksSequentially(chunkPayloads, 0, token, replyLang, cleanInput, onComplete, onFallbackUsed)
                         return@use
                     }
@@ -491,7 +489,7 @@ class VoiceController(private val context: Context) {
                 // ننتقل لمسار الطوارئ المحلي أدناه
             }
 
-            if (!served && token == playbackToken.get() && !stopRequested.get()) {
+            if (token == playbackToken.get() && !stopRequested.get()) {
                 speakWithAndroidTtsFallback(cleanInput, detectedLang, targetSpeed, token, onComplete, onFallbackUsed)
             }
         }

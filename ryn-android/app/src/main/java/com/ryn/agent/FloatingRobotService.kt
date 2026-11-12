@@ -142,9 +142,9 @@ class FloatingRobotService : Service() {
                 val b = bubble
                 if (b != null) {
                     if (AgentRuntime.taskRunning) {
-                        if (b.text.toString() != "⏹") { b.text = "⏹"; b.background = circle("#FF5D6C") }
+                        if (b.text != "⏹") { b.text = "⏹"; b.background = circle("#FF5D6C") }
                         if (panel != null) hidePanel()
-                    } else if (b.text.toString() != "🤖") {
+                    } else if (b.text != "🤖") {
                         b.text = "🤖"; b.background = circle("#8B5CF6")
                     }
                     main.postDelayed(this, 400)

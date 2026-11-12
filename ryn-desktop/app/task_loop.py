@@ -45,8 +45,7 @@ class DesktopTaskRunner:
                 self.log_cb(f"⚠️ توقف آمن بسبب انقطاع الشبكة (لا يُعاد تشغيل أوامر قديمة): {net_e}")
                 return {"status": "PAUSED_OFFLINE", "error": str(net_e), "sequence": sequence}
 
-            # السيرفر بيرجّع "idle" بحروف صغيرة وباقي الحالات بحروف كبيرة، فنوحّدها قبل المقارنة
-            st = str(step_resp.get("status") or "").strip().upper()
+            st = step_resp.get("status", "")
             if st == "WAITING_FOR_APPROVAL":
                 self.log_cb("⏳ بانتظار موافقة المستخدم على العملية من لوحة التحكم...")
                 time.sleep(1.5)
@@ -54,11 +53,6 @@ class DesktopTaskRunner:
             if st in ("COMPLETED", "CANCELLED", "FAILED", "IDLE"):
                 self.log_cb(f"✅ انتهت المهمة بحالة: {st}")
                 return {"status": st, "sequence": sequence}
-            if not step_resp.get("command_id"):
-                # مثلاً NEEDS_USER_INPUT: السيرفر بيسأل المستخدم وما في أمر لننفذو
-                q = step_resp.get("question") or step_resp.get("message") or ""
-                self.log_cb(f"❓ المهمة تحتاج تدخلك ({st or 'NEEDS_USER_INPUT'}): {q}")
-                return {"status": st or "NEEDS_USER_INPUT", "sequence": sequence}
 
             try:
                 img_w = int(shot_before.get("image_width") or shot_before.get("screen_width") or 1920)

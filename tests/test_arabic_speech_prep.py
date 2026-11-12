@@ -61,3 +61,33 @@ class TestPrep(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+from tts_engine import arabize_latin_words
+
+
+class TestLatinToArabic(unittest.TestCase):
+    def test_known_terms(self):
+        out = prep("ارفع الملف على GitHub بواسطة Python")
+        self.assertIn("جيت هب", out)
+        self.assertIn("بايثون", out)
+        self.assertNotRegex(out, r"[A-Za-z]")
+
+    def test_acronyms(self):
+        self.assertIn("إيه بي آي", prep("استخدم API هون"))
+        self.assertIn("إن بي سي", prep("شوف NPC بالمرحلة"))  # اختصار غير معروف → تهجئة
+
+    def test_digits_next_to_latin(self):
+        out = prep("جرب GPT 4 اليوم")
+        self.assertIn("جي بي تي", out)
+        self.assertIn("أربعة", out)
+
+    def test_unknown_lowercase_word_untouched(self):
+        self.assertIn("zxqvb", prep("كلمة zxqvb غريبة"))
+
+    def test_pure_english_untouched(self):
+        self.assertEqual(prep("Open the GitHub app"), "Open the GitHub app")
+
+    def test_pipeline_and_helper(self):
+        self.assertEqual(arabize_latin_words("API"), "إيه بي آي")
+        self.assertIn("جيميناي", clean_for_speech("**Gemini** هو مساعد ذكي"))
