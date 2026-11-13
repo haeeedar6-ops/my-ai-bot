@@ -9255,6 +9255,56 @@ def register(app, b):
             return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
         return jsonify(ok=True, audit=AIStack.get_github_engineering_service().list_audit_log(uid()))
 
+    @app.post("/api/v2/github/control/preview")
+    def api_v2_github_control_preview():
+        bad = guard()
+        if bad:
+            return bad
+        from github_intent_control import parse_task_spec, build_and_validate_manifest, run_preflight_gate, CanonicalRepositoryIdentity
+        data = request.get_json(silent=True) or {}
+        req_text = str(data.get("request") or "")
+        staged = data.get("files") or {}
+        default_owner = str(data.get("owner") or "")
+        if not default_owner and AIStack is not None:
+            cur_repo = AIStack.get_github_manager().get_config(uid()).get("repo", "")
+            if "/" in cur_repo:
+                default_owner = cur_repo.split("/", 1)[0]
+        spec = parse_task_spec(req_text, default_owner=default_owner, known_repositories=data.get("known_repositories"))
+        manifest = build_and_validate_manifest(
+            run_id="preview",
+            expected_paths=spec.files_expected or sorted(staged.keys()),
+            staged_files=staged,
+            target_repo_name=spec.repository_name,
+        )
+        ident = CanonicalRepositoryIdentity(
+            owner=spec.repository_owner,
+            repository_name=spec.repository_name,
+            repository_id=int(data.get("repository_id") or 1),
+            canonical_url=f"https://github.com/{spec.repository_owner}/{spec.repository_name}",
+            visibility=spec.visibility,
+            default_branch=spec.branch or "main",
+            task_run_id="preview",
+        )
+        gate = run_preflight_gate(
+            spec=spec,
+            identity=ident,
+            manifest=manifest,
+            repo_exists_on_github=bool(data.get("repo_exists", False)),
+            token_permissions_ok=True,
+            target_branch=spec.branch or "main",
+        )
+        return jsonify(ok=True, task_spec=spec.to_dict(), manifest=manifest.to_dict(), preflight=gate)
+
+    @app.get("/api/v2/github/control/audit")
+    def api_v2_github_control_audit():
+        bad = guard()
+        if bad:
+            return bad
+        cp = AIStack.get_github_control_plane() if (AIStack is not None and hasattr(AIStack, "get_github_control_plane")) else None
+        if cp is None:
+            return jsonify(ok=True, audit=[])
+        return jsonify(ok=True, audit=cp.list_audit_logs())
+
     @app.get("/api/v2/github/traces")
     def api_v2_github_traces():
         bad = guard()

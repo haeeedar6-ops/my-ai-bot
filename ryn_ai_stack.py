@@ -832,6 +832,117 @@ class LangGraphStateEngine:
 # - أي حساب آخر في WEB_USERS معزول تماماً: لا يرى مفتاح البيئة ولا مستودع المالك،
 #   وإذا أراد الوصول لملفاته هو على GitHub يجب أن يضع التوكن والمستودع الخاصين به!
 # ==============================================================================
+try:
+    from github_intent_control import (
+        GitHubControlPlane,
+        parse_task_spec,
+        build_and_validate_manifest,
+        run_preflight_gate,
+    )
+except Exception:
+    GitHubControlPlane = None
+    parse_task_spec = None
+    build_and_validate_manifest = None
+    run_preflight_gate = None
+
+
+class RestGitHubControlClient:
+    """GitHub REST API adapter implementing GitHubControlPlane client protocol."""
+
+    def __init__(self, token: str):
+        self.token = token
+        self.base = "https://api.github.com"
+
+    def _headers(self) -> Dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+    def get_repo(self, owner: str, name: str) -> Optional[Dict[str, Any]]:
+        r = requests.get(f"{self.base}/repos/{owner}/{name}", headers=self._headers(), timeout=12)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()
+
+    def create_repo(self, owner: str, name: str, visibility: str = "private") -> Dict[str, Any]:
+        payload = {"name": name, "private": (visibility != "public"), "auto_init": True}
+        r = requests.post(f"{self.base}/user/repos", headers=self._headers(), json=payload, timeout=15)
+        if r.status_code in (403, 404):
+            r = requests.post(f"{self.base}/orgs/{owner}/repos", headers=self._headers(), json=payload, timeout=15)
+        r.raise_for_status()
+        return r.json()
+
+    def ensure_branch(self, owner: str, name: str, branch: str, base_branch: str = "main") -> Dict[str, Any]:
+        r_ref = requests.get(f"{self.base}/repos/{owner}/{name}/git/ref/heads/{branch}", headers=self._headers(), timeout=12)
+        if r_ref.status_code == 200:
+            return r_ref.json()
+        r_base = requests.get(f"{self.base}/repos/{owner}/{name}/git/ref/heads/{base_branch}", headers=self._headers(), timeout=12)
+        r_base.raise_for_status()
+        base_sha = r_base.json()["object"]["sha"]
+        r_new = requests.post(
+            f"{self.base}/repos/{owner}/{name}/git/refs",
+            headers=self._headers(),
+            json={"ref": f"refs/heads/{branch}", "sha": base_sha},
+            timeout=12,
+        )
+        r_new.raise_for_status()
+        return r_new.json()
+
+    def upload_file(self, owner: str, name: str, branch: str, path: str, content: str, message: str) -> Dict[str, Any]:
+        import base64
+        existing_sha = None
+        r_get = requests.get(
+            f"{self.base}/repos/{owner}/{name}/contents/{path}",
+            headers=self._headers(),
+            params={"ref": branch},
+            timeout=12,
+        )
+        if r_get.status_code == 200:
+            existing_sha = r_get.json().get("sha")
+        payload: Dict[str, Any] = {
+            "message": message,
+            "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
+            "branch": branch,
+        }
+        if existing_sha:
+            payload["sha"] = existing_sha
+        r_put = requests.put(
+            f"{self.base}/repos/{owner}/{name}/contents/{path}",
+            headers=self._headers(),
+            json=payload,
+            timeout=15,
+        )
+        if r_put.status_code not in (200, 201):
+            return {"ok": False, "status_code": r_put.status_code, "error": r_put.text[:200]}
+        data = r_put.json()
+        return {"ok": True, "commit_sha": (data.get("commit") or {}).get("sha", "")}
+
+    def read_file(self, owner: str, name: str, branch: str, path: str) -> Optional[str]:
+        import base64
+        r = requests.get(
+            f"{self.base}/repos/{owner}/{name}/contents/{path}",
+            headers=self._headers(),
+            params={"ref": branch, "_ts": int(time.time() * 1000)},
+            timeout=12,
+        )
+        if r.status_code != 200:
+            return None
+        b64 = (r.json().get("content") or "").replace("\n", "")
+        return base64.b64decode(b64).decode("utf-8", errors="replace")
+
+    def verify_commit(self, owner: str, name: str, branch: str, commit_sha: str) -> bool:
+        if not commit_sha:
+            return False
+        r = requests.get(f"{self.base}/repos/{owner}/{name}/commits/{commit_sha}", headers=self._headers(), timeout=12)
+        return r.status_code == 200
+
+    def check_permissions(self, owner: str, name: str) -> bool:
+        return bool(self.token)
+
+
 class GitHubFileManager:
     """
     يتيح مناقشة وقراءة وتعديل ورفع وحذف ملفات GitHub مباشرة من داخل المحادثة مع Ryn:
@@ -2058,6 +2169,17 @@ class GitHubFileManager:
         cfg = self.get_config(user_id)
         if not cfg.get("repo") or not cfg.get("has_token"):
             return bot_answer, False
+
+        if parse_task_spec is not None and user_text:
+            spec_check = parse_task_spec(user_text, default_owner=cfg.get("repo", "").split("/")[0] if "/" in cfg.get("repo", "") else "")
+            if spec_check.repository_must_be_new or (
+                spec_check.repository_name != "unresolved"
+                and cfg.get("repo", "")
+                and spec_check.repository_name.lower() != cfg.get("repo", "").split("/")[-1].lower()
+            ):
+                tag_re = re.compile(r"<github_(?:patch|create)\b.*?</github_(?:patch|create)>|<github_delete\b[^>]*/>", re.DOTALL | re.I)
+                cleaned = tag_re.sub("", bot_answer).strip()
+                return cleaned + f"\n\n🛡️ **حماية نطاق المستودع (Preflight Gate):** طلبك يستهدف مستودعاً مختلفاً أو جديداً (`{spec_check.repository_name}`)، لذا تم منع أي تعديل على المستودع المتصل حالياً (`{cfg.get('repo')}`).", False
 
         if not cfg.get("edit_enabled", True):
             # تعديل GitHub مطفّي: نشيل بلوكات التعديل ونعلم المستخدم، بدون أي كتابة
@@ -3410,3 +3532,14 @@ def get_voice_service() -> Optional[Any]:
             tts_provider_fn=_tts_fn,
         )
     return _GLOBAL_VOICE_SERVICE
+
+
+_GITHUB_CONTROL_PLANE_SINGLETON = None
+
+
+def get_github_control_plane():
+    global _GITHUB_CONTROL_PLANE_SINGLETON
+    if _GITHUB_CONTROL_PLANE_SINGLETON is None and GitHubControlPlane is not None:
+        audit_path = os.path.join(_RYN_DATA_DIR, "github_control_audit.jsonl")
+        _GITHUB_CONTROL_PLANE_SINGLETON = GitHubControlPlane(audit_log_path=audit_path)
+    return _GITHUB_CONTROL_PLANE_SINGLETON
