@@ -116,9 +116,9 @@ def _extract_repo_owner_and_name(text: str, default_owner: str = "") -> Tuple[st
             if cand_owner.lower() not in {"app", "src", "tests", "audit", "memory", "code_intelligence", "ryn"}:
                 return cand_owner, cand_name
 
-    # 3. Named repository: "named pot-ai", "called pot-ai", "repo pot-ai", "باسم pot-ai"
+    # 3. Named repository: "named pot-ai", "called pot-ai", "سميه poi-ai", "وسميه poi-ai", "باسم pot-ai"
     m_named = re.search(
-        r"(?i)(?:named|called|name\s+is|repo(?:sitory)?(?:\s+named)?|باسم|اسمه)\s+[`'\"]?([A-Za-z0-9][A-Za-z0-9_.-]{1,64})[`'\"]?",
+        r"(?i)(?:named|called|name\s+is|repo(?:sitory)?(?:\s+named)?|وسميه|سميه|سمّيه|اسمه|اسمو|باسم)\s+[`'\"]?([A-Za-z0-9][A-Za-z0-9_.-]{1,64})[`'\"]?",
         text,
     )
     if m_named:
@@ -147,6 +147,7 @@ def parse_task_spec(
     known_repositories: Optional[List[str]] = None,
     memory_repo_hint: str = "",
     has_attachments: bool = False,
+    attached_filenames: Optional[List[str]] = None,
 ) -> TaskSpec:
     """Parse a natural language request into a structured TaskSpec (Section 3)."""
     text = str(user_request or "").strip()
@@ -169,8 +170,11 @@ def parse_task_spec(
     )
     is_create_repo = any(p in low for p in (
         "create a new repo", "create new repo", "new github repo", "new repository",
+        "create a new project", "new github project", "open a new project",
         "open a new repo", "start a new project", "create repo",
-        "انشئ مستودع جديد", "أنشئ مستودع جديد", "سوي مستودع جديد", "مستودع جديد"
+        "انشئ مستودع جديد", "أنشئ مستودع جديد", "سوي مستودع جديد", "مستودع جديد",
+        "افتح مشروع جديد", "افتح مستودع جديد", "افتح ريبو جديد", "سوي مشروع جديد",
+        "انشئ مشروع جديد", "أنشئ مشروع جديد", "مشروع جديد على github", "مشروع جديد على غيتهاب"
     ))
     is_upload = any(p in low for p in ("upload", "push these files", "ارفع الملفات", "رفع ملفات"))
     is_edit = any(p in low for p in ("edit", "patch", "replace", "delete", "rename", "fix", "update", "عدل", "حدث", "احذف"))
@@ -188,6 +192,10 @@ def parse_task_spec(
 
     owner, repo_name = _extract_repo_owner_and_name(text, default_owner=default_owner)
     files_expected = _extract_expected_files(text)
+    if attached_filenames and not files_expected:
+        files_expected = [str(f).strip().lstrip("/") for f in attached_filenames if str(f).strip()]
+    if attached_filenames:
+        has_attachments = True
 
     # Branch detection
     m_branch = re.search(r"(?i)(?:branch|فرع)\s+[`'\"]?([A-Za-z0-9_./-]+)[`'\"]?", text)

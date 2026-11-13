@@ -7148,6 +7148,73 @@ def register(app, b):
                     return
                 # إذا أرفق المستخدم ملف .zip أو ملفات كود وطلب رفعها مباشرة على GitHub
                 ctx_att = b.get_doc(W)
+                # Route explicit GitHub repository creation or controlled file upload via GitHubControlPlane
+                try:
+                    from github_intent_control import parse_task_spec as _gic_parse
+                    _cur_cfg = gh_mgr.get_config(u)
+                    _cur_repo = _cur_cfg.get("repo", "")
+                    _def_owner = _cur_repo.split("/", 1)[0] if "/" in _cur_repo else ""
+                    _att_names = list((ctx_att or {}).get("raw_files", {}).keys())
+                    _spec = _gic_parse(
+                        text,
+                        default_owner=_def_owner,
+                        has_attachments=bool(ctx_att),
+                        attached_filenames=_att_names,
+                    )
+                except Exception:
+                    _spec = None
+                    _cur_cfg = {}
+                    _cur_repo = ""
+
+                if _spec is not None and _spec.operation == "CREATE_REPOSITORY" and gh_mgr._GH_MENTION_RE.search(text):
+                    _tok = gh_mgr._resolve_token(u) if hasattr(gh_mgr, "_resolve_token") else ""
+                    if not _tok:
+                        _tok = os.environ.get("GITHUB_TOKEN", "").strip()
+                    if not _tok:
+                        finish(job_id, {"status": "done", "text": "⚠️ لإنشاء مستودع جديد على GitHub، يرجى إضافة GitHub Token في إعدادات GitHub أولاً.", "note": "GitHub Token Missing"})
+                        return
+                    _staged = dict((ctx_att or {}).get("raw_files", {}))
+                    if not _staged and (ctx_att or {}).get("zip_bytes"):
+                        import io as _io, zipfile as _zf
+                        with _zf.ZipFile(_io.BytesIO(ctx_att["zip_bytes"]), "r") as _z:
+                            for _info in _z.infolist():
+                                if not _info.is_dir():
+                                    _staged[_info.filename.lstrip("/")] = _z.read(_info.filename).decode("utf-8", errors="replace")
+                    if not _staged:
+                        finish(job_id, {"status": "done", "text": f"📌 حددت نية إنشاء مستودع جديد باسم `{_spec.repository_name}`، لكن لم أستلم ملفات لرفعها بعد. أرفق الملفات المطلوبة وسأقوم بإنشائه والتحقق منه.", "note": "Awaiting Files"})
+                        return
+                    from ryn_ai_stack import RestGitHubControlClient, get_github_control_plane
+                    _cp = get_github_control_plane()
+                    set_progress(job_id, f"🐙 جاري تنفيذ بوابة الفحص وإنشاء المستودع الجديد `{_spec.repository_name}`...")
+                    _res = _cp.execute_task(
+                        user_request=text,
+                        staged_files=_staged,
+                        github_client=RestGitHubControlClient(_tok),
+                        default_owner=_def_owner,
+                        connected_old_repo=_cur_repo,
+                    )
+                    if _res.get("status") == "VERIFIED_SUCCESS":
+                        _id_info = _res.get("identity") or {}
+                        _msg_ok = (
+                            f"✅ **تم إنشاء المستودع الجديد ورفع الملفات والتحقق منها بنجاح!**\n"
+                            f"• **المستودع الجديد**: `{_id_info.get('full_name')}` (ID: `{_id_info.get('repository_id')}`)\n"
+                            f"• **الفرع**: `{_res.get('branch')}`\n"
+                            f"• **الملفات المؤكدة بعد إعادة القراءة**: `{', '.join(_res.get('verified_paths', []))}`\n"
+                            f"• **الرابط**: [عرض المستودع على GitHub]({_id_info.get('canonical_url', '')})"
+                        )
+                        finish(job_id, {"status": "done", "text": _msg_ok, "note": "GitHub New Repo Verified 🐙"})
+                        return
+                    elif _res.get("status") == "NAME_COLLISION":
+                        finish(job_id, {"status": "done", "text": f"⚠️ {_res.get('error')} (تم إيقاف العملية دون تعديل أي مستودع).", "note": "Name Collision"})
+                        return
+                    elif _res.get("status") == "NEEDS_CLARIFICATION":
+                        finish(job_id, {"status": "done", "text": "❓ " + " ".join(_res.get("questions", [])), "note": "Clarification Needed"})
+                        return
+                    else:
+                        _err_detail = _res.get("error") or ", ".join((_res.get("preflight") or {}).get("failed_checks", [])) or _res.get("status")
+                        finish(job_id, {"status": "done", "text": f"❌ توقفت العملية في بوابة التحقق (`{_res.get('status')}`): {_err_detail}", "note": "Preflight / Verify Blocked"})
+                        return
+
                 if ctx_att and gh_mgr._PROJECT_UPLOAD_CMD_RE.search(text) and gh_mgr._GH_MENTION_RE.search(text):
                     if ctx_att.get("zip_bytes"):
                         set_progress(job_id, "🐙 جاري فحص ورفع أرشيف المشروع كاملاً إلى GitHub...")

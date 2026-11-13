@@ -2080,6 +2080,11 @@ class GitHubFileManager:
         return pr
 
     def build_chat_github_context(self, user_id: str, text: str, history: Optional[List[Tuple[str, str]]] = None) -> str:
+        # skip old connected repo context on CREATE_REPOSITORY
+        if parse_task_spec is not None and text:
+            _sp = parse_task_spec(text)
+            if _sp.repository_must_be_new:
+                return ""
         """
         يسحب شجرة الملفات والملف المطلوب من مستودع المستخدم المتصل (مستودع المالك لـ WEB_PASSWORD،
         أو المستودع الشخصي لأي مستخدم آخر ربط التوكن الخاص به) ويحقنه في سياق المحادثة.
