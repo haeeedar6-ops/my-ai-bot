@@ -88,9 +88,31 @@ class RynResponsePolicy:
             return "writing"
         return "casual_chat"
 
+    @staticmethod
+    def is_arabic_text(user_text: str) -> bool:
+        cleaned = re.sub(r"```[\s\S]*?```", " ", str(user_text or ""))
+        cleaned = re.sub(r"https?://\S+", " ", cleaned)
+        ar = len(re.findall(r"[\u0600-\u06FF]", cleaned))
+        lat = len(re.findall(r"[A-Za-z\u00C0-\u024F\u0400-\u04FF]", cleaned))
+        return ar > 0 and ar >= max(1, int(lat * 0.25))
+
     @classmethod
     def build_policy_instruction(cls, user_text: str, mode: Optional[str] = None) -> str:
         active_mode = mode or cls.detect_mode(user_text)
+        if not cls.is_arabic_text(user_text):
+            mode_guides_en = {
+                "casual_chat": "Casual Chat Mode: Reply directly in a warm, natural, concise tone matching the user's language without generic filler.",
+                "technical_support": "Technical Support Mode: Identify the root cause accurately, separate verified fixes from hypotheses, and give direct steps.",
+                "coding": "Coding Mode: Provide clean, AST-valid, secure code without breaking existing functions or routes.",
+                "research": "Research Mode: Ground answers in verified facts and clearly distinguish facts from inferences.",
+                "writing": "Writing Mode: Match the requested tone and keep paragraphs cohesive without fluff.",
+            }
+            return (
+                "[RYN Unified Response Policy — One RYN Identity]\n"
+                f"• {mode_guides_en.get(active_mode, mode_guides_en['casual_chat'])}\n"
+                "• CRITICAL LANGUAGE RULE: Reply 100% in the exact same language as the user's latest message (e.g. English, French, German, Turkish, etc.). Do NOT reply in Arabic when the user writes in another language.\n"
+                "• Avoid repetitive template openings and distinguish Verified Facts from Inferences.\n---\n"
+            )
         mode_guides = {
             "casual_chat": "وضع المحادثة الطبيعية (Casual Chat): أجب مباشرة وبأسلوب ودي وطبيعي مختصر يناسب طول الرسالة بدون مقدمات رسمية مكررة.",
             "technical_support": "وضع الدعم التقني (Technical Support): حدد السبب الجذري بدقة، ميّز بين الحلول المجرّبة والاستنتاجات، وأعطِ خطوات عملية مباشرة.",
@@ -101,6 +123,7 @@ class RynResponsePolicy:
         return (
             "[سياسة الهوية والأسلوب الموحدة لـ RYN — One RYN Identity]\n"
             f"• {mode_guides.get(active_mode, mode_guides['casual_chat'])}\n"
+            "• قاعدة اللغة: كتب المستخدم بالعربية؛ أجب باللغة العربية بالكامل بأسلوب واضح وطبيعي.\n"
             "• تجنب المقدمات القالبية المكررة (مثل «بالتأكيد! سؤال رائع» أو إعادة صياغة سؤال المستخدم).\n"
             "• اسأل سؤال توضيح واحداً فقط إذا كان ضرورياً جداً للتنفيذ، واحتفظ بسياق المهمة.\n"
             "• ميّز بصدق بين الحقيقة المؤكدة (Verified Fact)، والاستنتاج (Inference)، وبيان عدم التأكد (Uncertainty).\n---\n"

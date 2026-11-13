@@ -2,80 +2,410 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#06140f"><title>RYN Ultra · AI Team</title>
+<meta name="theme-color" content="#04100a"><title>RYN Ultra · AI Team</title>
 <style>
-:root{color-scheme:dark;--bg:#06110d;--panel:#0d1d16;--panel2:#091710;--line:#1d4935;--text:#effff6;--muted:#9bb8a8;--accent:#19d887;--green:#35f0a0;--red:#fb7185}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#24315a 0,transparent 43%),var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
-button,input,textarea,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);background:#19233a;color:var(--text);border-radius:12px;padding:10px 14px;font-weight:700}button:hover{border-color:#7b8cbd;background:#202c47}button:disabled{opacity:.42;cursor:not-allowed}a{color:#b8c3ff;text-decoration:none}.shell{max-width:1500px;margin:auto;padding:20px;min-height:100vh;display:flex;flex-direction:column;gap:16px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#6d5dfc,#15b8ae);font-size:22px;box-shadow:0 8px 30px #5a5bda44}.brand h1{font-size:20px;letter-spacing:.12em;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}.top-actions{display:flex;gap:8px;align-items:center}.back{background:transparent}.status-pill{padding:7px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr);gap:16px;flex:1;min-height:0}.left,.right{display:flex;flex-direction:column;gap:16px;min-width:0}.panel{border:1px solid var(--line);background:linear-gradient(160deg,#111b2eeb,#0b1221f5);border-radius:20px;box-shadow:0 18px 50px #0004}.team-panel{padding:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}.section-head h2{font-size:14px;margin:0;letter-spacing:.04em}.subtle{color:var(--muted);font-size:12px}.agents{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.agent{--agent:#8b7cff;min-width:0;text-align:center;border:1px solid color-mix(in srgb,var(--agent) 27%,transparent);border-radius:17px;padding:12px 5px 10px;background:linear-gradient(180deg,color-mix(in srgb,var(--agent) 9%,#121a2c),#0b1220);transition:.25s;position:relative;overflow:hidden}.agent.active{border-color:var(--agent);box-shadow:0 0 25px color-mix(in srgb,var(--agent) 22%,transparent);transform:translateY(-3px)}.agent .robot{width:66px;height:66px;margin:0 auto 7px;position:relative;animation:float 3.3s ease-in-out infinite}.agent:nth-child(2) .robot{animation-delay:-.8s}.agent:nth-child(3) .robot{animation-delay:-1.6s}.agent:nth-child(4) .robot{animation-delay:-2.4s}.agent:nth-child(5) .robot{animation-delay:-1.2s}.head{position:absolute;inset:13px 6px 12px;border-radius:21px;background:linear-gradient(145deg,#283653,#101827);border:2px solid var(--agent);box-shadow:inset 0 0 16px color-mix(in srgb,var(--agent) 25%,transparent),0 0 18px color-mix(in srgb,var(--agent) 22%,transparent)}.head:before,.head:after{content:"";position:absolute;top:18px;width:8px;height:11px;border-radius:7px;background:var(--agent);box-shadow:0 0 10px var(--agent)}.head:before{left:12px}.head:after{right:12px}.antenna{position:absolute;left:50%;top:4px;width:2px;height:11px;background:var(--agent)}.antenna:after{content:"";position:absolute;top:-4px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--agent);box-shadow:0 0 12px var(--agent)}.bodybot{position:absolute;left:17px;right:17px;bottom:0;height:17px;border-radius:12px 12px 7px 7px;background:#1a2940;border:1.5px solid var(--agent)}.agent .name{font-weight:800;font-size:13px}.agent .role{color:var(--muted);font-size:10px;min-height:28px}.agent .state{margin-top:6px;font-size:10px;color:var(--muted)}.state-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#64748b;margin-right:5px}.agent[data-state="online"] .state-dot,.agent[data-state="listening"] .state-dot{background:var(--green)}.agent[data-state="thinking"] .state-dot{background:#fbbf24;box-shadow:0 0 9px #fbbf24;animation:pulse 1s infinite}.agent[data-state="speaking"] .state-dot{background:var(--agent);box-shadow:0 0 12px var(--agent);animation:pulse .65s infinite}.agent[data-state="error"] .state-dot,.agent[data-state="offline"] .state-dot{background:var(--red)}.agent[data-state="thinking"] .robot{animation:think .8s ease-in-out infinite}.agent[data-state="speaking"] .robot{animation:speak .48s ease-in-out infinite}.agent[data-state="offline"]{opacity:.55;filter:saturate(.35)}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@keyframes pulse{50%{opacity:.35;transform:scale(.8)}}@keyframes think{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-7px) rotate(3deg)}}@keyframes speak{50%{transform:translateY(-4px) scale(1.05)}}
-.composer-panel{padding:17px}.task-row{display:flex;gap:10px;align-items:stretch}.task-row textarea{resize:vertical;min-height:100px;max-height:240px;flex:1}.field{width:100%;background:#0a1120;border:1px solid #2b3854;color:var(--text);border-radius:13px;padding:12px;outline:none}.field:focus{border-color:#8b7cff;box-shadow:0 0 0 3px #8b7cff20}.start-btn{background:linear-gradient(135deg,#7164ff,#368bcb);border:0;min-width:135px}.options{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}.options label{color:var(--muted);font-size:12px}.options select{margin-left:6px;background:#0a1120;border:1px solid var(--line);color:var(--text);border-radius:9px;padding:7px}.file-label{display:inline-flex;gap:7px;align-items:center;border:1px dashed #465778;border-radius:10px;padding:7px 10px;color:#c4d0e8;cursor:pointer;font-size:12px}.file-label input{display:none}.meeting-panel{display:flex;flex-direction:column;min-height:380px;flex:1;overflow:hidden}.meeting-head{padding:14px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center}.meeting-head h2{font-size:14px;margin:0}.controls{display:flex;gap:7px;flex-wrap:wrap}.controls button{font-size:11px;padding:7px 10px}.danger{border-color:#713d50;background:#351d2b}.transcript{padding:16px;overflow:auto;flex:1;min-height:270px;max-height:650px;display:flex;flex-direction:column;gap:12px}.empty{text-align:center;margin:auto;max-width:380px;color:var(--muted);padding:28px}.empty .orb{font-size:40px;margin-bottom:9px}.msg{display:flex;gap:10px;max-width:96%;animation:appear .2s ease-out}.msg.user{align-self:flex-end;flex-direction:row-reverse}.msg.system{align-self:center;max-width:100%;width:100%;justify-content:center}.msg-avatar{flex:0 0 32px;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:#202b43;color:#e9edff;font-size:11px;font-weight:900}.msg-card{min-width:0;border:1px solid var(--line);background:#121d30;border-radius:14px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere}.msg.user .msg-card{background:#25234c;border-color:#4e4b89}.msg.system .msg-card{background:#11182788;color:#aebbd0;font-size:12px;text-align:center;border-style:dashed}.msg-meta{display:flex;gap:9px;align-items:center;font-size:11px;color:#aab9d4;margin-bottom:6px}.msg-meta strong{color:var(--agent,#c8d2ff)}.msg-content{font-size:13px;line-height:1.65}.msg-time{margin-left:auto;color:#71819b;font-size:10px}.side-panel{padding:17px}.side-panel h2{font-size:14px;margin:0 0 12px}.decision{white-space:pre-wrap;color:#cbd6eb;font-size:12px;line-height:1.6;max-height:340px;overflow:auto}.recent{display:flex;flex-direction:column;gap:7px}.recent button{text-align:left;background:#0e1728;font-size:12px;font-weight:600}.recent button small{display:block;color:var(--muted);font-weight:400;margin-top:3px}.chat-row{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}.chat-row input{flex:1;min-width:0}.chat-row button{background:#5146c9;border:0}.hidden{display:none!important}.footnote{color:#71809b;font-size:11px;text-align:center;padding:6px}
-@keyframes appear{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media(max-width:920px){.layout{grid-template-columns:1fr}.right{display:grid;grid-template-columns:1fr 1fr}.meeting-panel{min-height:430px}.transcript{max-height:550px}}
-@media(max-width:620px){.shell{padding:12px;gap:11px}.brand h1{font-size:17px}.brand p{font-size:10px}.status-pill{display:none}.agents{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}.agent{padding:9px 2px 7px;border-radius:13px}.agent .robot{width:48px;height:48px}.head{inset:10px 4px 9px;border-radius:15px}.head:before,.head:after{top:14px;width:6px;height:8px}.head:before{left:9px}.head:after{right:9px}.bodybot{left:13px;right:13px;height:13px}.agent .name{font-size:11px}.agent .role{font-size:8px;min-height:30px}.agent .state{font-size:9px}.task-row{flex-direction:column}.start-btn{min-height:42px}.right{display:flex}.meeting-head{align-items:flex-start;flex-direction:column}.controls button{padding:7px 8px}.msg{max-width:100%}.transcript{padding:10px;max-height:500px}.chat-row{padding:9px}.chat-row input{font-size:13px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition:none!important}}
-
-/* RYN Ultra premium emerald interface */
-body{background:radial-gradient(ellipse at 50% -25%,#0e5b3b 0,transparent 48%),radial-gradient(ellipse at 100% 80%,#073322 0,transparent 42%),var(--bg)}
-.panel{background:linear-gradient(155deg,rgba(15,43,29,.96),rgba(7,22,15,.97));border-color:rgba(53,240,160,.16);box-shadow:0 20px 60px #0007, inset 0 1px 0 #ffffff08;backdrop-filter:blur(18px)}
-.brand-mark{background:linear-gradient(145deg,#0b6b43,#20e694);box-shadow:0 8px 32px #13dc8940;color:#032316}
-.brand h1{letter-spacing:.14em;text-shadow:0 0 24px #22e99b40}
-button{background:linear-gradient(145deg,#153a29,#10291e);border-color:#245a40;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
-button:hover{border-color:#35f0a0;background:linear-gradient(145deg,#1a4b34,#123523);box-shadow:0 7px 22px #0bd47a20;transform:translateY(-1px)}
-.start-btn,.chat-row button{background:linear-gradient(120deg,#0aa968,#21e69a);color:#032315;border:0;box-shadow:0 8px 24px #13d88730}
-.field{background:#06140e;border-color:#24553d}.field:focus{border-color:#35f0a0;box-shadow:0 0 0 3px #35f0a020}
-.agent{background:linear-gradient(180deg,color-mix(in srgb,var(--agent) 9%,#10251a),#08170f);border-color:color-mix(in srgb,var(--agent) 35%,transparent)}
-.agent.active{box-shadow:0 0 28px color-mix(in srgb,var(--agent) 25%,transparent),0 0 0 1px color-mix(in srgb,var(--agent) 60%,transparent)}
-.agent .head{background:linear-gradient(145deg,#1d3d2b,#09180f)}
-.msg-card{background:linear-gradient(145deg,#10251a,#0b1b13);border-color:#23513a;white-space:normal}
-.msg-content{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;line-height:1.82;unicode-bidi:plaintext;direction:auto;text-align:start;max-width:100%;}
-.msg.user .msg-card{background:linear-gradient(145deg,#12432d,#0b2c1d);border-color:#1b8d59}
-.msg.system .msg-card{background:#0c1d14;color:#b6d5c3}
-.transcript{scroll-behavior:smooth;overscroll-behavior:contain}
-.status-pill{border-color:#286346;color:#b8e6cb}
-.file-label{border-color:#28764d;color:#c9f7dd}
-.footnote{color:#7fa990}
-.lang-toggle,.sound-toggle{min-width:42px;padding:8px 11px;border-radius:12px;font-size:12px}
-.top-actions{flex-wrap:wrap}
-body[dir="rtl"] .msg{direction:rtl}body[dir="ltr"] .msg{direction:ltr}
-@media(max-width:620px){.agents{gap:4px}.agent .role{min-height:34px}.agent .robot{filter:drop-shadow(0 4px 8px #0005)}.transcript{max-height:none}.msg-card{padding:11px 12px}}
-@media(prefers-reduced-motion:reduce){.panel,button,.agent,.msg{transition:none!important;animation:none!important}}
-
-/* RYN Ultra readability and emerald visual refresh */
-:root{--bg:#04100a;--panel:#0a1d13;--panel2:#07170f;--line:#20583c;--text:#effff5;--muted:#a4c8b2;--accent:#18c982;--green:#45f2a2}
-body{background:radial-gradient(ellipse at 12% 0%,rgba(24,201,130,.17),transparent 42%),radial-gradient(ellipse at 92% 80%,rgba(16,185,129,.10),transparent 38%),var(--bg)}
-.panel{background:linear-gradient(155deg,rgba(13,35,23,.96),rgba(6,20,13,.98));border-color:rgba(53,190,125,.27);box-shadow:0 18px 50px rgba(0,0,0,.34)}
-.brand-mark{background:linear-gradient(145deg,#087b50,#19d887);box-shadow:0 8px 30px rgba(25,216,135,.25)}
-button{background:linear-gradient(145deg,#102b1d,#0b2015);border-color:#20583c}
-button:hover{border-color:#45f2a2;background:#123824}
-.agents .agent{background:linear-gradient(180deg,rgba(18,48,32,.92),rgba(7,23,15,.98))}
-.transcript{min-width:0;overscroll-behavior:contain;scrollbar-gutter:stable;padding:18px;gap:15px}
-.msg{width:100%;max-width:100%;min-width:0;align-items:flex-start}
-.msg.agent{align-self:stretch}
-.msg-card{flex:1 1 auto;width:calc(100% - 42px);max-width:calc(100% - 42px);min-width:0;background:linear-gradient(145deg,rgba(16,43,29,.96),rgba(8,27,17,.98));border-color:rgba(53,190,125,.25);border-radius:15px;padding:13px 15px;overflow:hidden}
-.msg.user .msg-card{background:linear-gradient(145deg,rgba(11,91,59,.42),rgba(7,42,27,.88));border-color:rgba(69,242,162,.35)}
-.msg.system .msg-card{width:auto;max-width:100%;background:rgba(11,35,22,.72);color:#b9d9c6}
-.msg-content{display:block;max-width:100%;min-width:0;font-size:14px;line-height:1.9;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;unicode-bidi:plaintext;text-align:start}
-.msg-meta{flex-wrap:wrap;line-height:1.6;color:#a8cbb6}
-.msg-time{margin-left:auto}
-.chat-row{background:rgba(4,16,10,.68);border-color:rgba(53,190,125,.18)}
-.chat-row input,.chat-row textarea{background:#071a10;border:1px solid #20583c;border-radius:12px;color:var(--text);padding:11px}
-.chat-row button{background:linear-gradient(145deg,#087b50,#10a86b);color:#fff}
-a{color:#79e9b2}
-@media(max-width:820px){
- .shell{padding:12px}
- .layout{grid-template-columns:minmax(0,1fr)}
- .right{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
- .transcript{max-height:none;min-height:340px;padding:12px}
- .msg{max-width:100%}
- .msg-content{font-size:14px;line-height:1.85}
+:root{
+  color-scheme:dark;
+  --bg:#04100a;
+  --panel:#0a1d13;
+  --panel2:#07170f;
+  --line:#20583c;
+  --text:#effff5;
+  --muted:#a4c8b2;
+  --accent:#18c982;
+  --green:#45f2a2;
+  --red:#fb7185;
 }
-@media(max-width:520px){
- .right{display:flex}
- .agents{gap:5px}
- .agent{padding:9px 3px}
- .agent .robot{width:48px;height:48px}
- .msg-avatar{flex-basis:30px;width:30px;height:30px}
- .msg-card{width:calc(100% - 40px);max-width:calc(100% - 40px);padding:11px}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at 12% 0%,rgba(24,201,130,.17),transparent 42%),
+    radial-gradient(ellipse at 92% 80%,rgba(16,185,129,.10),transparent 38%),
+    var(--bg);
+  color:var(--text);
+  font:14px/1.55 Inter,system-ui,-apple-system,"Segoe UI","Noto Sans Arabic",sans-serif;
+  min-height:100vh;
+}
+button,input,textarea,select{font:inherit}
+button{
+  cursor:pointer;
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,#102b1d,#0b2015);
+  color:var(--text);
+  border-radius:12px;
+  padding:10px 14px;
+  font-weight:700;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+button:hover:not(:disabled){
+  border-color:var(--green);
+  background:linear-gradient(145deg,#163d29,#0f2c1d);
+  box-shadow:0 7px 22px rgba(11,212,122,.14);
+  transform:translateY(-1px);
+}
+button:disabled{opacity:.42;cursor:not-allowed}
+a{color:#79e9b2;text-decoration:none}
+.shell{max-width:1540px;margin:auto;padding:20px;min-height:100vh;display:flex;flex-direction:column;gap:16px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{
+  width:44px;height:44px;border-radius:14px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#087b50,#19d887);
+  color:#032316;font-size:22px;
+  box-shadow:0 8px 30px rgba(25,216,135,.25);
+}
+.brand h1{font-size:20px;letter-spacing:.14em;margin:0;text-shadow:0 0 24px rgba(34,233,155,.25)}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
+.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.back{background:transparent;color:#79e9b2;font-size:13px;padding:8px 12px}
+.status-pill{padding:7px 11px;border:1px solid #286346;border-radius:999px;color:#b8e6cb;font-size:12px}
+.lang-toggle,.sound-toggle{min-width:42px;padding:8px 11px;border-radius:12px;font-size:12px}
+.layout{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(320px,.85fr);gap:16px;flex:1;min-height:0;align-items:start}
+.layout.expanded{grid-template-columns:minmax(0,1fr)}
+.layout.expanded .team-panel,.layout.expanded .composer-panel{display:none}
+.left,.right{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{
+  border:1px solid rgba(53,190,125,.27);
+  background:linear-gradient(155deg,rgba(13,35,23,.96),rgba(6,20,13,.98));
+  border-radius:20px;
+  box-shadow:0 18px 50px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.04);
+  backdrop-filter:blur(18px);
+}
+.team-panel{padding:18px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.section-head h2{font-size:14px;margin:0;letter-spacing:.04em}
+.subtle{color:var(--muted);font-size:12px}
+.agents{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.agent{
+  --agent:#34d399;
+  min-width:0;text-align:center;
+  border:1px solid color-mix(in srgb,var(--agent) 35%,transparent);
+  border-radius:17px;padding:12px 5px 10px;
+  background:linear-gradient(180deg,rgba(18,48,32,.92),rgba(7,23,15,.98));
+  transition:.25s;position:relative;overflow:hidden;
+}
+.agent.active{
+  border-color:var(--agent);
+  box-shadow:0 0 28px color-mix(in srgb,var(--agent) 25%,transparent),0 0 0 1px color-mix(in srgb,var(--agent) 60%,transparent);
+  transform:translateY(-3px);
+}
+.agent .robot{width:66px;height:66px;margin:0 auto 7px;position:relative;animation:float 3.3s ease-in-out infinite}
+.agent:nth-child(2) .robot{animation-delay:-.8s}
+.agent:nth-child(3) .robot{animation-delay:-1.6s}
+.agent:nth-child(4) .robot{animation-delay:-2.4s}
+.agent:nth-child(5) .robot{animation-delay:-1.2s}
+.head{
+  position:absolute;inset:13px 6px 12px;border-radius:21px;
+  background:linear-gradient(145deg,#1d3d2b,#09180f);
+  border:2px solid var(--agent);
+  box-shadow:inset 0 0 16px color-mix(in srgb,var(--agent) 25%,transparent),0 0 18px color-mix(in srgb,var(--agent) 22%,transparent);
+}
+.head:before,.head:after{
+  content:"";position:absolute;top:18px;width:8px;height:11px;border-radius:7px;
+  background:var(--agent);box-shadow:0 0 10px var(--agent);
+}
+.head:before{left:12px}
+.head:after{right:12px}
+.antenna{position:absolute;left:50%;top:4px;width:2px;height:11px;background:var(--agent)}
+.antenna:after{
+  content:"";position:absolute;top:-4px;left:-3px;width:8px;height:8px;border-radius:50%;
+  background:var(--agent);box-shadow:0 0 12px var(--agent);
+}
+.bodybot{
+  position:absolute;left:17px;right:17px;bottom:0;height:17px;
+  border-radius:12px 12px 7px 7px;background:#112c1e;border:1.5px solid var(--agent);
+}
+.agent .name{font-weight:800;font-size:13px}
+.agent .role{color:var(--muted);font-size:10px;min-height:28px}
+.agent .state{margin-top:6px;font-size:10px;color:var(--muted)}
+.state-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#64748b;margin-inline-end:5px}
+.agent[data-state="online"] .state-dot,.agent[data-state="listening"] .state-dot{background:var(--green)}
+.agent[data-state="thinking"] .state-dot{background:#fbbf24;box-shadow:0 0 9px #fbbf24;animation:pulse 1s infinite}
+.agent[data-state="speaking"] .state-dot{background:var(--agent);box-shadow:0 0 12px var(--agent);animation:pulse .65s infinite}
+.agent[data-state="error"] .state-dot,.agent[data-state="offline"] .state-dot{background:var(--red)}
+.agent[data-state="thinking"] .robot{animation:think .8s ease-in-out infinite}
+.agent[data-state="speaking"] .robot{animation:speak .48s ease-in-out infinite}
+.agent[data-state="offline"]{opacity:.55;filter:saturate(.35)}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes pulse{50%{opacity:.35;transform:scale(.8)}}
+@keyframes think{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-7px) rotate(3deg)}}
+@keyframes speak{50%{transform:translateY(-4px) scale(1.05)}}
+.composer-panel{padding:17px}
+.task-row{display:flex;gap:10px;align-items:stretch}
+.task-row textarea{resize:vertical;min-height:96px;max-height:240px;flex:1}
+.field{
+  width:100%;background:#06140e;border:1px solid #24553d;
+  color:var(--text);border-radius:13px;padding:12px;outline:none;
+}
+.field:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(69,242,162,.14)}
+.field option:disabled{color:#5e7d6c}
+.start-btn{
+  background:linear-gradient(120deg,#0aa968,#21e69a);
+  color:#032315;border:0;min-width:135px;
+  box-shadow:0 8px 24px rgba(19,216,135,.2);
+}
+.start-btn:hover:not(:disabled){
+  background:linear-gradient(120deg,#0ec278,#35f0a0);
+  color:#021b10;
+}
+.options{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.options label{color:var(--muted);font-size:12px}
+.options select{margin-inline-start:6px;background:#06140e;border:1px solid var(--line);color:var(--text);border-radius:9px;padding:7px}
+.file-label{
+  display:inline-flex;gap:7px;align-items:center;
+  border:1px dashed #28764d;border-radius:10px;padding:7px 10px;
+  color:#c9f7dd;cursor:pointer;font-size:12px;
+}
+.file-label input{display:none}
+.meeting-panel{
+  display:flex;flex-direction:column;min-height:480px;flex:1;
+  position:relative;overflow:visible;
+}
+.meeting-head{
+  padding:14px 17px;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;
+}
+.meeting-head h2{font-size:14px;margin:0}
+.controls{display:flex;gap:7px;flex-wrap:wrap}
+.controls button{font-size:11px;padding:7px 10px}
+.danger{border-color:#7f3347;background:linear-gradient(145deg,#381621,#240e16)}
+.danger:hover:not(:disabled){border-color:#fb7185;background:linear-gradient(145deg,#4b1d2c,#31121d)}
+
+/* Full-message debate transcript: never clip or squish cards */
+.transcript{
+  padding:18px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  flex:1 1 auto;
+  min-height:420px;
+  max-height:78vh;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  min-width:0;
+  scroll-behavior:smooth;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+.layout.expanded .transcript{
+  max-height:84vh;
+  min-height:68vh;
+}
+.empty{text-align:center;margin:auto;max-width:420px;color:var(--muted);padding:34px 20px}
+.empty .orb{font-size:42px;margin-bottom:9px;color:var(--green)}
+.msg{
+  flex:0 0 auto;
+  flex-shrink:0;
+  display:flex;
+  gap:11px;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  align-items:flex-start;
+  animation:appear .2s ease-out;
+}
+body[dir="rtl"] .msg{direction:rtl}
+body[dir="ltr"] .msg{direction:ltr}
+.msg.agent{align-self:stretch}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg.system{align-self:center;max-width:100%;width:100%;justify-content:center}
+.msg-avatar{
+  flex:0 0 36px;width:36px;height:36px;border-radius:11px;
+  display:grid;place-items:center;
+  background:linear-gradient(145deg,#123824,#0a2115);
+  border:1.5px solid var(--agent,rgba(69,242,162,.35));
+  color:#effff5;font-size:11px;font-weight:900;
+  position:sticky;top:8px;
+}
+.msg-card{
+  flex:1 1 auto;
+  flex-shrink:0;
+  width:calc(100% - 48px);
+  max-width:calc(100% - 48px);
+  min-width:0;
+  height:auto;
+  border:1px solid color-mix(in srgb,var(--agent,#35be7d) 36%,rgba(53,190,125,.25));
+  background:linear-gradient(145deg,rgba(16,43,29,.96),rgba(8,27,17,.99));
+  border-radius:16px;
+  padding:14px 16px;
+  overflow:visible;
+  white-space:normal;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.msg.user .msg-card{
+  background:linear-gradient(145deg,rgba(11,91,59,.45),rgba(7,42,27,.92));
+  border-color:rgba(69,242,162,.42);
+}
+.msg.system .msg-card{
+  width:auto;max-width:100%;
+  background:rgba(11,35,22,.78);color:#c2e5d0;
+  font-size:12.5px;text-align:center;border-style:dashed;
+  padding:9px 16px;
+}
+.msg-meta{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  font-size:11.5px;line-height:1.5;color:#a8cbb6;
+  margin-bottom:10px;padding-bottom:8px;
+  border-bottom:1px solid rgba(53,190,125,.14);
+}
+.msg-meta strong{color:var(--agent,#79e9b2);font-size:13px}
+.badge-round{
+  padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;
+  background:rgba(24,201,130,.14);border:1px solid rgba(69,242,162,.3);color:#9ef7c9;
+}
+.badge-debate{
+  background:rgba(251,146,60,.15);border-color:rgba(251,146,60,.45);color:#fed7aa;
+}
+.badge-final{
+  background:rgba(167,139,250,.18);border-color:rgba(167,139,250,.5);color:#ddd6fe;
+}
+.msg-actions{
+  margin-inline-start:auto;
+  display:inline-flex;gap:6px;align-items:center;
+}
+.msg-btn{
+  padding:3px 8px;font-size:10.5px;border-radius:8px;
+  background:rgba(16,48,32,.85);border:1px solid rgba(69,242,162,.24);color:#c9f7dd;
+  font-weight:600;
+}
+.msg-time{color:#7fa990;font-size:10.5px}
+.msg-content{
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  height:auto;
+  overflow:visible;
+  font-size:14.5px;
+  line-height:1.92;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  unicode-bidi:plaintext;
+  direction:auto;
+  text-align:start;
+  color:#f2fff8;
+}
+.msg-content .mention{
+  display:inline-block;padding:0 6px;border-radius:6px;
+  background:rgba(69,242,162,.16);border:1px solid rgba(69,242,162,.35);
+  color:#86efac;font-weight:700;font-size:13px;
+}
+.msg-content pre{
+  margin:10px 0;padding:12px;border-radius:11px;
+  background:#04110b;border:1px solid rgba(53,190,125,.28);
+  overflow-x:auto;direction:ltr;text-align:left;
+  font:12.5px/1.6 Consolas,Monaco,monospace;color:#d8ffea;
+}
+.jump-latest{
+  position:sticky;bottom:10px;align-self:center;z-index:15;
+  background:linear-gradient(120deg,#0aa968,#21e69a);color:#032315;
+  border:0;border-radius:999px;padding:7px 16px;font-size:12px;font-weight:800;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);
+}
+.side-panel{padding:17px}
+.side-panel h2{font-size:14px;margin:0}
+.decision{
+  white-space:pre-wrap;color:#e4fcef;font-size:13.5px;line-height:1.85;
+  max-height:540px;overflow-y:auto;overflow-x:hidden;
+  overflow-wrap:anywhere;word-break:break-word;
+  unicode-bidi:plaintext;direction:auto;padding-top:4px;
+}
+.recent{display:flex;flex-direction:column;gap:7px;max-height:320px;overflow-y:auto}
+.recent button{
+  text-align:start;
+  background:linear-gradient(145deg,#0c2418,#081910);
+  border-color:#1d4e35;
+  font-size:12px;font-weight:600;
+}
+.recent button small{display:block;color:var(--muted);font-weight:400;margin-top:3px}
+.chat-row{
+  display:flex;gap:8px;padding:12px;
+  background:rgba(4,16,10,.68);
+  border-top:1px solid rgba(53,190,125,.18);
+  border-radius:0 0 20px 20px;
+}
+.chat-row input,.chat-row textarea{
+  flex:1;min-width:0;
+  background:#071a10;border:1px solid var(--line);
+  border-radius:12px;color:var(--text);padding:11px;
+}
+.chat-row button{
+  background:linear-gradient(145deg,#087b50,#10a86b);
+  color:#fff;border:0;
+}
+.hidden{display:none!important}
+.footnote{color:#7fa990;font-size:11px;text-align:center;padding:6px}
+.toast{
+  position:fixed;bottom:20px;inset-inline-end:20px;z-index:1100;
+  background:linear-gradient(145deg,#123824,#091e13);
+  border:1px solid var(--green);color:var(--text);
+  padding:10px 14px;border-radius:12px;font-size:12px;
+  box-shadow:0 12px 32px rgba(0,0,0,.45);
+  max-width:340px;transition:opacity .2s ease,transform .2s ease;
+}
+.reader-modal{
+  position:fixed;inset:0;z-index:1050;
+  background:rgba(2,10,6,.86);backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;padding:16px;
+}
+.reader-box{
+  width:min(960px,96vw);max-height:90vh;
+  background:linear-gradient(155deg,#0c2318,#06140d);
+  border:1.5px solid var(--green);border-radius:20px;
+  padding:18px;display:flex;flex-direction:column;gap:12px;
+  box-shadow:0 24px 70px rgba(0,0,0,.65);
+}
+.reader-head{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.reader-body{
+  overflow-y:auto;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;
+  font-size:15px;line-height:1.95;color:#f2fff8;unicode-bidi:plaintext;direction:auto;
+  padding:4px 2px;
+}
+@keyframes appear{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media(max-width:920px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .right{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .meeting-panel{min-height:460px}
+  .transcript{max-height:none;min-height:380px;padding:14px}
+}
+@media(max-width:620px){
+  .shell{padding:10px;gap:11px}
+  .brand h1{font-size:17px}
+  .brand p{font-size:10px}
+  .status-pill{display:none}
+  .agents{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+  .agent{padding:9px 3px 7px;border-radius:13px}
+  .agent .robot{width:48px;height:48px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}
+  .head{inset:10px 4px 9px;border-radius:15px}
+  .head:before,.head:after{top:14px;width:6px;height:8px}
+  .head:before{left:9px}
+  .head:after{right:9px}
+  .bodybot{left:13px;right:13px;height:13px}
+  .agent .name{font-size:11px}
+  .agent .role{font-size:8px;min-height:34px}
+  .agent .state{font-size:9px}
+  .task-row{flex-direction:column}
+  .start-btn{min-height:42px}
+  .right{display:flex;flex-direction:column}
+  .meeting-head{align-items:flex-start;flex-direction:column}
+  .controls button{padding:7px 8px}
+  .msg{gap:8px}
+  .msg-avatar{flex-basis:30px;width:30px;height:30px;font-size:10px}
+  .msg-card{width:calc(100% - 38px);max-width:calc(100% - 38px);padding:12px 13px}
+  .msg-content{font-size:14.5px;line-height:1.9}
+  .chat-row{padding:9px;flex-wrap:wrap}
+  .chat-row input{font-size:13px;min-width:160px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after,.panel,button,.agent,.msg{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    scroll-behavior:auto!important;
+    transition:none!important;
+    animation:none!important;
+  }
 }
 </style>
 </head>
@@ -83,9 +413,9 @@ a{color:#79e9b2}
 <div class="shell">
  <header class="topbar">
   <div class="brand"><div class="brand-mark">✦</div><div><h1>RYN ULTRA</h1><p data-i18n="tagline">فريق ذكاء اصطناعي تعاوني · خمسة عقول</p></div></div>
-  <div class="top-actions"><span class="status-pill" id="overallStatus">جارٍ الاتصال بالنماذج…</span><button class="lang-toggle" id="langToggle" type="button" aria-label="Change language">EN</button><button class="sound-toggle" id="soundToggle" type="button" aria-label="Toggle sounds">🔊</button><a class="back" href="/" data-i18n="back">← العودة إلى RYN</a></div>
+  <div class="top-actions"><span class="status-pill" id="overallStatus">جارٍ الاتصال بالنماذج…</span><button class="lang-toggle" id="langToggle" type="button" aria-label="Change language">EN</button><button class="sound-toggle" id="soundToggle" type="button" aria-label="Toggle sounds">🔊</button><button class="back" id="backLink" type="button" data-i18n="back">← العودة إلى RYN</button></div>
  </header>
- <div class="layout">
+ <div class="layout" id="mainLayout">
   <section class="left">
    <section class="panel team-panel">
     <div class="section-head"><h2 data-i18n="team">فريق الذكاء الاصطناعي</h2><span class="subtle" id="agentCount">0 / 5 connected</span></div>
@@ -99,63 +429,584 @@ a{color:#79e9b2}
    </section>
    <section class="panel composer-panel">
     <div class="section-head"><h2 data-i18n="startTitle">ابدأ اجتماع الفريق</h2><span class="subtle" data-i18n="startHint">مهمة واحدة · سياق مشترك · نقاش منظم</span></div>
-    <div class="task-row"><textarea id="task" class="field" placeholder="اكتب طلبك ليحلله الفريق ويناقشه…" data-placeholder-ar="اكتب طلبك ليحلله الفريق ويناقشه…" data-placeholder-en="Describe what the team should understand, analyze, design, or review…"></textarea><button class="start-btn" id="start" data-i18n="startBtn">ابدأ الاجتماع ↗</button></div>
-    <div class="options"><label><span data-i18n="rounds">جولات النقاش</span> <select id="rounds"><option value="1">1 · Independent analysis</option><option value="2" selected>2 · Analysis + debate</option><option value="3">3 · Extended review</option><option value="4">4 · Deep review</option><option value="5">5 · Maximum review</option></select></label><label class="file-label">＋ <span data-i18n="attach">إرفاق مشروع ZIP</span> <input id="projectFile" type="file" accept=".zip,application/zip"></label><span class="subtle" id="projectLabel">تحليل المشروع للقراءة فقط</span></div>
+    <div class="task-row"><textarea id="task" class="field" placeholder="اكتب طلبك ليحلله الفريق ويناقشه…" data-placeholder-ar="اكتب طلبك ليحلله الفريق ويناقشه…" data-placeholder-en="Describe what the team should understand, analyze, design, or review…"></textarea><button class="start-btn" id="start" type="button" data-i18n="startBtn">ابدأ الاجتماع ↗</button></div>
+    <div class="options"><label><span data-i18n="rounds">جولات النقاش</span> <select id="rounds"><option value="1">1 · Independent analysis</option><option value="2" selected>2 · Analysis + debate</option><option value="3">3 · Extended review</option><option value="4">4 · Deep review</option><option value="5">5 · Maximum review</option></select></label><label class="file-label">＋ <span data-i18n="attach">إرفاق مشروع ZIP</span> <input id="projectFile" type="file" accept=".zip,application/zip"></label><span class="subtle" id="projectLabel" data-ar="تحليل المشروع للقراءة فقط" data-en="Read-only project inspection">تحليل المشروع للقراءة فقط</span></div>
    </section>
    <section class="panel meeting-panel">
-    <div class="meeting-head"><div><h2 data-i18n="liveTitle">سجل النقاش المباشر</h2><div class="subtle" id="meetingMeta">لا يوجد اجتماع نشط</div></div><div class="controls"><button id="pause" disabled>Ⅱ إيقاف مؤقت</button><button id="resume" disabled>▶ متابعة</button><button id="another" disabled>＋ جولة إضافية</button><button id="stop" class="danger" disabled>■ إنهاء</button></div></div>
-    <div class="transcript" id="transcript"><div class="empty"><div class="orb">◉</div><strong>Your AI team is ready to meet.</strong><p>Start a task and watch each real model contribute, challenge, and review the others.</p></div></div>
-    <div class="chat-row"><input class="field" id="message" placeholder="أرسل توجيهاً للفريق أو لنموذج محدد…" data-placeholder-ar="أرسل توجيهاً للفريق أو لنموذج محدد…" data-placeholder-en="Send a direction to the team or a selected agent…" disabled><select id="target" class="field" style="max-width:125px" disabled><option value="all" data-ar="كل النماذج" data-en="All agents">كل النماذج</option><option value="gemini">Gemini</option><option value="gpt">GPT</option><option value="qwen">Qwen</option><option value="deepseek">DeepSeek</option><option value="kimi">Kimi</option></select><button id="send" disabled data-i18n="send">إرسال</button></div>
+    <div class="meeting-head">
+      <div><h2 data-i18n="liveTitle">سجل النقاش المباشر</h2><div class="subtle" id="meetingMeta" data-ar="لا يوجد اجتماع نشط" data-en="No active meeting">لا يوجد اجتماع نشط</div></div>
+      <div class="controls">
+        <button id="expandBtn" type="button" data-ar="⤢ توسيع النقاش" data-en="⤢ Expand view">⤢ توسيع النقاش</button>
+        <button id="pause" type="button" disabled data-ar="Ⅱ إيقاف مؤقت" data-en="Ⅱ Pause">Ⅱ إيقاف مؤقت</button>
+        <button id="resume" type="button" disabled data-ar="▶ متابعة" data-en="▶ Resume">▶ متابعة</button>
+        <button id="another" type="button" disabled data-ar="＋ جولة نقاش إضافية" data-en="＋ Add debate round">＋ جولة نقاش إضافية</button>
+        <button id="stop" type="button" class="danger" disabled data-ar="■ إنهاء" data-en="■ Stop">■ إنهاء</button>
+      </div>
+    </div>
+    <div class="transcript" id="transcript">
+      <div class="empty"><div class="orb">◉</div><strong>فريقك جاهز للاجتماع.</strong><p>ابدأ مهمة وشاهد النماذج الحقيقية وهي تحلل وتناقش وتراجع بعضها بالكامل.</p></div>
+    </div>
+    <button id="jumpLatestBtn" type="button" class="jump-latest hidden" data-ar="⬇ عرض الردود الجديدة في النقاش" data-en="⬇ Jump to latest replies">⬇ عرض الردود الجديدة في النقاش</button>
+    <div class="chat-row"><input class="field" id="message" placeholder="أرسل توجيهاً للفريق أو لنموذج محدد…" data-placeholder-ar="أرسل توجيهاً للفريق أو لنموذج محدد…" data-placeholder-en="Send a direction to the team or a selected agent…" disabled><select id="target" class="field" style="max-width:165px" disabled><option value="all" data-ar="كل النماذج" data-en="All agents">كل النماذج</option><option value="gemini" data-name="Gemini">Gemini</option><option value="gpt" data-name="GPT">GPT</option><option value="qwen" data-name="Qwen">Qwen</option><option value="deepseek" data-name="DeepSeek">DeepSeek</option><option value="kimi" data-name="Kimi">Kimi</option></select><button id="send" type="button" disabled data-i18n="send">إرسال</button></div>
    </section>
   </section>
   <aside class="right">
-   <section class="panel side-panel"><h2 data-i18n="report">التقرير النهائي للفريق</h2><div id="decision" class="decision">The final report will appear here after the discussion is complete. Any remaining disagreements and unverified claims will be identified.</div></section>
-   <section class="panel side-panel"><div class="section-head"><h2 data-i18n="recent">الاجتماعات السابقة</h2><button id="refreshSessions" style="padding:5px 8px;font-size:11px">↻</button></div><div class="recent" id="recent"><div class="subtle">No saved sessions yet.</div></div></section>
+   <section class="panel side-panel">
+     <div class="section-head">
+       <h2 data-i18n="report">التقرير النهائي للفريق</h2>
+       <div style="display:flex;gap:6px">
+         <button id="copyReportBtn" type="button" class="msg-btn" data-ar="📋 نسخ" data-en="📋 Copy">📋 نسخ</button>
+         <button id="expandReportBtn" type="button" class="msg-btn" data-ar="⤢ قراءة كاملة" data-en="⤢ Full view">⤢ قراءة كاملة</button>
+       </div>
+     </div>
+     <div id="decision" class="decision">سيظهر التقرير النهائي هنا بعد انتهاء النقاش.</div>
+   </section>
+   <section class="panel side-panel"><div class="section-head"><h2 data-i18n="recent">الاجتماعات السابقة</h2><button id="refreshSessions" type="button" style="padding:5px 8px;font-size:11px" title="Refresh">↻</button></div><div class="recent" id="recent"><div class="subtle">لا توجد اجتماعات محفوظة بعد.</div></div></section>
   </aside>
  </div>
- <div class="footnote">RYN Ultra يحلل المشاريع دون تعديل ملفاتها تلقائياً.</div>
+ <div class="footnote" data-i18n="footnote">RYN Ultra يحلل المشاريع ويعرض النقاش الكامل بين النماذج دون تعديل ملفاتها تلقائياً.</div>
+ <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+ <div id="readerModal" class="reader-modal hidden">
+   <div class="reader-box">
+     <div class="reader-head">
+       <strong id="readerTitle">عرض الرسالة الكاملة</strong>
+       <div style="display:flex;gap:8px">
+         <button id="readerCopyBtn" type="button" class="msg-btn" data-ar="📋 نسخ النص" data-en="📋 Copy text">📋 نسخ النص</button>
+         <button id="readerCloseBtn" type="button" class="msg-btn" data-ar="✕ إغلاق" data-en="✕ Close">✕ إغلاق</button>
+       </div>
+     </div>
+     <div id="readerBody" class="reader-body"></div>
+   </div>
+ </div>
 </div>
 <script>
-const $=s=>document.querySelector(s);const esc=s=>String(s||'');let sessionId=null,source=null,project=null,meetingStatus='idle',lastEvent=0;
+const $=s=>document.querySelector(s);
+let sessionId=null,source=null,project=null,meetingStatus='idle',lastEvent=0,toastTimer=null,readerRawText='';
+const agentOnline={gemini:true,gpt:true,qwen:true,deepseek:true,kimi:true};
 const headers={'Content-Type':'application/json','X-Requested-With':'astra'};
-async function api(url,opts={}){const r=await fetch(url,{credentials:'same-origin',...opts,headers:{...headers,...(opts.headers||{})}});let d={};try{d=await r.json()}catch(_){}if(!r.ok)throw new Error(d.error||('Request failed ('+r.status+')'));return d}
-function agentCard(id){return document.querySelector('[data-agent="'+id+'"]')}
-function setAgent(id,state,label){const el=agentCard(id);if(!el)return;document.querySelectorAll('.agent').forEach(x=>x.classList.remove('active'));el.dataset.state=state;if(state==='thinking'||state==='speaking')el.classList.add('active');const span=el.querySelector('.state span');if(span)span.textContent=label||state}
-function renderAgents(list){let n=0;for(const a of list||[]){const el=agentCard(a.id);if(el)el.style.setProperty('--agent',a.color||'#8b7cff');setAgent(a.id,a.online?'online':'offline',a.online?(a.model||a.provider||'Online'):'Offline');if(a.online)n++}$('#agentCount').textContent=uiLang==='ar'?(n+' / 5 متصل'):(n+' / 5 connected');$('#overallStatus').textContent=uiLang==='ar'?(n===5?'النماذج الخمسة متصلة':n+' من 5 نماذج متصلة'):(n===5?'All five agents connected':n+' of 5 agents connected');$('#overallStatus').style.color=n>=2?'#86efac':'#fda4af'}
-function addEvent(e){lastEvent=Math.max(lastEvent,Number(e.id||0));if(e.agent_id&&e.type==='agent_status')setAgent(e.agent_id,e.status,e.status==='thinking'?'Thinking…':e.status==='speaking'?'Speaking…':e.status==='listening'?'Listening':e.status);
- if(e.type==='agent_error')setAgent(e.agent_id,'error','API error');if(e.type==='agent_message'||e.type==='agent_final')setAgent(e.agent_id,'speaking',e.type==='agent_final'?'Final report':'Spoke');
- if(e.type==='meeting_completed'||e.type==='status'){if(e.status==='completed')meetingStatus='completed';if(e.status==='stopped')meetingStatus='stopped';syncControls()}
- if(e.type==='meeting_completed'){$('#meetingMeta').textContent=uiLang==='ar'?'انتهى الاجتماع':'Meeting completed';}
- if(e.type==='agent_final')$('#decision').textContent=e.content||'';
- if(e.type==='meeting_started'||e.type==='round_started'||e.type==='round_completed'||e.type==='control'||e.type==='warning'||e.type==='error'||e.type==='synthesis_started'||e.type==='session_created'){appendMessage(e);if(e.type==='error'&&e.status==='insufficient_agents')meetingStatus='error'}
- else if(e.type==='agent_message'||e.type==='agent_final'||e.type==='agent_error'||e.type==='user_message')appendMessage(e);
- if(e.type==='round_started')$('#meetingMeta').textContent=(uiLang==='ar'?'الجولة ':'Round ')+e.round+(uiLang==='ar'?' · نقاش الفريق جارٍ':' · Team discussion in progress');if(e.type==='agent_message')$('#meetingMeta').textContent=(uiLang==='ar'?'الجولة ':'Round ')+e.round+' · '+e.agent_name+(uiLang==='ar'?' شارك':' contributed');if(e.type==='meeting_completed')$('#meetingMeta').textContent=uiLang==='ar'?'اكتمل الاجتماع · راجع التقرير النهائي':'Completed · Review the final team report';
-}
-function appendMessage(e){const box=$('#transcript');const empty=box.querySelector('.empty');if(empty)empty.remove();const div=document.createElement('div');let type=e.type==='user_message'?'user':(['meeting_started','round_started','round_completed','control','warning','error','synthesis_started','session_created'].includes(e.type)?'system':'agent');div.className='msg '+type;const avatar=document.createElement('div');avatar.className='msg-avatar';avatar.textContent=type==='user'?'YOU':type==='system'?'RYN':(e.agent_name||'AI').slice(0,2).toUpperCase();const card=document.createElement('div');card.className='msg-card';if(type==='agent'&&e.agent_id){const ag=agentCard(e.agent_id);if(ag){card.style.setProperty('--agent',getComputedStyle(ag).getPropertyValue('--agent')||'#c8d2ff');}}
- const meta=document.createElement('div');meta.className='msg-meta';const strong=document.createElement('strong');strong.textContent=type==='user'?'You':type==='system'?'RYN Ultra':(e.agent_name+' · '+(e.role||''));meta.append(strong);if(e.round) {const round=document.createElement('span');round.textContent='Round '+e.round;meta.append(round)}const time=document.createElement('span');time.className='msg-time';time.textContent=e.created_at?new Date(e.created_at).toLocaleTimeString():'';meta.append(time);const content=document.createElement('div');content.className='msg-content';content.textContent=e.content||'';content.dir='auto';content.style.whiteSpace='pre-wrap';card.append(meta,content);div.append(avatar,card);box.append(div);box.scrollTop=box.scrollHeight}
-function syncControls(){const active=!!sessionId&&['queued','running','paused'].includes(meetingStatus);$('#pause').disabled=!active||meetingStatus==='paused';$('#resume').disabled=!active||meetingStatus!=='paused';$('#stop').disabled=!active;$('#another').disabled=!sessionId||meetingStatus==='running'||meetingStatus==='queued';$('#message').disabled=!active;$('#target').disabled=!active;$('#send').disabled=!active}
-function emptyTranscript(){ $('#transcript').innerHTML='<div class="empty"><div class="orb">◉</div><strong>Your AI team is ready to meet.</strong><p>Start a task and watch each real model contribute, challenge, and review the others.</p></div>'; }
-function openEvents(){if(source)source.close();source=new EventSource('/api/v1/ultra/events/'+encodeURIComponent(sessionId)+'?after='+lastEvent);source.onmessage=e=>{try{addEvent(JSON.parse(e.data))}catch(_){}};source.onerror=()=>{if(['completed','stopped','error'].includes(meetingStatus)){source.close();source=null;refreshSessions()}}}
-async function refreshSessions(){try{const d=await api('/api/v1/ultra/sessions',{headers:{}});const el=$('#recent');el.innerHTML='';if(!d.sessions.length){el.textContent='No saved sessions yet.';return}for(const s of d.sessions){const b=document.createElement('button');b.textContent=s.task.slice(0,90);const sm=document.createElement('small');sm.textContent=s.status+' · '+new Date(s.updated_at).toLocaleString();b.append(sm);b.onclick=()=>loadSession(s.session_id);el.append(b)}}catch(e){}}
-async function loadSession(id){try{if(source)source.close();const d=await api('/api/v1/ultra/session/'+encodeURIComponent(id),{headers:{}});sessionId=id;meetingStatus=d.session.status;lastEvent=0;emptyTranscript();$('#decision').textContent=d.session.final_report||(uiLang==='ar'?'سيظهر التقرير النهائي بعد انتهاء النقاش.':'No final report yet.');$('#task').value=d.session.task;$('#meetingMeta').textContent=d.session.status+' · saved session';for(const e of d.events)addEvent(e);syncControls();if(['queued','running','paused'].includes(meetingStatus))openEvents()}catch(e){alert(e.message)}}
-$('#start').onclick=async()=>{const task=$('#task').value.trim();if(!task){$('#task').focus();return}$('#start').disabled=true;try{const d=await api('/api/v1/ultra/start',{method:'POST',body:JSON.stringify({task,max_rounds:Number($('#rounds').value),project_name:project?.filename||'',project_context:project?.project_context||''})});sessionId=d.session_id;meetingStatus='running';lastEvent=0;$('#decision').textContent='The agents are discussing. The final report will appear here when complete.';$('#meetingMeta').textContent='Starting live meeting…';emptyTranscript();for(const a of d.online_agents)setAgent(a.id,'online','Connected');syncControls();openEvents();refreshSessions()}catch(e){alert(e.message)}finally{$('#start').disabled=false}};
-$('#projectFile').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;$('#projectLabel').textContent='Inspecting '+f.name+'…';const data=new FormData();data.append('project',f);try{const r=await fetch('/api/v1/ultra/project/inspect',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'astra'},body:data});const d=await r.json();if(!r.ok)throw new Error(d.error||'Project inspection failed');project=d;$('#projectLabel').textContent=f.name+' · '+d.text_files_included+' source files included';}catch(e){project=null;$('#projectLabel').textContent='Project not attached';alert(e.message)}};
-async function control(action){if(!sessionId)return;try{await api('/api/v1/ultra/control/'+encodeURIComponent(sessionId),{method:'POST',body:JSON.stringify({action})});if(action==='pause')meetingStatus='paused';if(action==='resume')meetingStatus='running';if(action==='stop')meetingStatus='stopped';if(action==='another_round'){if(meetingStatus!=='paused')meetingStatus='running';openEvents()}syncControls()}catch(e){alert(e.message)}}
-$('#pause').onclick=()=>control('pause');$('#resume').onclick=()=>control('resume');$('#stop').onclick=()=>control('stop');$('#another').onclick=()=>control('another_round');
-async function sendMessage(){const message=$('#message').value.trim();if(!message||!sessionId)return;try{await api('/api/v1/ultra/message/'+encodeURIComponent(sessionId),{method:'POST',body:JSON.stringify({message,target:$('#target').value})});$('#message').value=''}catch(e){alert(e.message)}}
-$('#send').onclick=sendMessage;$('#message').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};$('#refreshSessions').onclick=refreshSessions;
 
-const ultraI18n={ar:{tagline:'فريق ذكاء اصطناعي تعاوني · خمسة عقول',back:'← العودة إلى RYN',team:'فريق الذكاء الاصطناعي',startTitle:'ابدأ اجتماع الفريق',startHint:'مهمة واحدة · سياق مشترك · نقاش منظم',startBtn:'ابدأ الاجتماع ↗',rounds:'جولات النقاش',attach:'إرفاق مشروع ZIP',liveTitle:'سجل النقاش المباشر',report:'التقرير النهائي للفريق',recent:'الاجتماعات السابقة',send:'إرسال',empty:'فريقك جاهز للاجتماع.',emptyHint:'ابدأ مهمة وشاهد النماذج الحقيقية وهي تحلل وتناقش وتراجع.'},en:{tagline:'Collaborative AI team · Five minds',back:'← Back to RYN',team:'THE AI TEAM',startTitle:'START A TEAM SESSION',startHint:'One task · shared context · structured debate',startBtn:'Start meeting ↗',rounds:'Discussion rounds',attach:'Attach project ZIP',liveTitle:'LIVE MEETING TRANSCRIPT',report:'FINAL TEAM REPORT',recent:'RECENT SESSIONS',send:'Send',empty:'Your AI team is ready to meet.',emptyHint:'Start a task and watch real models analyze, debate, and review.'}};
-let uiLang=localStorage.getItem('ryn_ultra_lang')||'ar';
-function applyUltraLanguage(){const d=ultraI18n[uiLang]||ultraI18n.ar;document.querySelectorAll('#rounds option').forEach((o,i)=>{const ar=['1 · تحليل مستقل','2 · تحليل ونقاش','3 · مراجعة موسعة','4 · مراجعة عميقة','5 · أقصى مراجعة'];const en=['1 · Independent analysis','2 · Analysis + debate','3 · Extended review','4 · Deep review','5 · Maximum review'];o.textContent=(uiLang==='ar'?ar:en)[i]||o.textContent});const report=$('#decision');if(report&&(!sessionId||!report.textContent.trim()))report.textContent=uiLang==='ar'?'سيظهر التقرير النهائي هنا بعد انتهاء النقاش.':'The final report will appear here after the discussion is complete.';document.documentElement.lang=uiLang;document.documentElement.dir=uiLang==='ar'?'rtl':'ltr';document.body.dir=document.documentElement.dir;document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(d[k])el.textContent=d[k]});document.querySelectorAll('[data-ar][data-en]').forEach(el=>el.textContent=uiLang==='ar'?el.dataset.ar:el.dataset.en);document.querySelectorAll('[data-placeholder-ar]').forEach(el=>el.placeholder=uiLang==='ar'?el.dataset.placeholderAr:el.dataset.placeholderEn);$('#langToggle').textContent=uiLang==='ar'?'EN':'عربي';$('#langToggle').title=uiLang==='ar'?'Switch to English':'التبديل إلى العربية';const empty=$('#transcript .empty');if(empty){empty.querySelector('strong').textContent=d.empty;empty.querySelector('p').textContent=d.emptyHint}const recent=$('#recent');if(recent&&!recent.children.length)recent.textContent=uiLang==='ar'?'لا توجد اجتماعات محفوظة بعد.':'No saved sessions yet.'}
-$('#langToggle').onclick=()=>{uiLang=uiLang==='ar'?'en':'ar';localStorage.setItem('ryn_ultra_lang',uiLang);applyUltraLanguage()};
-let ultraSound=true;try{ultraSound=localStorage.getItem('ryn_ultra_sound')!=='0'}catch(e){}let ultraAudio=null;
-function ultraBeep(kind='tick'){if(!ultraSound)return;try{ultraAudio=ultraAudio||new (window.AudioContext||window.webkitAudioContext)();if(ultraAudio.state==='suspended')ultraAudio.resume();const t=ultraAudio.currentTime,o=ultraAudio.createOscillator(),g=ultraAudio.createGain();o.type='sine';o.frequency.setValueAtTime(kind==='done'?740:kind==='speaker'?520:880,t);o.frequency.exponentialRampToValueAtTime(kind==='done'?1040:kind==='speaker'?680:1180,t+.07);g.gain.setValueAtTime(.018,t);g.gain.exponentialRampToValueAtTime(.0001,t+.10);o.connect(g);g.connect(ultraAudio.destination);o.start(t);o.stop(t+.11)}catch(e){}}
-$('#soundToggle').textContent=ultraSound?'🔊':'🔇';$('#soundToggle').onclick=()=>{ultraSound=!ultraSound;localStorage.setItem('ryn_ultra_sound',ultraSound?'1':'0');$('#soundToggle').textContent=ultraSound?'🔊':'🔇';if(ultraSound)ultraBeep('done')};
-const originalAppendMessage=appendMessage;appendMessage=function(e){originalAppendMessage(e);if(e.type==='agent_message'||e.type==='agent_final')ultraBeep('speaker');if(e.type==='meeting_completed')ultraBeep('done')};
-const originalEmptyTranscript=emptyTranscript;emptyTranscript=function(){originalEmptyTranscript();applyUltraLanguage()};
+function notify(msg){
+  const el=$('#toast');
+  if(!el)return;
+  el.textContent=String(msg||'');
+  el.classList.remove('hidden');
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.add('hidden'),4200);
+}
+
+function copyText(txt){
+  const s=String(txt||'');
+  if(!s)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(s).then(()=>notify(uiLang==='ar'?'تم نسخ النص الكامل ✅':'Full text copied ✅')).catch(()=>fallbackCopy(s));
+  }else{
+    fallbackCopy(s);
+  }
+}
+function fallbackCopy(s){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=s;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+    notify(uiLang==='ar'?'تم نسخ النص الكامل ✅':'Full text copied ✅');
+  }catch(_){}
+}
+
+function openReader(title,text){
+  readerRawText=String(text||'');
+  $('#readerTitle').textContent=title||(uiLang==='ar'?'الرسالة الكاملة':'Full message');
+  $('#readerBody').textContent=readerRawText;
+  $('#readerModal').classList.remove('hidden');
+}
+
+$('#readerCloseBtn').addEventListener('click',()=>$('#readerModal').classList.add('hidden'));
+$('#readerCopyBtn').addEventListener('click',()=>copyText(readerRawText));
+$('#readerModal').addEventListener('click',e=>{if(e.target===$('#readerModal'))$('#readerModal').classList.add('hidden')});
+$('#copyReportBtn').addEventListener('click',()=>copyText($('#decision').textContent));
+$('#expandReportBtn').addEventListener('click',()=>openReader(uiLang==='ar'?'التقرير النهائي للفريق':'Final Team Report',$('#decision').textContent));
+
+$('#expandBtn').addEventListener('click',()=>{
+  const lay=$('#mainLayout');
+  const exp=lay.classList.toggle('expanded');
+  $('#expandBtn').textContent=exp?(uiLang==='ar'?'⤡ تصغير العرض':'⤡ Compact view'):(uiLang==='ar'?'⤢ توسيع النقاش':'⤢ Expand view');
+});
+
+function getStore(k,fallback){
+  try{return localStorage.getItem(k)||fallback}catch(_){return fallback}
+}
+function setStore(k,v){
+  try{localStorage.setItem(k,v)}catch(_){}
+}
+
+let uiLang=getStore('ryn_ultra_lang','ar');
+
+async function api(url,opts={}){
+  const isForm=typeof FormData!=='undefined'&&opts.body instanceof FormData;
+  const reqHeaders=isForm?{'X-Requested-With':'astra',...(opts.headers||{})}:{...headers,...(opts.headers||{})};
+  const r=await fetch(url,{credentials:'same-origin',...opts,headers:reqHeaders});
+  let d={};
+  try{d=await r.json()}catch(_){}
+  if(!r.ok)throw new Error(d.error||('Request failed ('+r.status+')'));
+  return d;
+}
+
+function agentCard(id){return document.querySelector('[data-agent="'+id+'"]')}
+
+function syncTargetOptions(){
+  const sel=$('#target');
+  if(!sel)return;
+  sel.querySelectorAll('option[data-name]').forEach(opt=>{
+    const id=opt.value;
+    const baseName=opt.dataset.name||id;
+    const online=agentOnline[id]!==false;
+    opt.disabled=!online;
+    opt.textContent=online?baseName:(baseName+(uiLang==='ar'?' (غير متصل)':' (Offline)'));
+  });
+  if(sel.value!=='all'&&agentOnline[sel.value]===false){
+    sel.value='all';
+  }
+}
+
+function setAgent(id,state,label){
+  const el=agentCard(id);
+  if(!el)return;
+  document.querySelectorAll('.agent').forEach(x=>x.classList.remove('active'));
+  el.dataset.state=state;
+  if(state==='thinking'||state==='speaking')el.classList.add('active');
+  const span=el.querySelector('.state span');
+  if(span){
+    const arMap={'Thinking…':'يفكّر الآن…','Speaking…':'يتحدث الآن…','Listening':'يستمع للنقاش','Online':'متصل','Offline':'غير متصل','API error':'خطأ اتصال','Spoke':'أنهى مداخلته','Final report':'التقرير النهائي'};
+    span.textContent=(uiLang==='ar'&&arMap[label])?arMap[label]:(label||state);
+  }
+  if(state==='offline'){
+    agentOnline[id]=false;
+    syncTargetOptions();
+  }else if(state==='online'||state==='listening'||state==='thinking'||state==='speaking'){
+    agentOnline[id]=true;
+    syncTargetOptions();
+  }
+}
+
+function renderAgents(list){
+  let n=0;
+  for(const a of list||[]){
+    const el=agentCard(a.id);
+    if(el)el.style.setProperty('--agent',a.color||'#34d399');
+    agentOnline[a.id]=!!a.online;
+    setAgent(a.id,a.online?'online':'offline',a.online?(a.model||a.provider||'Online'):'Offline');
+    if(a.online)n++;
+  }
+  syncTargetOptions();
+  $('#agentCount').textContent=uiLang==='ar'?(n+' / 5 متصل'):(n+' / 5 connected');
+  $('#overallStatus').textContent=uiLang==='ar'?(n===5?'النماذج الخمسة متصلة':n+' من 5 نماذج متصلة'):(n===5?'All five agents connected':n+' of 5 agents connected');
+  $('#overallStatus').style.color=n>=2?'#86efac':'#fda4af';
+}
+
+function isNearBottom(box){
+  return (box.scrollHeight - box.scrollTop - box.clientHeight) < 150;
+}
+
+$('#transcript').addEventListener('scroll',()=>{
+  if(isNearBottom($('#transcript')))$('#jumpLatestBtn').classList.add('hidden');
+});
+$('#jumpLatestBtn').addEventListener('click',()=>{
+  const box=$('#transcript');
+  box.scrollTop=box.scrollHeight;
+  $('#jumpLatestBtn').classList.add('hidden');
+});
+
+function formatDebateContent(container, rawText){
+  const text=String(rawText||'');
+  // Split fenced code blocks vs normal prose so code blocks render cleanly and agent names are highlighted in prose
+  const parts=text.split(/(```[\s\S]*?```)/g);
+  container.innerHTML='';
+  const agentRegex=/\b(Gemini|GPT(?:-OSS)?|Qwen|DeepSeek|Kimi)\b/g;
+  for(const part of parts){
+    if(!part)continue;
+    if(part.startsWith('```')&&part.endsWith('```')){
+      const pre=document.createElement('pre');
+      const lines=part.slice(3,-3).replace(/^[a-zA-Z0-9_-]+\n/,'');
+      pre.textContent=lines;
+      container.appendChild(pre);
+    }else{
+      let lastIdx=0,m;
+      agentRegex.lastIndex=0;
+      while((m=agentRegex.exec(part))!==null){
+        if(m.index>lastIdx){
+          container.appendChild(document.createTextNode(part.slice(lastIdx,m.index)));
+        }
+        const span=document.createElement('span');
+        span.className='mention';
+        span.textContent='@'+m[1];
+        container.appendChild(span);
+        lastIdx=agentRegex.lastIndex;
+      }
+      if(lastIdx<part.length){
+        container.appendChild(document.createTextNode(part.slice(lastIdx)));
+      }
+    }
+  }
+}
+
+function addEvent(e){
+  lastEvent=Math.max(lastEvent,Number(e.id||0));
+  if(e.agent_id&&e.type==='agent_status'){
+    setAgent(e.agent_id,e.status,e.status==='thinking'?'Thinking…':e.status==='speaking'?'Speaking…':e.status==='listening'?'Listening':e.status);
+  }
+  if(e.type==='agent_error')setAgent(e.agent_id,'error','API error');
+  if(e.type==='agent_message'||e.type==='agent_final')setAgent(e.agent_id,'speaking',e.type==='agent_final'?'Final report':'Spoke');
+  if(e.type==='meeting_completed'||e.type==='status'){
+    if(e.status==='completed')meetingStatus='completed';
+    if(e.status==='stopped')meetingStatus='stopped';
+    syncControls();
+  }
+  if(e.type==='meeting_completed'){$('#meetingMeta').textContent=uiLang==='ar'?'انتهى الاجتماع':'Meeting completed'}
+  if(e.type==='agent_final')$('#decision').textContent=e.content||'';
+  if(e.type==='meeting_started'||e.type==='round_started'||e.type==='round_completed'||e.type==='control'||e.type==='warning'||e.type==='error'||e.type==='synthesis_started'||e.type==='session_created'){
+    appendMessage(e);
+    if(e.type==='error'&&e.status==='insufficient_agents')meetingStatus='error';
+  }else if(e.type==='agent_message'||e.type==='agent_final'||e.type==='agent_error'||e.type==='user_message'){
+    appendMessage(e);
+  }
+  if(e.type==='round_started'){
+    $('#meetingMeta').textContent=(uiLang==='ar'?'الجولة ':'Round ')+e.round+(e.round>1?(uiLang==='ar'?' · نقاش ومواجهة حية بين النماذج 💬':' · Live cross-agent debate 💬'):(uiLang==='ar'?' · تحليل مستقل متوازٍ ⚡':' · Parallel independent analysis ⚡'));
+  }
+  if(e.type==='agent_message'){
+    $('#meetingMeta').textContent=(uiLang==='ar'?'الجولة ':'Round ')+e.round+' · '+e.agent_name+(uiLang==='ar'?' قدّم مداخلته الكاملة':' contributed');
+  }
+  if(e.type==='meeting_completed'){
+    $('#meetingMeta').textContent=uiLang==='ar'?'اكتمل الاجتماع · يمكنك قراءة النقاش الكامل والتقرير النهائي':'Completed · Full debate transcript and final report ready';
+  }
+}
+
+function appendMessage(e){
+  const box=$('#transcript');
+  const shouldStick=isNearBottom(box)||e.type==='user_message'||e.type==='session_created';
+  const empty=box.querySelector('.empty');
+  if(empty)empty.remove();
+  const div=document.createElement('div');
+  let type=e.type==='user_message'?'user':(['meeting_started','round_started','round_completed','control','warning','error','synthesis_started','session_created'].includes(e.type)?'system':'agent');
+  div.className='msg '+type;
+  const avatar=document.createElement('div');
+  avatar.className='msg-avatar';
+  avatar.textContent=type==='user'?'YOU':type==='system'?'RYN':(e.agent_name||'AI').slice(0,2).toUpperCase();
+  const card=document.createElement('div');
+  card.className='msg-card';
+  if(type==='agent'&&e.agent_id){
+    const ag=agentCard(e.agent_id);
+    if(ag){
+      const col=getComputedStyle(ag).getPropertyValue('--agent')||'#79e9b2';
+      card.style.setProperty('--agent',col);
+      avatar.style.setProperty('--agent',col);
+    }
+  }
+  const meta=document.createElement('div');
+  meta.className='msg-meta';
+  const strong=document.createElement('strong');
+  const speakerTitle=type==='user'?(uiLang==='ar'?'أنت':'You'):type==='system'?'RYN Ultra':(e.agent_name+' · '+(e.role||''));
+  strong.textContent=speakerTitle;
+  meta.append(strong);
+  if(e.round){
+    const round=document.createElement('span');
+    const isDebate=Number(e.round)>1&&e.type!=='agent_final';
+    const isFinal=e.type==='agent_final';
+    round.className='badge-round'+(isDebate?' badge-debate':'')+(isFinal?' badge-final':'');
+    if(isFinal){
+      round.textContent=uiLang==='ar'?'التقرير التجميعي النهائي ✨':'Final Synthesis ✨';
+    }else if(isDebate){
+      round.textContent=(uiLang==='ar'?'الجولة ':'Round ')+e.round+(uiLang==='ar'?' · نقاش ومواجهة 💬':' · Live Debate 💬');
+    }else{
+      round.textContent=(uiLang==='ar'?'الجولة ':'Round ')+e.round+(uiLang==='ar'?' · تحليل مستقل':' · Analysis');
+    }
+    meta.append(round);
+  }
+  if(e.metadata&&e.metadata.model){
+    const mdl=document.createElement('span');
+    mdl.className='subtle';
+    mdl.textContent=String(e.metadata.model).replace(':free','');
+    meta.append(mdl);
+  }
+  const actions=document.createElement('div');
+  actions.className='msg-actions';
+  if(type==='agent'||type==='user'){
+    const copyBtn=document.createElement('button');
+    copyBtn.type='button';
+    copyBtn.className='msg-btn';
+    copyBtn.textContent=uiLang==='ar'?'📋 نسخ':'📋 Copy';
+    copyBtn.addEventListener('click',()=>copyText(e.content||''));
+    const fullBtn=document.createElement('button');
+    fullBtn.type='button';
+    fullBtn.className='msg-btn';
+    fullBtn.textContent=uiLang==='ar'?'⤢ عرض كامل':'⤢ Full view';
+    fullBtn.addEventListener('click',()=>openReader(speakerTitle,e.content||''));
+    actions.append(copyBtn,fullBtn);
+  }
+  const time=document.createElement('span');
+  time.className='msg-time';
+  time.textContent=e.created_at?new Date(e.created_at).toLocaleTimeString():'';
+  actions.append(time);
+  meta.append(actions);
+
+  const content=document.createElement('div');
+  content.className='msg-content';
+  content.dir='auto';
+  if(type==='agent'){
+    formatDebateContent(content,e.content||'');
+  }else{
+    content.textContent=e.content||'';
+  }
+  card.append(meta,content);
+  div.append(avatar,card);
+  box.append(div);
+  if(shouldStick){
+    box.scrollTop=box.scrollHeight;
+    $('#jumpLatestBtn').classList.add('hidden');
+  }else if(type==='agent'){
+    $('#jumpLatestBtn').classList.remove('hidden');
+  }
+  if(e.type==='agent_message'||e.type==='agent_final')ultraBeep('speaker');
+  if(e.type==='meeting_completed')ultraBeep('done');
+}
+
+function syncControls(){
+  const active=!!sessionId&&['queued','running','paused'].includes(meetingStatus);
+  $('#pause').disabled=!active||meetingStatus==='paused';
+  $('#resume').disabled=!active||meetingStatus!=='paused';
+  $('#stop').disabled=!active;
+  $('#another').disabled=!sessionId||meetingStatus==='running'||meetingStatus==='queued';
+  $('#message').disabled=!active;
+  $('#target').disabled=!active;
+  $('#send').disabled=!active;
+  syncTargetOptions();
+}
+
+function emptyTranscript(){
+  $('#transcript').innerHTML='<div class="empty"><div class="orb">◉</div><strong>Your AI team is ready to meet.</strong><p>Start a task and watch each real model contribute, challenge, and review the others.</p></div>';
+  applyUltraLanguage();
+}
+
+function openEvents(){
+  if(source)source.close();
+  source=new EventSource('/api/v1/ultra/events/'+encodeURIComponent(sessionId)+'?after='+lastEvent);
+  source.onmessage=e=>{try{addEvent(JSON.parse(e.data))}catch(_){}};
+  source.onerror=()=>{if(['completed','stopped','error'].includes(meetingStatus)){source.close();source=null;refreshSessions()}};
+}
+
+async function refreshSessions(){
+  try{
+    const d=await api('/api/v1/ultra/sessions',{headers:{}});
+    const el=$('#recent');
+    el.innerHTML='';
+    if(!d.sessions.length){
+      el.textContent=uiLang==='ar'?'لا توجد اجتماعات محفوظة بعد.':'No saved sessions yet.';
+      return;
+    }
+    for(const s of d.sessions){
+      const b=document.createElement('button');
+      b.type='button';
+      b.textContent=s.task.slice(0,90);
+      const sm=document.createElement('small');
+      sm.textContent=s.status+' · '+new Date(s.updated_at).toLocaleString();
+      b.append(sm);
+      b.addEventListener('click',()=>loadSession(s.session_id));
+      el.append(b);
+    }
+  }catch(_){}
+}
+
+async function loadSession(id){
+  try{
+    if(source)source.close();
+    const d=await api('/api/v1/ultra/session/'+encodeURIComponent(id),{headers:{}});
+    sessionId=id;
+    meetingStatus=d.session.status;
+    lastEvent=0;
+    emptyTranscript();
+    $('#decision').textContent=d.session.final_report||(uiLang==='ar'?'سيظهر التقرير النهائي بعد انتهاء النقاش.':'No final report yet.');
+    $('#task').value=d.session.task;
+    $('#meetingMeta').textContent=d.session.status+' · '+(uiLang==='ar'?'جلسة محفوظة':'saved session');
+    for(const e of d.events)addEvent(e);
+    syncControls();
+    if(['queued','running','paused'].includes(meetingStatus))openEvents();
+  }catch(e){notify(e.message)}
+}
+
+$('#start').addEventListener('click',async()=>{
+  const task=$('#task').value.trim();
+  if(!task){$('#task').focus();return}
+  $('#start').disabled=true;
+  try{
+    const d=await api('/api/v1/ultra/start',{method:'POST',body:JSON.stringify({task,max_rounds:Number($('#rounds').value),project_name:project?.filename||'',project_context:project?.project_context||''})});
+    sessionId=d.session_id;
+    meetingStatus='running';
+    lastEvent=0;
+    $('#decision').textContent=uiLang==='ar'?'الفريق يناقش المهمة الآن. سيظهر التقرير النهائي هنا فور الانتهاء.':'The agents are discussing. The final report will appear here when complete.';
+    $('#meetingMeta').textContent=uiLang==='ar'?'جارٍ بدء الاجتماع الحي…':'Starting live meeting…';
+    emptyTranscript();
+    for(const a of d.online_agents)setAgent(a.id,'online','Online');
+    syncControls();
+    openEvents();
+    refreshSessions();
+  }catch(e){notify(e.message)}finally{$('#start').disabled=false}
+});
+
+$('#projectFile').addEventListener('change',async ev=>{
+  const f=ev.target.files[0];
+  if(!f)return;
+  $('#projectLabel').textContent=(uiLang==='ar'?'جارٍ فحص ':'Inspecting ')+f.name+'…';
+  const data=new FormData();
+  data.append('project',f);
+  try{
+    const d=await api('/api/v1/ultra/project/inspect',{method:'POST',body:data});
+    project=d;
+    $('#projectLabel').textContent=f.name+' · '+d.text_files_included+(uiLang==='ar'?' ملف مصدري مرفق':' source files included');
+  }catch(e){
+    project=null;
+    $('#projectLabel').textContent=uiLang==='ar'?'لم يتم إرفاق المشروع':'Project not attached';
+    notify(e.message);
+  }
+});
+
+async function control(action){
+  if(!sessionId)return;
+  try{
+    await api('/api/v1/ultra/control/'+encodeURIComponent(sessionId),{method:'POST',body:JSON.stringify({action})});
+    if(action==='pause')meetingStatus='paused';
+    if(action==='resume')meetingStatus='running';
+    if(action==='stop')meetingStatus='stopped';
+    if(action==='another_round'){
+      if(meetingStatus!=='paused')meetingStatus='running';
+      openEvents();
+    }
+    syncControls();
+  }catch(e){notify(e.message)}
+}
+
+$('#pause').addEventListener('click',()=>control('pause'));
+$('#resume').addEventListener('click',()=>control('resume'));
+$('#stop').addEventListener('click',()=>control('stop'));
+$('#another').addEventListener('click',()=>control('another_round'));
+
+async function sendMessage(){
+  const message=$('#message').value.trim();
+  const target=$('#target').value;
+  if(!message||!sessionId)return;
+  if(target!=='all'&&agentOnline[target]===false){
+    notify(uiLang==='ar'?'هذا النموذج غير متصل حالياً؛ اختر نموذجاً متصلاً أو كل النماذج.':'Selected agent is offline; choose an online agent or All agents.');
+    syncTargetOptions();
+    return;
+  }
+  try{
+    await api('/api/v1/ultra/message/'+encodeURIComponent(sessionId),{method:'POST',body:JSON.stringify({message,target})});
+    $('#message').value='';
+  }catch(e){notify(e.message)}
+}
+
+$('#send').addEventListener('click',sendMessage);
+$('#message').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
+$('#refreshSessions').addEventListener('click',refreshSessions);
+$('#backLink').addEventListener('click',()=>{
+  if(window.location.pathname==='/ultra'){
+    window.location.assign('/');
+  }else{
+    notify(uiLang==='ar'?'العودة إلى صفحة RYN الرئيسية متاحة عند التشغيل على الخادم.':'Returning to main RYN page is active when running on the server.');
+  }
+});
+
+const ultraI18n={
+  ar:{tagline:'فريق ذكاء اصطناعي تعاوني · خمسة عقول',back:'← العودة إلى RYN',team:'فريق الذكاء الاصطناعي',startTitle:'ابدأ اجتماع الفريق',startHint:'مهمة واحدة · سياق مشترك · نقاش منظم',startBtn:'ابدأ الاجتماع ↗',rounds:'جولات النقاش',attach:'إرفاق مشروع ZIP',liveTitle:'سجل النقاش المباشر (كامل بدون قص)',report:'التقرير النهائي للفريق',recent:'الاجتماعات السابقة',send:'إرسال',empty:'فريقك جاهز للاجتماع.',emptyHint:'ابدأ مهمة وشاهد النماذج الحقيقية وهي تحلل وتناقش وتراجع بعضها بالكامل.',footnote:'RYN Ultra يحلل المشاريع ويعرض النقاش الكامل بين النماذج دون تعديل ملفاتها تلقائياً.'},
+  en:{tagline:'Collaborative AI team · Five minds',back:'← Back to RYN',team:'THE AI TEAM',startTitle:'START A TEAM SESSION',startHint:'One task · shared context · structured debate',startBtn:'Start meeting ↗',rounds:'Discussion rounds',attach:'Attach project ZIP',liveTitle:'LIVE DEBATE TRANSCRIPT (FULL VIEW)',report:'FINAL TEAM REPORT',recent:'RECENT SESSIONS',send:'Send',empty:'Your AI team is ready to meet.',emptyHint:'Start a task and watch real models analyze, debate, and review each other in full.',footnote:'RYN Ultra analyzes projects and displays the full multi-agent debate without modifying files.'}
+};
+
+function applyUltraLanguage(){
+  const d=ultraI18n[uiLang]||ultraI18n.ar;
+  document.querySelectorAll('#rounds option').forEach((o,i)=>{
+    const ar=['1 · تحليل مستقل','2 · تحليل ونقاش تفاعلي','3 · مراجعة موسعة','4 · مراجعة عميقة','5 · أقصى مراجعة'];
+    const en=['1 · Independent analysis','2 · Analysis + live debate','3 · Extended review','4 · Deep review','5 · Maximum review'];
+    o.textContent=(uiLang==='ar'?ar:en)[i]||o.textContent;
+  });
+  const report=$('#decision');
+  if(report&&(!sessionId||report.textContent.indexOf('سيظهر التقرير')>=0||report.textContent.indexOf('final report will appear')>=0)){
+    report.textContent=uiLang==='ar'?'سيظهر التقرير النهائي هنا بعد انتهاء النقاش.':'The final report will appear here after the discussion is complete.';
+  }
+  document.documentElement.lang=uiLang;
+  document.documentElement.dir=uiLang==='ar'?'rtl':'ltr';
+  document.body.dir=document.documentElement.dir;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(d[k])el.textContent=d[k]});
+  document.querySelectorAll('[data-ar][data-en]').forEach(el=>{
+    if(el.id==='expandBtn'&&$('#mainLayout').classList.contains('expanded')){
+      el.textContent=uiLang==='ar'?'⤡ تصغير العرض':'⤡ Compact view';
+    }else{
+      el.textContent=uiLang==='ar'?el.dataset.ar:el.dataset.en;
+    }
+  });
+  document.querySelectorAll('[data-placeholder-ar]').forEach(el=>el.placeholder=uiLang==='ar'?el.dataset.placeholderAr:el.dataset.placeholderEn);
+  $('#langToggle').textContent=uiLang==='ar'?'EN':'عربي';
+  $('#langToggle').title=uiLang==='ar'?'Switch to English':'التبديل إلى العربية';
+  const empty=$('#transcript .empty');
+  if(empty){
+    empty.querySelector('strong').textContent=d.empty;
+    empty.querySelector('p').textContent=d.emptyHint;
+  }
+  const recent=$('#recent');
+  if(recent&&!recent.children.length){
+    recent.textContent=uiLang==='ar'?'لا توجد اجتماعات محفوظة بعد.':'No saved sessions yet.';
+  }
+  syncTargetOptions();
+}
+
+$('#langToggle').addEventListener('click',()=>{
+  uiLang=uiLang==='ar'?'en':'ar';
+  setStore('ryn_ultra_lang',uiLang);
+  applyUltraLanguage();
+});
+
+let ultraSound=getStore('ryn_ultra_sound','1')!=='0';
+let ultraAudio=null;
+function ultraBeep(kind='tick'){
+  if(!ultraSound)return;
+  try{
+    ultraAudio=ultraAudio||new (window.AudioContext||window.webkitAudioContext)();
+    if(ultraAudio.state==='suspended')ultraAudio.resume();
+    const t=ultraAudio.currentTime,o=ultraAudio.createOscillator(),g=ultraAudio.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(kind==='done'?740:kind==='speaker'?520:880,t);
+    o.frequency.exponentialRampToValueAtTime(kind==='done'?1040:kind==='speaker'?680:1180,t+.07);
+    g.gain.setValueAtTime(.018,t);
+    g.gain.exponentialRampToValueAtTime(.0001,t+.10);
+    o.connect(g);
+    g.connect(ultraAudio.destination);
+    o.start(t);
+    o.stop(t+.11);
+  }catch(_){}
+}
+
+$('#soundToggle').textContent=ultraSound?'🔊':'🔇';
+$('#soundToggle').addEventListener('click',()=>{
+  ultraSound=!ultraSound;
+  setStore('ryn_ultra_sound',ultraSound?'1':'0');
+  $('#soundToggle').textContent=ultraSound?'🔊':'🔇';
+  if(ultraSound)ultraBeep('done');
+});
+
 applyUltraLanguage();
-async function init(){try{const d=await api('/api/v1/ultra/status',{headers:{}});renderAgents(d.agents);for(const a of d.agents)if(!a.online&&a.reason){const c=agentCard(a.id);if(c)c.title=a.reason}}catch(e){$('#overallStatus').textContent='Unable to check providers'}refreshSessions()}
+
+async function init(){
+  try{
+    const d=await api('/api/v1/ultra/status',{headers:{}});
+    renderAgents(d.agents);
+    for(const a of d.agents){
+      if(!a.online&&a.reason){
+        const c=agentCard(a.id);
+        if(c)c.title=a.reason;
+      }
+    }
+  }catch(_){
+    $('#overallStatus').textContent=uiLang==='ar'?'وضع المعاينة · بانتظار الخادم':'Preview mode · awaiting server';
+  }
+  refreshSessions();
+}
 init();
 </script>
-</body></html>
+</body>
+</html>

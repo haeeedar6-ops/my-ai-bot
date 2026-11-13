@@ -131,6 +131,27 @@ def load_knowledge():
 def get_system_prompt():
     return SYSTEM_PROMPT
 
+def detect_message_language_rule(text):
+    """يكتشف لغة أحدث رسالة من المستخدم (مع تجاهل الكود والروابط) ويفرض على كل الموديلات الرد بنفس اللغة."""
+    cleaned = re.sub(r"```[\s\S]*?```", " ", str(text or ""))
+    cleaned = re.sub(r"https?://\S+", " ", cleaned)
+    # Remove bracketed system/memory headers injected before the user message
+    cleaned = re.sub(r"^\[[\s\S]*?---\n", "", cleaned)
+    ar_chars = len(re.findall(r"[\u0600-\u06FF]", cleaned))
+    foreign_chars = len(re.findall(r"[A-Za-z\u00C0-\u024F\u0400-\u04FF]", cleaned))
+    if ar_chars > 0 and ar_chars >= max(1, int(foreign_chars * 0.25)):
+        return (
+            "\n\n[قاعدة اللغة الإلزامية — LANGUAGE LOCK]: المستخدم كتب رسالته باللغة العربية. "
+            "يجب أن ترد باللغة العربية بالكامل (وبلهجة شامية لطيفة وواضحة عند المناسبة)، مع إبقاء الكود البرمجي والمصطلحات التقنية بالإنجليزية."
+        )
+    if foreign_chars > 0:
+        return (
+            "\n\n[CRITICAL LANGUAGE LOCK]: The user wrote their message in a non-Arabic language (e.g. English or another foreign language). "
+            "Regardless of any Arabic instructions in the system prompt or memory, you MUST reply 100% in the exact same language used by the user in their latest message. "
+            "Do NOT reply in Arabic unless explicitly asked to translate into Arabic."
+        )
+    return ""
+
 
 MAX_HISTORY = 20          # عدد الرسائل المحفوظة لكل مستخدم (سؤال + جواب)
 COOLDOWN_SECONDS = 1.5    # حماية من السبام
@@ -260,7 +281,16 @@ def ask_gemini(contents, deep=False, system=None, json_mode=False, preferred_mod
     for m in ordered:
         if m and m not in models:
             models.append(m)
-    system = system or get_system_prompt()
+    last_user_txt = ""
+    try:
+        for _c in reversed(contents or []):
+            if getattr(_c, "role", "user") != "model":
+                last_user_txt = "\n".join(getattr(_p, "text", "") for _p in getattr(_c, "parts", []) if getattr(_p, "text", None))
+                if last_user_txt:
+                    break
+    except Exception:
+        last_user_txt = ""
+    system = (system or get_system_prompt()) + detect_message_language_rule(last_user_txt)
     last_err = None
     tried = set()
     for model in models:
@@ -534,7 +564,16 @@ def _compact_prompt():
 
 
 def _build_messages(b, contents):
-    system = b.get("system") or (_compact_prompt() if b.get("compact") else get_system_prompt())
+    last_u = ""
+    try:
+        for _c in reversed(contents or []):
+            if getattr(_c, "role", "user") != "model":
+                last_u = "\n".join(getattr(_p, "text", "") for _p in getattr(_c, "parts", []) if getattr(_p, "text", None))
+                if last_u:
+                    break
+    except Exception:
+        last_u = ""
+    system = (b.get("system") or (_compact_prompt() if b.get("compact") else get_system_prompt())) + detect_message_language_rule(last_u)
     msgs = []
     for c in contents:
         text = "\n".join(p.text for p in c.parts if getattr(p, "text", None))
@@ -902,6 +941,29 @@ MIX_SYSTEM = (
     "إذا في معلومة مو متأكد منها قول هيك بصراحة وما تخترع."
 )
 
+def get_mix_instructions():
+    """يقرأ ملف التوجيهات المستقل الخاص بـ Ryn mix (ryn_mix_instructions.txt) بشكل منفصل عن RYN Ultra."""
+    candidates = [
+        os.environ.get("RYN_MIX_INSTRUCTIONS_FILE", "").strip(),
+        os.path.join(BASE_DIR, "ryn_mix_instructions.txt"),
+        os.path.join(BASE_DIR, "knowledge", "ryn_mix_instructions.txt"),
+    ]
+    for path in candidates:
+        if path and os.path.isfile(path):
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    txt = fh.read().strip()
+                if txt:
+                    return "\n\n[RYN MIX CUSTOM INSTRUCTIONS]\n" + txt[:8000]
+            except Exception:
+                continue
+    return ""
+
+
+def get_mix_system_prompt():
+    return MIX_SYSTEM + get_mix_instructions()
+
+
 
 def _redact_bot_secrets(text):
     if webapp is not None and hasattr(webapp, "redact_secrets"):
@@ -970,7 +1032,7 @@ def ask_mix(contents, deep=False):
     final = None
     try:
         final = ask_gemini([types.Content(role="user", parts=[types.Part(text=prompt)])],
-                           deep=False, system=MIX_SYSTEM)
+                           deep=False, system=get_mix_system_prompt())
     except Exception as e:
         log.warning("Ryn mix: الدمج فشل: %s", _redact_bot_secrets(str(e)[:160]))
     if not final:
