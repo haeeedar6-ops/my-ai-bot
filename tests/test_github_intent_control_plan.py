@@ -276,5 +276,33 @@ class TestGitHubIntentControlPlan(unittest.TestCase):
         self.assertEqual(sorted(res["verified_paths"]), ["package.json", "render.yaml", "server.js"])
 
 
+    def test_14_inshaa_mashrou_jadid_variations(self):
+        # 1. "انشاء مشروع جديد" with name
+        p1 = "انشاء مشروع جديد على GitHub وسميه poi-ai وارفع هدول ملفات عليه"
+        res1 = self.cp.execute_task(
+            user_request=p1,
+            staged_files={"server.js": "console.log(1);"},
+            github_client=self.client,
+            default_owner="haeeedar6-ops",
+            connected_old_repo="haeeedar6-ops/my-ai-bot",
+        )
+        self.assertEqual(res1["status"], "VERIFIED_SUCCESS")
+        self.assertEqual(res1["identity"]["repository_name"], "poi-ai")
+        self.assertFalse(res1["old_repository_touched"])
+
+        # 2. "انشاء مشروع جديد" without name -> must stop & ask, NEVER touch old repo
+        p2 = "انشاء مشروع جديد وارفع الملفات عليه"
+        res2 = self.cp.execute_task(
+            user_request=p2,
+            staged_files={"server.js": "console.log(1);"},
+            github_client=self.client,
+            default_owner="haeeedar6-ops",
+            connected_old_repo="haeeedar6-ops/my-ai-bot",
+        )
+        self.assertEqual(res2["status"], "NEEDS_CLARIFICATION")
+        self.assertEqual(res2["writes_performed"], 0)
+        self.assertFalse(res2["old_repository_touched"])
+
+
 if __name__ == "__main__":
     unittest.main()
