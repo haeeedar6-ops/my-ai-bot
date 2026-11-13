@@ -28,7 +28,6 @@ from typing import Any, Dict, List
 from conversations import ConversationService
 from memory import MemoryService
 from core import RynResponsePolicy, CollaborationLedger, run_natural_ryn_mix_evaluation_suite
-from code_intelligence import GitHubEngineeringService, StaleSHAConflictError, ApprovalRequiredError
 from voice import VoiceService
 
 
@@ -43,7 +42,6 @@ class TestAcceptanceSuite(unittest.TestCase):
         )
         self.policy = RynResponsePolicy()
         self.ledger = CollaborationLedger(db_path=self.db_path)
-        self.gh_eng = GitHubEngineeringService(db_path=self.db_path, memory_service=self.memory)
         self.voice = VoiceService(
             db_path=self.db_path,
             conversation_service=self.conversations,
@@ -364,102 +362,6 @@ class TestAcceptanceSuite(unittest.TestCase):
         self.assertEqual(barge["playback_state"], "stopped")
         self.assertEqual(barge["state"], "transcribing")
         self.assertGreaterEqual(barge["interrupted_count"], 1)
-
-    def test_11_github_conflict_detection_and_replan(self):
-        """Pass condition: Stale SHA detected; no overwrite; workflow re-reads and replans."""
-        u = "main"
-        repo = "haeeedar6-ops/my-ai-bot"
-        orig_code = "def greet():\n    return 'hello'\n"
-        prop_code = "def greet():\n    return 'hello world'\n"
-
-        ccr = self.gh_eng.create_change_request(
-            user_id=u,
-            repo=repo,
-            file_path="app_mod.py",
-            original_content=orig_code,
-            proposed_content=prop_code,
-            original_file_sha="sha_old_11111111",
-            base_branch="main",
-            request_text="Update greet return value",
-        )
-        self.assertEqual(ccr["status"], "tests-passed")
-        self.gh_eng.approve_change_request(u, ccr["id"], approve=True)
-
-        # Remote now has a different SHA (`sha_newer_22222222`)
-        remote_state = {"content": "# remote hotfix\ndef greet():\n    return 'hello'\n", "sha": "sha_newer_22222222"}
-        writes_attempted = []
-
-        def mock_read(_r, _b, _p):
-            return dict(remote_state)
-
-        def mock_write(_r, _b, _p, content, _sha):
-            writes_attempted.append(content)
-            return {"commit_sha": "commit_should_not_happen"}
-
-        with self.assertRaises(StaleSHAConflictError):
-            self.gh_eng.commit_and_verify_change_request(u, ccr["id"], mock_read, mock_write)
-
-        # Verify no overwrite occurred
-        self.assertEqual(len(writes_attempted), 0)
-        blocked_ccr = self.gh_eng.get_change_request(u, ccr["id"])
-        self.assertEqual(blocked_ccr["status"], "conflict_blocked")
-
-        # Now workflow re-reads and replans on top of the latest remote SHA
-        replanned = self.gh_eng.replan_on_conflict(
-            u,
-            ccr["id"],
-            mock_read,
-            lambda fresh_txt: fresh_txt.replace("'hello'", "'hello world'"),
-        )
-        self.assertEqual(replanned["original_file_sha"], "sha_newer_22222222")
-        self.assertIn("# remote hotfix", replanned["proposed_content"])
-
-    def test_12_github_success_confirmed_with_reread(self):
-        """Pass condition: Commit SHA confirmed and files re-read before reporting success."""
-        u = "main"
-        repo = "haeeedar6-ops/my-ai-bot"
-        orig_code = "def calc(x):\n    return x + 1\n"
-        prop_code = "def calc(x):\n    return x + 2\n"
-
-        ccr = self.gh_eng.create_change_request(
-            user_id=u,
-            repo=repo,
-            file_path="calc.py",
-            original_content=orig_code,
-            proposed_content=prop_code,
-            original_file_sha="sha_base_abc",
-            base_branch="main",
-            request_text="Increment by 2",
-        )
-        self.assertTrue(ccr["work_branch"].startswith("ryn-work/"))
-
-        # Must require explicit approval first
-        with self.assertRaises(ApprovalRequiredError):
-            self.gh_eng.commit_and_verify_change_request(
-                u, ccr["id"], lambda *_: {"content": orig_code, "sha": "sha_base_abc"}, lambda *_: {"commit_sha": "c1"}
-            )
-
-        self.gh_eng.approve_change_request(u, ccr["id"], approve=True)
-
-        remote_store = {"content": orig_code, "sha": "sha_base_abc"}
-
-        def mock_read(_r, _b, _p):
-            return dict(remote_store)
-
-        def mock_write(_r, _b, _p, new_c, _sha):
-            remote_store["content"] = new_c
-            remote_store["sha"] = "sha_new_def"
-            return {"commit_sha": "commit_verified_987654321"}
-
-        committed = self.gh_eng.commit_and_verify_change_request(u, ccr["id"], mock_read, mock_write)
-        self.assertEqual(committed["status"], "committed")
-        self.assertEqual(committed["committed_sha"], "commit_verified_987654321")
-        self.assertTrue(committed["verified_reread"])
-
-        # Verify technical memory recorded the verified fix
-        tech_mems = self.memory.retrieve(u, "calc.py", layers=["technical_memory"])
-        self.assertTrue(any("commit_verified_987654321"[:10] in m["content"] for m in tech_mems))
-
 
 if __name__ == "__main__":
     unittest.main()

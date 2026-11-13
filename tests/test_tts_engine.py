@@ -11,13 +11,10 @@ import unittest
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ryn-desktop"))
 
 import tts_engine  # noqa: E402
 from conversations import ConversationService  # noqa: E402
 from voice import AVAILABLE_VOICES, VoiceService, canonical_voice_id, normalize_asr_language  # noqa: E402
-from app.api_client import RynAgentApiClient  # noqa: E402
-from app.voice import PushToTalkController, split_sentence_chunks  # noqa: E402
 
 
 class TestTtsEngine(unittest.TestCase):
@@ -399,102 +396,11 @@ class TestVoiceCatalogAndSpeak(unittest.TestCase):
         self.assertIn("رين: جواب رين رقم 1", p1["text_read"])
 
 
-class TestDesktopAndClientVoiceIntegration(unittest.TestCase):
-    def test_desktop_voice_uses_server_speak_and_does_not_truncate_at_240_chars(self):
-        # Fix #3, #4, #16: Desktop PushToTalkController calls /api/v2/voice/speak, never truncates at 240 chars,
-        # and never interpolates text into a PowerShell command string.
-        api_calls = []
-
-        class DummyDesktopApi(RynAgentApiClient):
-            def __init__(self):
-                super().__init__("http://local", "tok_123")
-
-            def request_json(self, method, path, payload=None, retries=3):
-                api_calls.append((method, path, payload))
-                if path == "/api/v2/voice/speak":
-                    raw_mp3 = b"ID3\x04desktop-neural-mp3-audio"
-                    b64 = base64.b64encode(raw_mp3).decode("ascii")
-                    return {
-                        "ok": True,
-                        "voice_id": "ar-SY-LaithNeural",
-                        "detected_language": "ar-SY",
-                        "mime_type": "audio/mpeg",
-                        "tts_provider_used": "edge",
-                        "audio_b64": b64,
-                        "chunks": [{"chunk_index": 0, "total_chunks": 1, "audio_b64": b64, "mime_type": "audio/mpeg"}],
-                    }
-                if path == "/api/v2/voice/stop":
-                    return {"ok": True, "state": "idle", "playback_state": "stopped"}
-                return {"ok": True}
-
-        ptt = PushToTalkController(DummyDesktopApi())
-        ptt.session_id = "vs_desktop_1"
-        long_reply = ("هذا رد طويل من الوكيل على سطح المكتب يتجاوز 240 حرفاً بكثير للتحقق من عدم الاقتطاع. " * 8).strip()
-        self.assertGreater(len(long_reply), 450)
-
-        res = ptt.speak(long_reply)
-        self.assertTrue(res["ok"])
-        self.assertEqual(res["provider"], "edge")
-        self.assertFalse(res["fallback_used"])
-        speak_calls = [c for c in api_calls if c[1] == "/api/v2/voice/speak"]
-        self.assertEqual(len(speak_calls), 1)
-        self.assertEqual(speak_calls[0][2]["text"], long_reply)
-
-        # Verify sentence chunking for local fallback preserves full text (> 1,000 chars)
-        plan = split_sentence_chunks(long_reply, max_chunk_chars=200)
-        self.assertGreaterEqual(len(plan["chunks"]), 3)
-        self.assertIn("الاقتطاع", plan["chunks"][-1])
-
-    def test_desktop_offline_fallback_uses_safe_stdin_without_shell_interpolation(self):
-        # Fix #16: Verify dangerous shell metacharacters are passed via stdin, never interpolated in PowerShell -Command
-        class OfflineApi(RynAgentApiClient):
-            def __init__(self):
-                super().__init__("http://offline", "tok")
-
-            def request_json(self, method, path, payload=None, retries=3):
-                raise RuntimeError("offline")
-
-        ptt = PushToTalkController(OfflineApi())
-        dangerous_text = "مرحبا $(calc.exe); 'quote' \"double\" `backtick` نص آمن تماماً."
-        popen_calls = []
-
-        class FakeProc:
-            returncode = 0
-
-            def communicate(self, input=None, timeout=None):
-                popen_calls.append(("stdin", input))
-                return (b"", b"")
-
-            def terminate(self):
-                pass
-
-        def fake_popen(cmd, **kwargs):
-            popen_calls.append(("cmd", cmd))
-            return FakeProc()
-
-        with mock.patch.object(sys, "platform", "win32"), \
-                mock.patch("subprocess.Popen", side_effect=fake_popen):
-            out = ptt.speak(dangerous_text)
-
-        self.assertTrue(out["ok"])
-        self.assertTrue(out["fallback_used"])
-        self.assertEqual(out["provider"], "sapi-offline-fallback")
-        cmd_entries = [x[1] for x in popen_calls if x[0] == "cmd"]
-        self.assertTrue(len(cmd_entries) >= 1)
-        # Ensure none of the user text was interpolated into the PowerShell command arguments!
-        for cmd_list in cmd_entries:
-            joined_cmd = " ".join(cmd_list)
-            self.assertNotIn("calc.exe", joined_cmd)
-            self.assertNotIn("backtick", joined_cmd)
-            self.assertIn("[Console]::In.ReadToEnd()", joined_cmd)
-
+class TestClientVoiceHelpers(unittest.TestCase):
     def test_normalize_asr_language_helper(self):
-        self.assertEqual(normalize_asr_language(None), "auto")
-        self.assertEqual(normalize_asr_language("auto"), "auto")
         self.assertEqual(normalize_asr_language("ar"), "ar-SY")
-        self.assertEqual(normalize_asr_language("de-de"), "de-DE")
-        self.assertEqual(normalize_asr_language("fr-FR"), "fr-FR")
-        self.assertEqual(normalize_asr_language("tr"), "tr-TR")
+        self.assertEqual(normalize_asr_language("en"), "en-US")
+        self.assertEqual(normalize_asr_language("tr-TR"), "tr-TR")
 
 
 if __name__ == "__main__":

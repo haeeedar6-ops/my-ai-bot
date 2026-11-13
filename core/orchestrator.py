@@ -24,7 +24,14 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from code_intelligence import redact_secrets
+_SECRET_RE = re.compile(
+    r"(?:gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,}|AIza[0-9A-Za-z\-_]{20,}|sk-[A-Za-z0-9\-_]{16,}|Bearer\s+[A-Za-z0-9\-._~+/]+=*)"
+)
+
+
+def redact_secrets(text: Any) -> str:
+    return _SECRET_RE.sub("[REDACTED]", str(text or ""))
+
 
 STAGES = ("input", "intent", "plan", "route", "execute", "validate", "synthesis", "audit")
 
