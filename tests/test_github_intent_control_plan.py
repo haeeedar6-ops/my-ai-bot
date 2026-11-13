@@ -247,5 +247,34 @@ class TestGitHubIntentControlPlan(unittest.TestCase):
         self.assertFalse(res["old_repository_touched"])
 
 
+    def test_13_arabic_create_new_project_poi_ai_with_attachments(self):
+        prompt = "افتح مشروع جديد على GitHub وسميه poi-ai وارفع هدول ملفات عليه"
+        spec = parse_task_spec(
+            prompt,
+            default_owner="haeeedar6-ops",
+            attached_filenames=["render.yaml", "package.json", "server.js"],
+        )
+        self.assertEqual(spec.operation, "CREATE_REPOSITORY")
+        self.assertTrue(spec.repository_must_be_new)
+        self.assertEqual(spec.repository_name, "poi-ai")
+        self.assertEqual(spec.confidence, "high")
+
+        res = self.cp.execute_task(
+            user_request=prompt,
+            staged_files={
+                "render.yaml": "services: []",
+                "package.json": '{"name": "poi-ai"}',
+                "server.js": "console.log('poi-ai');",
+            },
+            github_client=self.client,
+            default_owner="haeeedar6-ops",
+            connected_old_repo="haeeedar6-ops/my-ai-bot",
+        )
+        self.assertEqual(res["status"], "VERIFIED_SUCCESS")
+        self.assertEqual(res["identity"]["repository_name"], "poi-ai")
+        self.assertFalse(res["old_repository_touched"])
+        self.assertEqual(sorted(res["verified_paths"]), ["package.json", "render.yaml", "server.js"])
+
+
 if __name__ == "__main__":
     unittest.main()
