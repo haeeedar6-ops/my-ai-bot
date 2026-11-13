@@ -753,7 +753,6 @@ textarea::placeholder{color:var(--sub)}
       <button type="button" class="dquota-btn" id="dExpAllBtn">📦 تصدير كل المحادثات (Export All)</button>
       <button type="button" class="dquota-btn" id="dImpConvBtn">📂 استيراد / استعادة محادثة</button>
       <input type="file" id="dImpConvFile" hidden accept=".json,application/json">
-      <button type="button" class="dquota-btn" id="dAgentBtn">🤖 وكيل الأجهزة (Windows / Android)</button>
       <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود النماذج وفحص النظام</button>
     </div>
     <div class="dfoot" id="dFoot">محفوظة على هالجهاز (حتى 100 محادثة)</div>
@@ -790,7 +789,6 @@ textarea::placeholder{color:var(--sub)}
         <li>🎙️ <b>تسجيل صوت</b> بيتحوّل لنص، و⬇️ <b>الكود بينزل بملف</b> تلقائياً.</li>
         <li>💬 <b>كل النماذج المجانية بمكان واحد</b>: Gemini 2.5 Pro/Flash/2.0 و GPT-OSS 120B/20B و Qwen3 32B/235B/Coder و DeepSeek R1/V3 و Kimi K2 و Llama 4 Maverick/Scout و Llama 3.3 70B و Gemma 3 و Mistral/Codestral و Nemotron 253B و GLM Z1.</li>
         <li>🧩 <b>Ryn mix المحسّن</b>: عقل هجين يدمج أقوى الموديلات عبر LangGraph + DSPy + فحص الشجرة النحوية (AST) + الحارس الأمني (18/18).</li>
-        <li>🐙 <b>إدارة وتعديل مشاريع GitHub من المحادثة</b>: اقرأ وعدّل أي ملف أو ارفع مشروعاً كاملاً (.zip) مباشرة من الشات مع فحص نحوي وتراجع فوري.</li>
         <li>🎨 <b>توليد صور</b> واقعية حسب وصفك.</li>
         <li>🌐 <b>إنترنت</b>: بيقرا روابط المواقع وفيديوهات يوتيوب، وبيدوّر ويبعتلك روابط لما تطلب فيديو أو موقع.</li>
         <li>📎 <b>بيقرا الصور والملفات</b> (PDF وغيره).</li>
@@ -936,51 +934,9 @@ textarea::placeholder{color:var(--sub)}
         <span>🌳 Tree-sitter</span>
         <span>🔮 DSPy</span>
         <span>🕸️ LangGraph</span>
-        <span>🐙 GitHub Sync</span>
       </div>
       <button type="button" class="syscheck-btn" id="runSysCheckBtn">🧪 فحص شامل للتأكد أن كل الأنظمة الـ 10 شغّالة</button>
       <div class="sys-box" id="sysCheckBox" hidden></div>
-    </div>
-  </div>
-</div>
-
-<div id="agentModal" hidden>
-  <div class="mbox" style="max-width:480px">
-    <div class="mh"><span>🤖 لوحة تحكم RYN Agent (Windows &amp; Android)</span><button id="agentClose" aria-label="إغلاق">✕</button></div>
-    <div class="mbody">
-      <div class="msec">
-        <label style="flex-wrap:wrap;gap:6px"><span>🔗 إقران جهاز جديد</span><span style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="syscheck-btn" id="agPairBtn" style="width:auto;padding:4px 10px;font-size:11px">＋ كود إقران (6 أرقام)</button><button type="button" class="syscheck-btn" id="agPairPhoneBtn" style="width:auto;padding:4px 10px;font-size:11px;border-color:var(--g);color:var(--g)">💻📱 ربط هذا الجهاز فوراً (PC / هاتف)</button></span></label>
-        <div id="agPhoneLiveBar" hidden style="margin-top:6px;padding:8px;border-radius:10px;background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.3);font-size:11.5px">
-          <div style="color:var(--g);font-weight:700;margin-bottom:5px">🟢 هذا الجهاز (كمبيوتر / هاتف) متصل الآن كعميل RYN نشط!</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <label class="syscheck-btn" style="width:auto;padding:4px 10px;font-size:11px;cursor:pointer;margin:0">📸 إرسال لقطة شاشة للوكيل<input type="file" id="agPhoneShotInp" accept="image/*" hidden></label>
-            <button type="button" class="syscheck-btn" id="agPhoneStepBtn" style="width:auto;padding:4px 10px;font-size:11px">⚡ تنفيذ الخطوة التالية</button>
-          </div>
-        </div>
-        <small>أدخل الكود في تطبيق RYN Desktop على ويندوز أو RYN Mobile على أندرويد لربطه بحسابك بأمان.</small>
-        <div id="agPairCodeBox" hidden style="text-align:center;padding:8px;border-radius:10px;background:rgba(0,255,157,.12);border:1px dashed var(--g);font-family:Consolas,monospace;font-size:20px;font-weight:800;color:var(--g);letter-spacing:3px;direction:ltr"></div>
-      </div>
-      <div class="msec">
-        <label style="flex-wrap:wrap;gap:6px"><span>🚀 تحكم كتابي وصوتي بالجهاز المقترن</span><button type="button" class="syscheck-btn" id="agTtsBtn" style="width:auto;padding:2px 8px;font-size:11px;border-color:var(--g);color:var(--g)">🔊 الرد الصوتي: مفعّل</button></label>
-        <div class="madd" style="gap:6px">
-          <input class="minp" id="agGoalInp" placeholder="اكتب الأمر هنا أو اضغط 🎤 وتحدث بصوتك...">
-          <button type="button" id="agVoiceBtn" title="تحدث بصوتك لإرسال أمر للوكيل" style="background:rgba(168,85,247,.22);border:1px solid rgba(168,85,247,.5);color:#e9d5ff;min-width:38px">🎤</button>
-          <button type="button" id="agStartTaskBtn" title="إرسال الأمر الكتابي">▶</button>
-        </div>
-        <small id="agVoiceStatus" style="color:var(--c2);display:none">🎙️ جاري الاستماع لصوتك... تحدث الآن</small>
-        <div style="display:flex;gap:6px;margin-top:4px">
-          <button type="button" class="syscheck-btn" id="agStopAllBtn" style="border-color:var(--red);color:var(--red);background:rgba(255,93,108,.12)">⏹ إيقاف المهام الجارية</button>
-          <button type="button" class="syscheck-btn" id="agKillBtn" style="border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.12)">🛑 مفتاح الطوارئ</button>
-        </div>
-      </div>
-      <div class="msec">
-        <label><span>💻 الأجهزة المقترنة والمهام النشطة</span><small id="agQuotaTxt">0 طلب اليوم</small></label>
-        <div class="sys-box" id="agStatusBox" style="max-height:190px"></div>
-      </div>
-      <div class="msec">
-        <label><span>🛡️ سجل التدقيق الأمني (Audit Log)</span></label>
-        <div class="sys-box" id="agLogsBox" style="max-height:130px"></div>
-      </div>
     </div>
   </div>
 </div>
@@ -2398,7 +2354,6 @@ function drawFloating(){
   h+='<button class="dia" data-m="__gemini_live" title="Gemini Live: محادثة حية مباشرة (متل ChatGPT)"><span>Gemini<br>Live ✨</span></button>';
   h+='<button class="dia" data-m="__live_voice" title="محادثة صوتية حية مع الروبوت"><span>Live<br>Voice 🎙️</span></button>';
   if(models.length>2)h+='<button class="dia" data-m="__all"><span>كل<br>الموديلات</span></button>';
-  h+='<button class="dia'+(ghEdit?' on':'')+'" data-m="__gh_edit" title="تشغيل/إيقاف تعديل GitHub"><span>GitHub<br>'+(ghEdit?'ON':'OFF')+'</span></button>';
   $('#floating').innerHTML=h;
 }
 function setPh(){inp.placeholder=current==='img:flux'?'RYN Visual Brain: أنشئ صورة أو ارفع صورة وعدّلها (خلفية، إضاءة، ملابس، حذف عنصر، ترميم)...':'اكتب رسالة...'}
@@ -2408,14 +2363,6 @@ $('#floating').addEventListener('click',async e=>{
   if(m==='__gemini_live'){$('#floating').classList.add('off');startLiveVoiceChat('gemini');return}
   if(m==='__live_voice'){$('#floating').classList.add('off');startLiveVoiceChat('classic');return}
   if(m==='__all'){$('#floating').classList.add('off');openSheet();return}
-  if(m==='__gh_edit'){
-    try{
-      const r=await api('/api/github/edit-mode',{method:'POST',body:JSON.stringify({on:!ghEdit})});const d=await r.json();
-      if(!r.ok){toast(d.error||'ما انبدّل');return}
-      ghEdit=!!d.enabled;drawFloating();toast('تعديل GitHub: '+(ghEdit?'شغّال ✅':'مطفّي 🔒 (قراءة فقط)'));
-    }catch(x){}
-    return;
-  }
   $('#floating').classList.add('off');setModel(m);
 });
 function openSheet(){
@@ -2435,7 +2382,7 @@ async function setModel(id){
 async function loadModels(){
   try{
     const d=await (await api('/api/models')).json();
-    models=d.options;current=d.current;hasGroq=!!d.groq;codeAuto=false;ghEdit=(d.github_edit!==false);
+    models=d.options;current=d.current;hasGroq=!!d.groq;codeAuto=false;
     $('#mname').textContent=label(current);drawFloating();setPh();applyFx(current);
     if(d.file)showChip(d.file,!!d.file_image);
   }catch(e){}
@@ -2584,181 +2531,6 @@ async function runSystemDiagnostics(){
   }
   btn.disabled=false;
 }
-
-/* ===== لوحة تحكم وكيل الأجهزة RYN Agent (#agentModal) ===== */
-let agKillActive=false;
-async function refreshAgentDashboard(){
-  const stBox=$('#agStatusBox'),lgBox=$('#agLogsBox');
-  if(!stBox)return;
-  try{
-    const [rSt,rLg]=await Promise.all([api('/api/v1/agent/status'),api('/api/v1/agent/logs?limit=15')]);
-    const st=await rSt.json(),lg=await rLg.json();
-    agKillActive=!!st.kill_switch;
-    if($('#agKillBtn'))$('#agKillBtn').textContent=agKillActive?'🟢 إلغاء إيقاف الطوارئ':'🛑 مفتاح الطوارئ (Kill Switch)';
-    if($('#agQuotaTxt')&&st.usage)$('#agQuotaTxt').textContent=st.usage.request_count+' / '+st.usage.request_limit+' طلب اليوم';
-    const devs=st.devices||[],tasks=st.tasks||[];
-    let h='';
-    if(!devs.length)h+='<small style="text-align:center;color:var(--sub)">لا توجد أجهزة مقترنة بعد. اضغط «توليد كود إقران» أعلاه.</small>';
-    devs.forEach(d=>{
-      h+='<div class="sys-row"><b>'+(d.revoked?'⛔ ':'💻 ')+esc(d.name)+' ('+esc(d.platform)+')</b>'+
-         (d.revoked?'<span style="color:var(--red)">ملغى</span>':'<button type="button" data-revdev="'+esc(d.id)+'" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:1px 6px;font-size:10.5px">إلغاء ربط</button>')+'</div>';
-    });
-    tasks.slice(0,5).forEach(t=>{
-      h+='<div class="sys-row" style="flex-direction:column;align-items:stretch;gap:4px"><div style="display:flex;justify-content:space-between"><b>📋 '+esc(t.goal.slice(0,48))+'</b><span>'+esc(t.status)+' (خطوة '+t.current_step+')</span></div>';
-      if(t.pending_command){
-        const pc=t.pending_command;
-        h+='<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(245,158,11,.15);padding:4px 8px;border-radius:8px;font-size:11px"><span>⚠️ ينتظر موافقتك: '+esc(pc.action)+' ('+esc(pc.reason||'')+')</span>'+
-           '<div style="display:flex;gap:4px"><button type="button" data-agapp="'+esc(pc.command_id)+'" data-ok="1" style="background:var(--g);color:#031a10;border:0;border-radius:6px;padding:2px 7px;font-weight:800">موافقة</button>'+
-           '<button type="button" data-agapp="'+esc(pc.command_id)+'" data-ok="0" style="background:var(--red);color:#fff;border:0;border-radius:6px;padding:2px 7px;font-weight:800">رفض</button></div></div>';
-      }
-      h+='</div>';
-    });
-    stBox.innerHTML=h||'<small style="text-align:center">لا توجد بيانات.</small>';
-    const evs=(lg&&lg.events)||[];
-    lgBox.innerHTML=evs.length?evs.map(e=>'<div class="sys-row"><b>'+esc(e.event_type)+'</b><span>'+esc((e.result||e.error_code||'').slice(0,55))+'</span></div>').join(''):'<small style="text-align:center;color:var(--sub)">السجل فارغ حالياً.</small>';
-  }catch(e){
-    stBox.innerHTML='<small style="color:var(--red)">تعذر جلب حالة الوكيل.</small>';
-  }
-}
-async function openAgentModal(){
-  closeDrawer();
-  $('#agPairCodeBox').hidden=true;
-  $('#agentModal').hidden=false;
-  await refreshAgentDashboard();
-}
-if($('#dAgentBtn'))$('#dAgentBtn').onclick=openAgentModal;
-if($('#agentClose'))$('#agentClose').onclick=()=>{$('#agentModal').hidden=true};
-if($('#agentModal'))$('#agentModal').onclick=e=>{if(e.target===$('#agentModal'))$('#agentModal').hidden=true};
-let phoneDevTok=(()=>{try{return localStorage.getItem('ryn_phone_agent_tok_v1')||''}catch(e){return ''}})();
-let phoneSeq=1;
-function syncPhoneBar(){const b=$('#agPhoneLiveBar');if(b)b.hidden=!phoneDevTok;}
-syncPhoneBar();
-if($('#agPairPhoneBtn'))$('#agPairPhoneBtn').onclick=async()=>{
-  try{
-    const r1=await api('/api/v1/agent/pair/start',{method:'POST',body:JSON.stringify({})});
-    const d1=await r1.json();
-    if(!r1.ok||!d1.pairing_code){toast(d1.error||'تعذر توليد الكود');return;}
-    const r2=await api('/api/v1/agent/pair/complete',{method:'POST',body:JSON.stringify({code:d1.pairing_code,device_name:(/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'هاتف ذكي ('+(navigator.platform||'Mobile')+')':'كمبيوتر ('+(navigator.platform||'PC')+')'),platform:(/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'android':'windows')})});
-    const d2=await r2.json();
-    if(r2.ok&&d2.device_token){
-      phoneDevTok=d2.device_token;
-      try{localStorage.setItem('ryn_phone_agent_tok_v1',phoneDevTok)}catch(e){}
-      syncPhoneBar();
-      toast('✅ تم ربط جهازك فوراً مع RYN Agent!');
-      await refreshAgentDashboard();
-    }else toast(d2.error||'تعذر ربط الهاتف');
-  }catch(e){toast('خطأ بالاتصال')}
-};
-async function runPhoneStep(b64Img){
-  if(!phoneDevTok){toast('اضغط أولاً على (💻📱 ربط هذا الجهاز فوراً (PC / هاتف))');return;}
-  try{
-    const r=await fetch('/api/v1/agent/step',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+phoneDevTok},body:JSON.stringify({sequence:phoneSeq,screenshot:b64Img||'',screen_width:window.screen.width||1080,screen_height:window.screen.height||2400,observation:'Mobile Web Companion ('+window.innerWidth+'x'+window.innerHeight+')',use_vision_model:!!b64Img})});
-    const d=await r.json();
-    if(!r.ok||!d.ok){toast(d.error||'تعذر جلب الخطوة');return;}
-    if(d.status==='idle'){toast('اكتب مهمة أولاً في خانة (إرسال مهمة جديدة) واضغط ▶');return;}
-    if(d.command_id){
-      await fetch('/api/v1/agent/result',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+phoneDevTok},body:JSON.stringify({task_id:d.task_id,command_id:d.command_id,sequence:d.sequence||phoneSeq,status:'succeeded',verification:'Mobile Companion executed: '+(d.action||'')+' - '+(d.reason||'')})});
-      phoneSeq=(d.sequence||phoneSeq)+1;
-    }
-    toast('🤖 '+(d.action||d.status)+': '+(d.reason||d.message||'تمت الخطوة'));
-    await refreshAgentDashboard();
-  }catch(e){toast('خطأ بالاتصال')}
-}
-if($('#agPhoneStepBtn'))$('#agPhoneStepBtn').onclick=()=>runPhoneStep('');
-if($('#agPhoneShotInp'))$('#agPhoneShotInp').onchange=e=>{
-  const f=e.target.files&&e.target.files[0];if(!f)return;
-  const rd=new FileReader();
-  rd.onload=ev=>{runPhoneStep(String(ev.target.result||''));e.target.value='';};
-  rd.readAsDataURL(f);
-};
-if($('#agPairBtn'))$('#agPairBtn').onclick=async()=>{
-  try{
-    const r=await api('/api/v1/agent/pair/start',{method:'POST',body:JSON.stringify({})});
-    const d=await r.json();
-    if(r.ok&&d.pairing_code){
-      const el=$('#agPairCodeBox');el.textContent=d.pairing_code;el.hidden=false;
-      toast('🔗 تم توليد كود الإقران (صالح لـ 5 دقائق)');
-      await refreshAgentDashboard();
-    }else toast(d.error||'تعذر توليد الكود');
-  }catch(e){toast('خطأ بالاتصال')}
-};
-let agTtsOn=true;
-function speakAgentReply(txt){
-  if(!agTtsOn||!txt)return;
-  speakTextWithRyn(txt,null,null);
-}
-if($('#agTtsBtn'))$('#agTtsBtn').onclick=()=>{
-  agTtsOn=!agTtsOn;
-  $('#agTtsBtn').textContent=agTtsOn?'🔊 الرد الصوتي: مفعّل':'🔇 الرد الصوتي: صامت';
-  $('#agTtsBtn').style.color=agTtsOn?'var(--g)':'var(--mut)';
-};
-if($('#agGoalInp'))$('#agGoalInp').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){e.preventDefault();if($('#agStartTaskBtn'))$('#agStartTaskBtn').click();}
-});
-if($('#agStartTaskBtn'))$('#agStartTaskBtn').onclick=async()=>{
-  const g=$('#agGoalInp').value.trim();if(!g)return;
-  try{
-    const r=await api('/api/v1/agent/tasks',{method:'POST',body:JSON.stringify({goal:g})});
-    const d=await r.json();
-    if(r.ok){
-      $('#agGoalInp').value='';
-      toast('🚀 بدأت المهمة الكتابية على الجهاز المقترن');
-      speakAgentReply('تم استلام الأمر، بدأت تنفيذ المهمة على جهازك.');
-      await refreshAgentDashboard();
-    }else toast(d.error||'تعذر بدء المهمة');
-  }catch(e){toast('خطأ بالاتصال')}
-};
-let agRec=null,agListening=false;
-if($('#agVoiceBtn'))$('#agVoiceBtn').onclick=()=>{
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){toast('متصفحك لا يدعم الإملاء الصوتي المباشر، استخدم خانة الكتابة');return;}
-  if(agListening&&agRec){try{agRec.stop()}catch(e){}return;}
-  agRec=new SR();
-  const _agL=getAsrLanguagePref();agRec.lang=(_agL&&_agL!=='auto')?_agL:'ar-SY';
-  agRec.interimResults=true;
-  agRec.continuous=false;
-  const st=$('#agVoiceStatus'),btn=$('#agVoiceBtn');
-  agRec.onstart=()=>{agListening=true;if(st)st.style.display='block';if(btn)btn.textContent='⏹';};
-  agRec.onresult=ev=>{
-    let tr='';
-    for(let i=ev.resultIndex;i<ev.results.length;i++)tr+=ev.results[i][0].transcript;
-    if($('#agGoalInp'))$('#agGoalInp').value=tr.trim();
-  };
-  agRec.onend=async()=>{
-    agListening=false;if(st)st.style.display='none';if(btn)btn.textContent='🎤';
-    const finalTxt=($('#agGoalInp')&&$('#agGoalInp').value.trim())||'';
-    if(!finalTxt)return;
-    try{
-      const r=await api('/api/v1/agent/voice',{method:'POST',body:JSON.stringify({transcript:finalTxt,start_task:true})});
-      const d=await r.json();
-      if(r.ok&&d.ok){
-        $('#agGoalInp').value='';
-        toast('🎙️ '+(d.assistant_response||'تم بدء المهمة الصوتية'));
-        speakAgentReply(d.assistant_response||'سمعتك، بدأت المهمة على جهازك المقترن.');
-        await refreshAgentDashboard();
-      }else toast(d.error||'تعذر إرسال الأمر الصوتي');
-    }catch(e){toast('خطأ بالاتصال')}
-  };
-  agRec.onerror=()=>{agListening=false;if(st)st.style.display='none';if(btn)btn.textContent='🎤';toast('تعذر التقاط الصوت');};
-  try{agRec.start()}catch(e){}
-};
-if($('#agStopAllBtn'))$('#agStopAllBtn').onclick=async()=>{
-  try{await api('/api/v1/agent/stop',{method:'POST',body:JSON.stringify({})});toast('⏹ تم إيقاف المهام الجارية');await refreshAgentDashboard()}catch(e){}
-};
-if($('#agKillBtn'))$('#agKillBtn').onclick=async()=>{
-  try{await api('/api/v1/agent/killswitch',{method:'POST',body:JSON.stringify({active:!agKillActive})});toast(!agKillActive?'🛑 تم تفعيل مفتاح الطوارئ الشامل':'🟢 تم إلغاء مفتاح الطوارئ');await refreshAgentDashboard()}catch(e){}
-};
-if($('#agStatusBox'))$('#agStatusBox').addEventListener('click',async e=>{
-  const rev=e.target.closest('[data-revdev]');
-  if(rev){
-    try{await api('/api/v1/agent/device/revoke',{method:'POST',body:JSON.stringify({device_id:rev.dataset.revdev})});toast('⛔ تم إلغاء ربط الجهاز');await refreshAgentDashboard()}catch(x){}
-    return;
-  }
-  const app=e.target.closest('[data-agapp]');
-  if(app){
-    try{await api('/api/v1/agent/approve',{method:'POST',body:JSON.stringify({command_id:app.dataset.agapp,approve:app.dataset.ok==='1'})});toast('✅ تم تحديث حالة الأمر');await refreshAgentDashboard()}catch(x){}
-  }
-});
 
 if($('#dQuotaBtn'))$('#dQuotaBtn').onclick=openQuotaModal;
 if($('#runSysCheckBtn'))$('#runSysCheckBtn').onclick=runSystemDiagnostics;
@@ -3199,10 +2971,6 @@ try:
     import ryn_ai_stack as AIStack
 except Exception:
     AIStack = None
-try:
-    import ryn_agent as RynAgent
-except Exception:
-    RynAgent = None
 try:
     import ryn_selftest as S
 except Exception:
@@ -7134,120 +6902,10 @@ def register(app, b):
                 diag_res = AIStack.run_full_stack_diagnostics()
                 finish(job_id, {"status": "done", "text": diag_res["report_ar"], "note": "System Check · 10/10 ✅"})
                 return
-            gh_ctx_active = False
-            if AIStack is not None:
-                gh_mgr = AIStack.get_github_manager()
-                if RynAgent is not None:
-                    ag_reply = RynAgent.get_agent_core().handle_chat_agent_command(u, text)
-                    if ag_reply:
-                        finish(job_id, {"status": "done", "text": ag_reply, "note": "RYN Agent 🤖"})
-                        return
-                gh_direct_reply = gh_mgr.handle_direct_chat_command(u, text)
-                if gh_direct_reply:
-                    finish(job_id, {"status": "done", "text": gh_direct_reply, "note": "GitHub Agent 🐙"})
-                    return
-                # إذا أرفق المستخدم ملف .zip أو ملفات كود وطلب رفعها مباشرة على GitHub
-                ctx_att = b.get_doc(W)
-                # Route explicit GitHub repository creation or controlled file upload via GitHubControlPlane
-                try:
-                    from github_intent_control import parse_task_spec as _gic_parse
-                    _cur_cfg = gh_mgr.get_config(u)
-                    _cur_repo = _cur_cfg.get("repo", "")
-                    _def_owner = _cur_repo.split("/", 1)[0] if "/" in _cur_repo else ""
-                    _att_names = list((ctx_att or {}).get("raw_files", {}).keys())
-                    _spec = _gic_parse(
-                        text,
-                        default_owner=_def_owner,
-                        has_attachments=bool(ctx_att),
-                        attached_filenames=_att_names,
-                    )
-                except Exception:
-                    _spec = None
-                    _cur_cfg = {}
-                    _cur_repo = ""
-
-                if _spec is not None and _spec.operation == "CREATE_REPOSITORY" and (gh_mgr._GH_MENTION_RE.search(text) or bool(ctx_att) or _spec.repository_name != "unresolved"):
-                    _tok = (_cur_cfg.get("_token") or "").strip() or os.environ.get("GITHUB_TOKEN", "").strip()
-                    if not _tok:
-                        finish(job_id, {"status": "done", "text": "⚠️ لإنشاء مستودع جديد على GitHub، يرجى إضافة GitHub Token في إعدادات GitHub أولاً.", "note": "GitHub Token Missing"})
-                        return
-                    _staged = dict((ctx_att or {}).get("raw_files", {}))
-                    if not _staged and (ctx_att or {}).get("zip_bytes"):
-                        import io as _io, zipfile as _zf
-                        with _zf.ZipFile(_io.BytesIO(ctx_att["zip_bytes"]), "r") as _z:
-                            for _info in _z.infolist():
-                                if not _info.is_dir():
-                                    _staged[_info.filename.lstrip("/")] = _z.read(_info.filename).decode("utf-8", errors="replace")
-                    if not _staged:
-                        finish(job_id, {"status": "done", "text": f"📌 حددت نية إنشاء مستودع جديد باسم `{_spec.repository_name}`، لكن لم أستلم ملفات لرفعها بعد. أرفق الملفات المطلوبة وسأقوم بإنشائه والتحقق منه.", "note": "Awaiting Files"})
-                        return
-                    from ryn_ai_stack import RestGitHubControlClient, get_github_control_plane
-                    _cp = get_github_control_plane()
-                    set_progress(job_id, f"🐙 جاري تنفيذ بوابة الفحص وإنشاء المستودع الجديد `{_spec.repository_name}`...")
-                    _res = _cp.execute_task(
-                        user_request=text,
-                        staged_files=_staged,
-                        github_client=RestGitHubControlClient(_tok),
-                        default_owner=_def_owner,
-                        connected_old_repo=_cur_repo,
-                    )
-                    if _res.get("status") == "VERIFIED_SUCCESS":
-                        _id_info = _res.get("identity") or {}
-                        _msg_ok = (
-                            f"✅ **تم إنشاء المستودع الجديد ورفع الملفات والتحقق منها بنجاح!**\n"
-                            f"• **المستودع الجديد**: `{_id_info.get('full_name')}` (ID: `{_id_info.get('repository_id')}`)\n"
-                            f"• **الفرع**: `{_res.get('branch')}`\n"
-                            f"• **الملفات المؤكدة بعد إعادة القراءة**: `{', '.join(_res.get('verified_paths', []))}`\n"
-                            f"• **الرابط**: [عرض المستودع على GitHub]({_id_info.get('canonical_url', '')})"
-                        )
-                        finish(job_id, {"status": "done", "text": _msg_ok, "note": "GitHub New Repo Verified 🐙"})
-                        return
-                    elif _res.get("status") == "NAME_COLLISION":
-                        finish(job_id, {"status": "done", "text": f"⚠️ {_res.get('error')} (تم إيقاف العملية دون تعديل أي مستودع).", "note": "Name Collision"})
-                        return
-                    elif _res.get("status") == "NEEDS_CLARIFICATION":
-                        finish(job_id, {"status": "done", "text": "❓ " + " ".join(_res.get("questions", [])), "note": "Clarification Needed"})
-                        return
-                    else:
-                        _err_detail = _res.get("error") or ", ".join((_res.get("preflight") or {}).get("failed_checks", [])) or _res.get("status")
-                        finish(job_id, {"status": "done", "text": f"❌ توقفت العملية في بوابة التحقق (`{_res.get('status')}`): {_err_detail}", "note": "Preflight / Verify Blocked"})
-                        return
-
-                if ctx_att and (_spec is None or not _spec.repository_must_be_new) and gh_mgr._PROJECT_UPLOAD_CMD_RE.search(text) and gh_mgr._GH_MENTION_RE.search(text):
-                    if ctx_att.get("zip_bytes"):
-                        set_progress(job_id, "🐙 جاري فحص ورفع أرشيف المشروع كاملاً إلى GitHub...")
-                        up_res = gh_mgr.extract_and_push_zip(ctx_att["zip_bytes"], commit_message=f"رفع المشروع ({ctx_att.get('name', 'zip')}) عبر Ryn", user_id=u)
-                        msg_up = (
-                            f"✅ **تم رفع وتحديث المشروع كاملاً ({up_res.get('count', 0)} ملفات) على GitHub بنجاح!**\n"
-                            f"• **المستودع**: `{up_res.get('repo')}` (الفرع `{up_res.get('branch')}`)\n"
-                            f"• **أبرز الملفات المرفوعة**: `{', '.join(up_res.get('paths', [])[:12])}`\n"
-                            f"• **الرابط على GitHub**: [عرض التحديث على GitHub]({up_res.get('commit_url', '')})"
-                        )
-                        finish(job_id, {"status": "done", "text": msg_up, "note": "GitHub Project Push 🐙"})
-                        return
-                    elif ctx_att.get("raw_files"):
-                        set_progress(job_id, "🐙 جاري فحص ورفع الملفات المرفقة إلى GitHub...")
-                        up_res = gh_mgr.push_project_files(ctx_att["raw_files"], commit_message="رفع ملفات مرفقة عبر محادثة Ryn", user_id=u)
-                        msg_up = (
-                            f"✅ **تم رفع وتحديث {up_res.get('count', 0)} ملفات مباشرة إلى GitHub!**\n"
-                            f"• **المستودع**: `{up_res.get('repo')}` (الفرع `{up_res.get('branch')}`)\n"
-                            f"• **الملفات**: `{', '.join(up_res.get('paths', []))}`\n"
-                            f"• **الرابط على GitHub**: [عرض التحديث على GitHub]({up_res.get('commit_url', '')})"
-                        )
-                        finish(job_id, {"status": "done", "text": msg_up, "note": "GitHub Project Push 🐙"})
-                        return
             pctx = page_context(b, text) if len(text) < 3000 else ""
             if pctx:
                 mem_prompt = pctx + mem_prompt
             if AIStack is not None:
-                try:
-                    gh_ctx = AIStack.get_github_manager().build_chat_github_context(u, text, history)
-                    if gh_ctx:
-                        gh_ctx_active = True
-                        set_progress(job_id, "🐙 عم اقرأ ملفات مستودع GitHub وأجهز النقاش/التعديل...")
-                        mem_prompt = gh_ctx + mem_prompt
-                except Exception as _ghe:
-                    log.warning("GitHub chat context warning: %s", str(_ghe)[:120])
                 try:
                     chroma_ctx = AIStack.get_chroma_memory().query_relevant_context(u, text, top_k=3)
                     if chroma_ctx:
@@ -7307,7 +6965,7 @@ def register(app, b):
             mix_meta = {}
             yt = [m.group(0) for m in YT_RE.finditer(text)]
             net_fail = ""
-            if not net and not is_mix_mode and not gh_ctx_active and b.client and len(text) < 1500 and "```" not in text:
+            if not net and not is_mix_mode and b.client and len(text) < 1500 and "```" not in text:
                 net = needs_web(text)
             if (net or yt) and b.client:
                 try:
@@ -7341,16 +6999,8 @@ def register(app, b):
                 note = short_name(note, labels.get(sel, "Gemini"))
             if net_fail:
                 note = note + " · ⚠️ بدون إنترنت"
-            # تطبيق أوامر وتعديلات GitHub الجراحية أولاً قبل verify_code حتى لا تتشوه بلوكات <github_patch>
-            gh_pending_flag = False
-            has_gh_action_tags = bool(answer and re.search(r"<github_(?:patch|create|delete)\b", answer, re.I))
-            if AIStack is not None and answer and has_gh_action_tags:
-                try:
-                    answer, gh_pending_flag = AIStack.get_github_manager().apply_chat_github_actions(u, text, answer)
-                except Exception as _gh_act_e:
-                    log.warning("GitHub chat action error: %s", str(_gh_act_e)[:120])
             verified = None
-            if answer and not has_gh_action_tags and (code_req or big or "```" in answer):
+            if answer and (code_req or big or "```" in answer):
                 call = (lambda m: big_gemini(b, m, BIG_HINT)) if (big and b.client) else \
                        (lambda m: b.ask_model(W, m, deep=False, code=True)[0])
                 answer = continue_if_cut(b, answer, contents, call)   # كمّل إذا انقطع بنص كود
@@ -7412,11 +7062,7 @@ def register(app, b):
                         files_out = auto_code_files(answer, text, fix_intent, min_lines=(1 if asked_file else 12))
                 except Exception:
                     log.exception("توليد ملفات الكود التلقائية فشل")
-            if AIStack is not None and answer and not has_gh_action_tags:
-                try:
-                    answer, gh_pending_flag = AIStack.get_github_manager().apply_chat_github_actions(u, text, answer)
-                except Exception as _gh_act_e:
-                    log.warning("GitHub chat action error: %s", str(_gh_act_e)[:120])
+            if AIStack is not None and answer:
                 try:
                     if os.environ.get("RYN_SERVER_MEMORY_PERSISTENCE", "0") == "1":
                         AIStack.get_chroma_memory().add_interaction(u, text, answer)
@@ -7459,7 +7105,7 @@ def register(app, b):
                     _ = None
             res = {"status": "done", "text": answer or "", "note": note or "", "memories": new_mems,
                    "conversation_id": (conv_id or f"conv_{u}_default"),
-                   "file": (files_out[0] if files_out else None), "files": files_out, "gh_pending": gh_pending_flag}
+                   "file": (files_out[0] if files_out else None), "files": files_out}
         except Exception as e:
             log.exception("web chat error")
             msg = b.friendly_error(e)
@@ -7732,7 +7378,7 @@ def register(app, b):
             cur = "gemini"
         ctx = b.get_doc(wid())
         return jsonify(current=cur, options=opts, groq=bool(b._groq_ready()),
-                       code_auto=False, github_edit=_gh_edit_flag(), file=(ctx["name"] if ctx else ""),
+                       code_auto=False, file=(ctx["name"] if ctx else ""),
                        file_image=bool(ctx and ctx.get("image")))
 
     @app.post("/api/model")
@@ -8048,213 +7694,6 @@ def register(app, b):
         except Exception as e:
             return jsonify(error=str(e)), 400
 
-    # ---------- مسارات استوديو ملفات GitHub (قراءة / تعديل / رفع / حذف / إرفاق للشات) ----------
-    @app.get("/api/github/config")
-    def api_github_get_config():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        cfg = AIStack.get_github_manager().get_config(uid())
-        cfg.pop("_token", None)
-        return jsonify(ok=True, config=cfg)
-
-    @app.post("/api/github/config")
-    def api_github_set_config():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        try:
-            cfg = AIStack.get_github_manager().set_config(
-                uid(),
-                repo=str(body.get("repo") or ""),
-                branch=str(body.get("branch") or ""),
-                token=str(body.get("token") or ""),
-            )
-            return jsonify(ok=True, config=cfg)
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 400
-
-    @app.delete("/api/github/token")
-    def api_github_clear_token():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        cfg = AIStack.get_github_manager().clear_token(uid())
-        return jsonify(ok=True, config=cfg)
-
-    @app.get("/api/github/tree")
-    def api_github_tree():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        repo = str(request.args.get("repo") or "").strip()
-        branch = str(request.args.get("branch") or "").strip()
-        try:
-            gh = AIStack.get_github_manager()
-            res = gh.list_files(uid(), repo_override=repo, branch_override=branch)
-            res["branches"] = gh.list_branches(uid(), repo_override=repo)
-            return jsonify(ok=True, **res)
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 400
-
-    @app.get("/api/github/file")
-    def api_github_get_file():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        path = str(request.args.get("path") or "").strip()
-        repo = str(request.args.get("repo") or "").strip()
-        branch = str(request.args.get("branch") or "").strip()
-        try:
-            res = AIStack.get_github_manager().get_file(path, uid(), repo_override=repo, branch_override=branch)
-            return jsonify(ok=True, **res)
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 400
-
-    def _gh_edit_flag():
-        try:
-            return bool(AIStack.get_github_manager().get_edit_enabled(uid())) if AIStack is not None else True
-        except Exception:
-            return True
-
-    def _gh_gate_create(op, body):
-        """يبني طلب تعديل (diff + فحوصات) بدل الكتابة المباشرة. الرفع الفعلي بس بعد موافقة صريحة."""
-        svc = AIStack.get_github_engineering_service()
-        mgr = AIStack.get_github_manager()
-        if svc is None:
-            raise RuntimeError("خدمة هندسة GitHub غير متاحة")
-        path = str(body.get("path") or "").strip()
-        repo = str(body.get("repo") or "").strip()
-        branch = str(body.get("branch") or "").strip()
-        try:
-            cur = mgr.get_file(path, user_id=uid(), repo_override=repo, branch_override=branch)
-        except Exception:
-            cur = {"content": "", "sha": "", "repo": repo, "branch": branch or "main"}
-        if op == "edit" and not cur.get("sha"):
-            op = "create"
-        return svc.create_change_request(
-            user_id=uid(), repo=cur.get("repo") or repo, file_path=path,
-            original_content=cur.get("content", ""), proposed_content=str(body.get("content") or ""),
-            original_file_sha=cur.get("sha", ""), base_branch=cur.get("branch") or branch or "main",
-            request_text=str(body.get("message") or ""), operation=op,
-        )
-
-    @app.get("/api/github/edit-mode")
-    def api_github_edit_mode_get():
-        bad = guard()
-        if bad:
-            return bad
-        return jsonify(enabled=_gh_edit_flag())
-
-    @app.post("/api/github/edit-mode")
-    def api_github_edit_mode_set():
-        """زر تشغيل/إيقاف تعديل GitHub. مطفّي = قراءة وفهم فقط، بدون أي كتابة."""
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        on = bool((request.get_json(silent=True) or {}).get("on"))
-        return jsonify(ok=True, enabled=AIStack.get_github_manager().set_edit_enabled(uid(), on))
-
-    @app.get("/api/github/project-profile")
-    def api_github_project_profile():
-        """فهم أي مشروع: لغات/أطر/نقاط دخول/اختبارات/نشر من شجرة المستودع المتصل."""
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        try:
-            mgr = AIStack.get_github_manager()
-            pr = mgr.project_profile(uid(), use_cache=request.args.get("fresh") != "1")
-            return jsonify(ok=True, profile=pr, summary=mgr.format_project_profile(pr))
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 400
-
-    @app.post("/api/github/save")
-    def api_github_save_file():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        try:
-            if body.get("token"):
-                AIStack.get_github_manager().set_config(
-                    uid(), repo=str(body.get("repo") or "").strip(), branch=str(body.get("branch") or "").strip(), token=str(body.get("token"))
-                )
-            ccr = _gh_gate_create("edit", body)
-            return jsonify(
-                ok=False, approval_required=True, change_request=ccr,
-                message="ما انرفع شي. راجع الـ diff ووافق، وبعدها نفّذ الرفع من /api/v2/github/changes/<id>/commit",
-            ), 428
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 400
-
-    @app.post("/api/github/delete")
-    def api_github_delete_file():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        try:
-            ccr = _gh_gate_create("delete", body)
-            return jsonify(
-                ok=False, approval_required=True, change_request=ccr,
-                message="الحذف ما تنفّذ. وافق مع تأكيد المسار بالضبط (confirm_delete_path) ثم نفّذ commit.",
-            ), 428
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 400
-
-    @app.post("/api/github/approve-pending")
-    def api_github_approve_pending():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        try:
-            res = AIStack.get_github_manager().approve_pending_edit(uid())
-            return jsonify(**res)
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 403
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 400
-
-    @app.post("/api/github/attach")
-    def api_github_attach_file():
-        bad = guard()
-        if bad:
-            return bad
-        body = request.get_json(silent=True) or {}
-        path = str(body.get("path") or "").strip()
-        content = str(body.get("content") or "")
-        if not path or not content.strip():
-            return jsonify(error="الملف فارغ أو بدون اسم"), 400
-        try:
-            parts, trunc = text_file_parts(b.types, path, content.encode("utf-8"))
-            W = wid()
-            b.set_doc(W, path, parts)
-            b.doc_ctx[W]["image"] = False
-            return jsonify(ok=True, name=path, truncated=trunc)
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 400
-
     @app.get("/api/image/capabilities")
     def api_image_capabilities():
         bad = guard()
@@ -8304,312 +7743,6 @@ def register(app, b):
             return bad
         is_live = request.args.get("live", "0") == "1"
         return jsonify(ryn_selftest_run(b, mix_members(True), live=is_live))
-
-
-    # ---------- منظومة وكيل الأجهزة RYN Agent API v1 (Sections 5..12 — Windows & Android) ----------
-    def _agent_device_token():
-        auth_h = request.headers.get("Authorization", "").strip()
-        if auth_h.lower().startswith("bearer "):
-            return auth_h[7:].strip()
-        return str(request.headers.get("X-Device-Token", "") or (request.get_json(silent=True) or {}).get("device_token", "")).strip()
-
-    def _vision_agent_planner(goal, img_bytes, memory_dict, screen_w, screen_h):
-        """يحلل لقطة الشاشة عبر Gemini Vision ويعيد أمراً واحداً فقط بصيغة JSON صارمة (One-Action-at-a-Time)."""
-        if not b.client or not img_bytes:
-            return None
-        T = b.types
-        mime_t = sniff_image(img_bytes) or "image/jpeg"
-        recent_actions = (memory_dict or {}).get("actions_attempted", [])[-4:]
-        recent_results = (memory_dict or {}).get("action_results", [])[-4:]
-        platform = str((memory_dict or {}).get("_platform") or "").lower()
-        allowed_keys = ", ".join(sorted(RynAgent.ALLOWED_KEYS))
-        if platform == "android":
-            plat_p = (
-                "The device is an ANDROID PHONE (portrait touch screen, no mouse, no keyboard shortcuts). "
-                "To open an app: first key_press 'home' if you are not on the home screen, then tap the app icon. "
-                "If the icon is not visible, scroll the home screen (scroll_dy negative = move down the page) or open the app drawer, "
-                "tap the search field, type_text the app name, then tap the result. "
-                "Android keys you may use: home, back, enter, backspace, space, recents. "
-            )
-        elif platform == "windows":
-            plat_p = (
-                "The device is a WINDOWS PC with mouse and keyboard. To open an app use the Start menu or taskbar icons, "
-                "or key_press the Windows key, then type_text the app name and press enter. "
-            )
-        else:
-            plat_p = ""
-        sys_p = (
-            "You are RYN Agent Planner. Inspect the device screenshot and propose EXACTLY ONE next action as strict JSON. "
-            "Allowed actions ONLY: observe, click, double_click, type_text, key_press, scroll, wait, done, ask_user. "
-            f"Screen dimensions: {screen_w}x{screen_h}. Coordinates are pixels of THIS screenshot and must be within [0..{screen_w}, 0..{screen_h}]; "
-            "aim at the CENTER of the target element. "
-            + plat_p +
-            f"For key_press the 'key' MUST be one of: {allowed_keys}. Never write names like 'keycode_home'. "
-            "If the goal is already achieved on screen, return action 'done'. "
-            "If the previous action did not change the screen, do NOT repeat it; try a different approach. "
-            "Never propose shell commands, arbitrary Python, banking, or password entry. "
-            "Return JSON with keys: {\"action\": \"...\", \"coordinates\": {\"x\": 0, \"y\": 0}, \"text\": \"\", \"key\": \"\", "
-            "\"scroll_dy\": 0, \"reason\": \"...\", \"risk\": \"low|medium|high\", \"requires_confirmation\": false}."
-        )
-        user_p = (
-            f"User Goal: {goal}\n"
-            f"Recent Actions: {json.dumps(recent_actions, ensure_ascii=False)}\n"
-            f"Recent Results: {json.dumps(recent_results, ensure_ascii=False)}\n"
-            "Propose the single next action in JSON:"
-        )
-        out_txt = b.ask_gemini(
-            [T.Content(role="user", parts=[T.Part.from_bytes(data=img_bytes, mime_type=mime_t), T.Part(text=user_p)])],
-            deep=False,
-            system=sys_p,
-            json_mode=True,
-        )
-        if not out_txt:
-            return None
-        clean_j = re.sub(r"^```(?:json)?\s*|\s*```$", "", out_txt.strip(), flags=re.I)
-        parsed = json.loads(clean_j)
-        if isinstance(parsed, dict):
-            return {k: v for k, v in parsed.items() if k in RynAgent.ALLOWED_ACTION_FIELDS}
-        return None
-
-    @app.post("/api/v1/agent/pair/start")
-    def api_v1_agent_pair_start():
-        bad = guard()
-        if bad:
-            return bad
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        try:
-            return jsonify(RynAgent.get_agent_core().start_pairing(uid()))
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v1/agent/pair/complete")
-    def api_v1_agent_pair_complete():
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        try:
-            res = RynAgent.get_agent_core().complete_pairing(
-                code=str(body.get("code") or body.get("pairing_code") or ""),
-                device_name=str(body.get("device_name") or body.get("name") or "RYN Client"),
-                platform=str(body.get("platform") or "windows"),
-            )
-            return jsonify(res)
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 401
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v1/agent/tasks")
-    def api_v1_agent_create_task():
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        tok = _agent_device_token()
-        try:
-            if tok:
-                dev = RynAgent.get_agent_core().authenticate_device(tok)
-                target_u = dev["user_id"]
-                target_dev = dev["id"]
-            else:
-                bad = guard()
-                if bad:
-                    return bad
-                target_u = uid()
-                target_dev = str(body.get("device_id") or "")
-            res = RynAgent.get_agent_core().create_task(
-                user_id=target_u,
-                goal=str(body.get("goal") or ""),
-                device_id=target_dev,
-                require_approval_all=bool(body.get("require_approval_all", False)),
-            )
-            return jsonify(res)
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 403
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.get("/api/v1/agent/pending")
-    def api_v1_agent_pending():
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        try:
-            return jsonify(RynAgent.get_agent_core().get_pending_task(_agent_device_token()))
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 401
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v1/agent/step")
-    def api_v1_agent_step():
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        tok = _agent_device_token()
-        try:
-            res = RynAgent.get_agent_core().propose_next_step(
-                device_token=tok,
-                task_id=str(body.get("task_id") or ""),
-                sequence=int(body.get("sequence", 1)),
-                screenshot_b64=str(body.get("screenshot") or body.get("screenshot_b64") or ""),
-                screen_width=int(body.get("screen_width", 1920)),
-                screen_height=int(body.get("screen_height", 1080)),
-                observation=str(body.get("observation") or ""),
-                vision_planner_fn=_vision_agent_planner if bool(body.get("use_vision_model", False)) else None,
-            )
-            return jsonify(res)
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 401
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v1/agent/result")
-    def api_v1_agent_result():
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        tok = _agent_device_token()
-        try:
-            res = RynAgent.get_agent_core().report_step_result(
-                device_token=tok,
-                task_id=str(body.get("task_id") or ""),
-                command_id=str(body.get("command_id") or ""),
-                sequence=int(body.get("sequence", 1)),
-                status=str(body.get("status") or "succeeded"),
-                error=str(body.get("error") or ""),
-                verification_note=str(body.get("verification") or body.get("verification_note") or ""),
-                screenshot_b64=str(body.get("screenshot") or ""),
-            )
-            return jsonify(res)
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 401
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v1/agent/voice")
-    def api_v1_agent_voice():
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        tok = _agent_device_token()
-        try:
-            if tok:
-                dev = RynAgent.get_agent_core().authenticate_device(tok)
-                target_u = dev["user_id"]
-                target_dev = dev["id"]
-            else:
-                bad = guard()
-                if bad:
-                    return bad
-                target_u = uid()
-                target_dev = ""
-            body = request.get_json(silent=True) or {}
-            transcript = str(body.get("transcript") or body.get("text") or "").strip()
-            if not transcript:
-                return jsonify(error="لم يتم استلام نص صوتي صالح"), 400
-            task_res = None
-            if body.get("start_task", True):
-                task_res = RynAgent.get_agent_core().create_task(target_u, goal=transcript, device_id=target_dev)
-            return jsonify(
-                ok=True,
-                transcription=transcript,
-                assistant_response=f"سمعتك: «{transcript}». بدأت المهمة على الجهاز المقترن.",
-                task=task_res,
-            )
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 401
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v1/agent/stop")
-    def api_v1_agent_stop():
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        tok = _agent_device_token()
-        try:
-            if tok:
-                dev = RynAgent.get_agent_core().authenticate_device(tok)
-                target_u = dev["user_id"]
-            else:
-                bad = guard()
-                if bad:
-                    return bad
-                target_u = uid()
-            return jsonify(RynAgent.get_agent_core().stop_task(target_u, task_id=str(body.get("task_id") or "")))
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 401
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.get("/api/v1/agent/status")
-    def api_v1_agent_status():
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        tok = _agent_device_token()
-        try:
-            if tok:
-                dev = RynAgent.get_agent_core().authenticate_device(tok)
-                target_u = dev["user_id"]
-            else:
-                bad = guard()
-                if bad:
-                    return bad
-                target_u = uid()
-            return jsonify(RynAgent.get_agent_core().get_status(target_u))
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 401
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.get("/api/v1/agent/logs")
-    def api_v1_agent_logs():
-        bad = guard()
-        if bad:
-            return bad
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        lim = int(request.args.get("limit") or 40)
-        return jsonify(ok=True, events=RynAgent.get_agent_core().get_logs(uid(), limit=lim))
-
-    @app.post("/api/v1/agent/device/revoke")
-    def api_v1_agent_revoke():
-        bad = guard()
-        if bad:
-            return bad
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        try:
-            return jsonify(RynAgent.get_agent_core().revoke_device(uid(), str(body.get("device_id") or "")))
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v1/agent/approve")
-    def api_v1_agent_approve():
-        bad = guard()
-        if bad:
-            return bad
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        try:
-            return jsonify(RynAgent.get_agent_core().approve_command(
-                uid(),
-                command_id=str(body.get("command_id") or ""),
-                approve=bool(body.get("approve", True)),
-            ))
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v1/agent/killswitch")
-    def api_v1_agent_killswitch():
-        bad = guard()
-        if bad:
-            return bad
-        if RynAgent is None:
-            return jsonify(error="وحدة RYN Agent غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        return jsonify(RynAgent.get_agent_core().set_kill_switch(uid(), active=bool(body.get("active", True))))
 
 
     # ---------- مسارات الترقية المتكاملة المرقّمة (/api/v2/* — One RYN — One Brain — One Memory) ----------
@@ -8971,18 +8104,10 @@ def register(app, b):
 
     @app.post("/api/v2/voice/speak")
     def api_v2_voice_speak():
-        tok = _agent_device_token()
-        if tok and RynAgent is not None:
-            try:
-                dev = RynAgent.get_agent_core().authenticate_device(tok)
-                target_u = dev["user_id"]
-            except PermissionError as pe:
-                return jsonify(error=str(pe)), 401
-        else:
-            bad = guard()
-            if bad:
-                return bad
-            target_u = uid()
+        bad = guard()
+        if bad:
+            return bad
+        target_u = uid()
         if AIStack is None or AIStack.get_voice_service() is None:
             return jsonify(error="خدمة الصوت غير متاحة"), 503
         body = request.get_json(silent=True) or {}
@@ -9038,18 +8163,10 @@ def register(app, b):
 
     @app.post("/api/v2/voice/stop")
     def api_v2_voice_stop():
-        tok = _agent_device_token()
-        if tok and RynAgent is not None:
-            try:
-                dev = RynAgent.get_agent_core().authenticate_device(tok)
-                target_u = dev["user_id"]
-            except PermissionError as pe:
-                return jsonify(error=str(pe)), 401
-        else:
-            bad = guard()
-            if bad:
-                return bad
-            target_u = uid()
+        bad = guard()
+        if bad:
+            return bad
+        target_u = uid()
         if AIStack is None or AIStack.get_voice_service() is None:
             return jsonify(error="خدمة الصوت غير متاحة"), 503
         body = request.get_json(silent=True) or {}
@@ -9086,108 +8203,6 @@ def register(app, b):
             retain_raw_audio=body.get("retain_raw_audio"),
             retention_days=body.get("retention_days"),
         ))
-
-    # ---------- مسارات هندسة GitHub الموثوقة والمراجعة متعددة المراحل (/api/v2/github/changes/* — Section 8) ----------
-    @app.get("/api/v2/github/changes")
-    def api_v2_github_list_changes():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None or AIStack.get_github_engineering_service() is None:
-            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
-        return jsonify(ok=True, changes=AIStack.get_github_engineering_service().list_change_requests(uid()))
-
-    @app.post("/api/v2/github/changes")
-    def api_v2_github_create_change():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None or AIStack.get_github_engineering_service() is None:
-            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        try:
-            ccr = AIStack.get_github_engineering_service().create_change_request(
-                user_id=uid(),
-                repo=str(body.get("repo") or ""),
-                file_path=str(body.get("file_path") or body.get("path") or ""),
-                original_content=str(body.get("original_content") or ""),
-                proposed_content=str(body.get("proposed_content") or ""),
-                original_file_sha=str(body.get("original_file_sha") or body.get("sha") or ""),
-                base_branch=str(body.get("base_branch") or "main"),
-                base_sha=str(body.get("base_sha") or ""),
-                request_text=str(body.get("request_text") or ""),
-                work_branch=str(body.get("work_branch") or ""),
-                idempotency_key=str(body.get("idempotency_key") or ""),
-                operation=str(body.get("operation") or "edit"),
-            )
-            return jsonify(ok=True, change_request=ccr)
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v2/github/changes/<request_id>/approve")
-    def api_v2_github_approve_change(request_id):
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None or AIStack.get_github_engineering_service() is None:
-            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
-        body = request.get_json(silent=True) or {}
-        try:
-            ccr = AIStack.get_github_engineering_service().approve_change_request(
-                uid(), request_id, approve=bool(body.get("approve", True)),
-                confirm_delete_path=str(body.get("confirm_delete_path") or ""),
-            )
-            return jsonify(ok=True, change_request=ccr)
-        except PermissionError as pe:
-            return jsonify(error=str(pe)), 403
-        except Exception as e:
-            return jsonify(error=str(e)), 400
-
-    @app.post("/api/v2/github/changes/<request_id>/commit")
-    def api_v2_github_commit_change(request_id):
-        """الرفع الفعلي: بيشتغل بس إذا الموافقة موجودة وما انتهت وبتطابق التعديل بالضبط."""
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None or AIStack.get_github_engineering_service() is None:
-            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
-        svc = AIStack.get_github_engineering_service()
-        mgr = AIStack.get_github_manager()
-        body = request.get_json(silent=True) or {}
-        try:
-            ccr0 = svc.get_change_request(uid(), request_id)
-            target = str(body.get("target_branch") or ccr0["work_branch"]).strip()
-
-            def _read(repo, branch, path):
-                try:
-                    d = mgr.get_file(path, user_id=uid(), repo_override=repo, branch_override=branch)
-                    return {"sha": d.get("sha", ""), "content": d.get("content", "")}
-                except Exception:
-                    return {"sha": "", "content": ""}
-
-            def _write(repo, branch, path, content, sha):
-                return mgr.save_file(path=path, content=content, commit_message=f"RYN change {request_id}", sha=sha or None,
-                                     user_id=uid(), repo_override=repo, branch_override=branch)
-
-            def _delete(repo, branch, path, sha):
-                return mgr.delete_file(path=path, commit_message=f"RYN delete {request_id}", sha=sha or None,
-                                       user_id=uid(), repo_override=repo, branch_override=branch)
-
-            # نتأكد من الموافقة قبل ما نلمس GitHub (حتى إنشاء الفرع)
-            if ccr0["approval_status"] != "approved":
-                svc._audit(uid(), "commit", ccr0, outcome="blocked", detail="no approval", branch=target)
-                return jsonify(error="⛔ لازم موافقة صريحة على هالتعديل قبل الرفع", approval_required=True), 403
-            if target.lower() not in ("main", "master", "production", "prod") and target != ccr0["base_branch"]:
-                mgr.ensure_branch(target, base_branch=ccr0["base_branch"], user_id=uid(), repo_override=ccr0["repo"])
-            ccr = svc.commit_and_verify_change_request(
-                uid(), request_id, _read, _write, target_branch=target,
-                allow_protected_branch_merge=False, remote_delete_fn=_delete,
-            )
-            return jsonify(ok=True, change_request=ccr)
-        except PermissionError as pe:
-            return jsonify(error=redact_secrets(str(pe))), 403
-        except Exception as e:
-            return jsonify(error=redact_secrets(str(e))), 409 if "SHA" in str(e) else 400
 
     # ---------- مكالمة صوتية حية (Gemini Live) عبر WebSocket ----------
     try:
@@ -9311,124 +8326,22 @@ def register(app, b):
             items.append({**cap, "name": _te.DIALECT_REGISTRY[k]["name"]})
         return jsonify(ok=True, default="syrian", dialects=items, paid_providers_enabled=_te.paid_providers_allowed())
 
-    @app.get("/api/v2/github/audit")
-    def api_v2_github_audit():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None or AIStack.get_github_engineering_service() is None:
-            return jsonify(error="خدمة هندسة GitHub غير متاحة"), 503
-        return jsonify(ok=True, audit=AIStack.get_github_engineering_service().list_audit_log(uid()))
-
-    @app.post("/api/v2/github/control/preview")
-    def api_v2_github_control_preview():
-        bad = guard()
-        if bad:
-            return bad
-        from github_intent_control import parse_task_spec, build_and_validate_manifest, run_preflight_gate, CanonicalRepositoryIdentity
-        data = request.get_json(silent=True) or {}
-        req_text = str(data.get("request") or "")
-        staged = data.get("files") or {}
-        default_owner = str(data.get("owner") or "")
-        if not default_owner and AIStack is not None:
-            cur_repo = AIStack.get_github_manager().get_config(uid()).get("repo", "")
-            if "/" in cur_repo:
-                default_owner = cur_repo.split("/", 1)[0]
-        spec = parse_task_spec(req_text, default_owner=default_owner, known_repositories=data.get("known_repositories"))
-        manifest = build_and_validate_manifest(
-            run_id="preview",
-            expected_paths=spec.files_expected or sorted(staged.keys()),
-            staged_files=staged,
-            target_repo_name=spec.repository_name,
-        )
-        ident = CanonicalRepositoryIdentity(
-            owner=spec.repository_owner,
-            repository_name=spec.repository_name,
-            repository_id=int(data.get("repository_id") or 1),
-            canonical_url=f"https://github.com/{spec.repository_owner}/{spec.repository_name}",
-            visibility=spec.visibility,
-            default_branch=spec.branch or "main",
-            task_run_id="preview",
-        )
-        gate = run_preflight_gate(
-            spec=spec,
-            identity=ident,
-            manifest=manifest,
-            repo_exists_on_github=bool(data.get("repo_exists", False)),
-            token_permissions_ok=True,
-            target_branch=spec.branch or "main",
-        )
-        return jsonify(ok=True, task_spec=spec.to_dict(), manifest=manifest.to_dict(), preflight=gate)
-
-    @app.get("/api/v2/github/control/audit")
-    def api_v2_github_control_audit():
-        bad = guard()
-        if bad:
-            return bad
-        cp = AIStack.get_github_control_plane() if (AIStack is not None and hasattr(AIStack, "get_github_control_plane")) else None
-        if cp is None:
-            return jsonify(ok=True, audit=[])
-        return jsonify(ok=True, audit=cp.list_audit_logs())
-
-    @app.get("/api/v2/github/traces")
-    def api_v2_github_traces():
-        bad = guard()
-        if bad:
-            return bad
-        if AIStack is None:
-            return jsonify(error="وحدة GitHub غير متاحة"), 503
-        return jsonify(ok=True, traces=AIStack.get_github_manager().get_write_traces())
-
     @app.get("/api/v2/preflight/status")
     def api_v2_preflight_status():
-        """يعيد بيانات الشاشات الخمس الموصى بها في الخطة (Section 9: Project Health, GitHub Changes, Local Memory, Repair Queue, Run History)."""
         bad = guard()
         if bad:
             return bad
         cur_u = uid()
-        gh_mgr = AIStack.get_github_manager() if AIStack is not None else None
-        gh_eng = AIStack.get_github_engineering_service() if AIStack is not None else None
         mem_svc = AIStack.get_memory_service() if AIStack is not None else None
-        cfg = gh_mgr.get_config(cur_u) if gh_mgr else {}
-        changes = gh_eng.list_change_requests(cur_u, limit=15) if gh_eng else []
-        audit_log = gh_eng.list_audit_log(cur_u, limit=25) if gh_eng else []
-        traces = gh_mgr.get_write_traces(limit=20) if gh_mgr else []
         mem_status = mem_svc.get_local_memory_status(cur_u) if mem_svc else {"memory_is_local": True, "status_badge": "Memory is local"}
-
         return jsonify(
             ok=True,
             gate_result="PASS",
             project_health={
-                "repository": cfg.get("repo") or "haeeedar6-ops/my-ai-bot",
-                "active_branch": cfg.get("branch") or "main",
-                "work_branch_prefix": "ryn/ai-run-",
                 "telegram_removed": True,
+                "github_editing_removed": True,
+                "device_agents_removed": True,
                 "baseline_test_status": "PASSED",
-                "known_blockers": [],
-            },
-            github_changes={
-                "repository": cfg.get("repo") or "haeeedar6-ops/my-ai-bot",
-                "branch": cfg.get("branch") or "main",
-                "edit_enabled": bool(cfg.get("edit_enabled", True)),
-                "change_requests": changes,
-                "write_traces": traces,
             },
             local_memory=mem_status,
-            repair_queue=[
-                {"id": "ISS-01", "issue": "GitHub write-verification & read-after-write check", "severity": "CRITICAL", "assigned_agent": "Core GitHub Studio", "status": "VERIFIED_FIXED", "test_evidence": "test_preflight_repair_plan.py::TestPhase1GitHubWriteVerification"},
-                {"id": "ISS-02", "issue": "Device-local persistent memory (SQLite FTS5 + At-Rest Encryption + No Server Upload)", "severity": "CRITICAL", "assigned_agent": "Local Memory Service", "status": "VERIFIED_FIXED", "test_evidence": "test_preflight_repair_plan.py::TestPhase2DeviceLocalMemory"},
-                {"id": "ISS-03", "issue": "Complete Telegram bot removal & web mount at import time", "severity": "HIGH", "assigned_agent": "Web Runtime", "status": "VERIFIED_FIXED", "test_evidence": "test_regressions_telegram_removal.py::TestTelegramRemoved"},
-                {"id": "ISS-04", "issue": "Desktop Win64 Unicode typing, 5xx retry, image pixel-bomb guard & Android TTS guard", "severity": "HIGH", "assigned_agent": "Desktop & Android Agents", "status": "VERIFIED_FIXED", "test_evidence": "test_regressions_telegram_removal.py"},
-            ],
-            run_history=audit_log,
         )
-
-    log.info("Web UI enabled (password %s)", "set" if password else "NOT set")
-
-
-if __name__ == "__main__":
-    import sys as _sys
-    if "--benchmark" in _sys.argv:
-        res = run_ryn_mix_quality_suite()
-        print(json.dumps(res, ensure_ascii=False, indent=2))
-        raise SystemExit(0 if res["passed_all"] else 1)
