@@ -761,6 +761,93 @@ def guard_summary(code: str) -> str:
     return "\n".join(f.text() for f in fs) or "clean"
 
 
+
+
+def validate_image_upload(
+    data: bytes,
+    filename: str = "",
+    max_bytes: int = 30 * 1024 * 1024,
+    max_pixels: int = 25_000_000,
+) -> dict:
+    """
+    يفحص بايتات الصورة المرفوعة أمنياً قبل تمريرها لأي نموذج أو معالج صور:
+    - يرفض الملفات الفارغة (empty) أو الأكبر من الحد المسموح (too_big).
+    - يتحقق من الترويسة السحرية وأبعاد PNG (IHDR) وJPEG (SOF) وWEBP (VP8/VP8L/VP8X) وGIF وBMP.
+    - يحمي من قنابل البكسل (Pixel Bombs -> code='image_huge').
+    """
+    import struct as _struct
+
+    if not data or not isinstance(data, (bytes, bytearray)) or len(data) == 0:
+        return {"ok": False, "code": "empty", "error": "ملف الصورة فارغ"}
+    b = bytes(data)
+    if max_bytes and len(b) > int(max_bytes):
+        return {"ok": False, "code": "too_big", "error": "حجم الصورة يتجاوز الحد الأقصى المسموح"}
+
+    fmt = None
+    w, h = 0, 0
+
+    if b.startswith(b"\x89PNG\r\n\x1a\n"):
+        if len(b) < 24 or b[12:16] != b"IHDR":
+            return {"ok": False, "code": "bad_image", "error": "ملف PNG تالف (IHDR مفقود)"}
+        w, h = _struct.unpack(">II", b[16:24])
+        if w <= 0 or h <= 0:
+            return {"ok": False, "code": "bad_image", "error": "أبعاد PNG غير صالحة"}
+        fmt = "png"
+    elif b.startswith(b"\xff\xd8\xff"):
+        fmt = "jpeg"
+        idx = 2
+        n = len(b)
+        while idx < n - 8:
+            if b[idx] != 0xFF:
+                idx += 1
+                continue
+            marker = b[idx + 1]
+            if marker == 0xFF:
+                idx += 1
+                continue
+            if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                if idx + 9 <= n:
+                    h, w = _struct.unpack(">HH", b[idx + 5:idx + 9])
+                break
+            if marker in (0xD8, 0xD9) or (0xD0 <= marker <= 0xD7):
+                idx += 2
+                continue
+            if idx + 4 > n:
+                break
+            seg_len = _struct.unpack(">H", b[idx + 2:idx + 4])[0]
+            if seg_len < 2:
+                break
+            idx += 2 + seg_len
+    elif len(b) >= 12 and b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        fmt = "webp"
+        if len(b) >= 30:
+            chunk = b[12:16]
+            if chunk == b"VP8X":
+                w = 1 + int.from_bytes(b[24:27], "little")
+                h = 1 + int.from_bytes(b[27:30], "little")
+            elif chunk == b"VP8 ":
+                w = _struct.unpack("<H", b[26:28])[0] & 0x3FFF
+                h = _struct.unpack("<H", b[28:30])[0] & 0x3FFF
+            elif chunk == b"VP8L" and len(b) >= 25:
+                bits = _struct.unpack("<I", b[21:25])[0]
+                w = (bits & 0x3FFF) + 1
+                h = ((bits >> 14) & 0x3FFF) + 1
+    elif len(b) >= 10 and b[:6] in (b"GIF87a", b"GIF89a"):
+        fmt = "gif"
+        w, h = _struct.unpack("<HH", b[6:10])
+    elif len(b) >= 26 and b[:2] == b"BM":
+        fmt = "bmp"
+        w, h = _struct.unpack("<ii", b[18:26])
+        h = abs(h)
+    else:
+        return {"ok": False, "code": "not_image", "error": "الملف ليس صورة مدعومة"}
+
+    if w > 0 and h > 0 and (w * h > max_pixels or w > 16384 or h > 16384):
+        return {"ok": False, "code": "image_huge", "format": fmt, "width": w, "height": h, "error": "أبعاد الصورة ضخمة جداً (Pixel Bomb)"}
+
+    return {"ok": True, "code": "ok", "format": fmt, "width": int(w), "height": int(h)}
+
+
 if __name__ == "__main__":
     src = open(sys.argv[1], encoding="utf-8").read() if len(sys.argv) > 1 else sys.stdin.read()
     print(guard_summary(src))
