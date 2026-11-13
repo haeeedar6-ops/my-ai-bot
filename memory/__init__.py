@@ -169,7 +169,7 @@ class LocalMemoryCipher:
         raw = (plaintext or "").encode("utf-8")
         salt = secrets.token_bytes(16)
         nonce = secrets.token_bytes(16)
-        secret = (passphrase.encode("utf-8") + b":" + self._master_secret) if passphrase else self._master_secret
+        secret = passphrase.encode("utf-8") if passphrase else self._master_secret
         enc_key, mac_key = self._derive_keys(secret, salt)
         ciphertext = self._xor_keystream(raw, enc_key, nonce)
         mac = hmac.new(mac_key, b"RYN_ENC_V1" + salt + nonce + ciphertext, hashlib.sha256).digest()
@@ -186,7 +186,7 @@ class LocalMemoryCipher:
         nonce = raw[20:36]
         mac = raw[36:68]
         ciphertext = raw[68:]
-        secret = (passphrase.encode("utf-8") + b":" + self._master_secret) if passphrase else self._master_secret
+        secret = passphrase.encode("utf-8") if passphrase else self._master_secret
         enc_key, mac_key = self._derive_keys(secret, salt)
         expected_mac = hmac.new(mac_key, b"RYN_ENC_V1" + salt + nonce + ciphertext, hashlib.sha256).digest()
         if not hmac.compare_digest(mac, expected_mac):
