@@ -11,3 +11,10 @@
   - `code_intelligence/__init__.py`: `GitHubEngineeringService`, AST/syntax validation, unified diff generation, and atomic branch/PR operations via [GitHub REST API](https://docs.github.com/en/rest/repos/contents).
   - `ryn-desktop/`: Windows desktop companion agent (`run_desktop.py`, `app/action_executor.py`, `app/api_client.py`, `app/safety.py`, `app/task_loop.py`).
   - `ryn-android/`: Android native voice & assistant client (`VoiceController.kt`).
+
+
+## 2. RYN Ultra Add-on (2026-11-13)
+- `ryn_ultra.py`: separate five-agent orchestrator, provider resolution, request-count budgets, per-user SQLite sessions/events/commands, pause/resume/stop/another-round controls, and read-only ZIP project inspection.
+- `ryn_ultra.html`: dedicated responsive meeting room with five animated robot avatars, live transcript, per-agent states, session history, project upload, and user controls.
+- `webapp.py`: adds authenticated `/ultra` and `/api/v1/ultra/*` endpoints and links RYN Ultra from the existing menu. Existing RYN Mix routes remain separate.
+- Five configured roles: Gemini Strategist, GPT Architect, Qwen Developer, DeepSeek Reviewer, Kimi Context Analyst. Model/provider IDs are dynamically resolved from existing configured APIs; missing providers are explicitly offline.

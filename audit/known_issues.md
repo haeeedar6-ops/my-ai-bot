@@ -15,3 +15,10 @@ All 20 baseline issues and all Phase 0–3 requirements from `RYN_Preflight_Repa
    - Added `validate_image_upload` in `ryn_guard.py`.
    - Fixed HTTP 5xx retry & non-JSON error handling in `ryn-desktop/app/api_client.py`, Win64 `SendInput` struct alignment & Arabic Unicode typing in `ryn-desktop/app/action_executor.py`, Arabic sensitive keyword blocking in `ryn-desktop/app/safety.py`, `IDLE` / `NEEDS_USER_INPUT` handling in `ryn-desktop/app/task_loop.py`, and `ryn-desktop/build.spec` + `requirements.txt`.
    - Fixed fallback TTS race condition in `ryn-android/app/src/main/java/com/ryn/agent/VoiceController.kt`.
+
+
+## RYN Ultra implementation notes
+- RYN Ultra is an additive feature; it does not replace RYN Mix, Visual Brain, voice, or the existing chat routes.
+- The first implementation is intentionally read-only for project files. ZIP inspection creates a bounded text context only; there is no automatic write, delete, shell, deployment, or GitHub patch execution route in this feature.
+- Live meeting updates are streamed as completed agent/event messages over SSE. Individual token-by-token streaming is not implemented in this release.
+- The five roles require their corresponding model families to be configured and accessible. A meeting can start with at least two available agents; unavailable agents are visibly marked offline rather than simulated.
