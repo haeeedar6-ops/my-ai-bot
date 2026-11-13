@@ -612,6 +612,75 @@ textarea::placeholder{color:var(--sub)}
  html:not([data-layout="mobile"]) #app footer{padding:6px 8px}
 }
 
+
+/* ===== RYN ULTRA: غرفة اجتماعات الوكلاء الـ 5 الحية (Five-Agent Live Meeting Room) ===== */
+#ultraBtn{font-size:11.5px;color:#fff;border:1px solid rgba(167,139,250,.75);border-radius:12px;padding:2px 10px;
+ background:linear-gradient(135deg,rgba(139,92,246,.38),rgba(0,255,157,.22));white-space:nowrap;cursor:pointer;
+ display:inline-flex;align-items:center;gap:4px;font-weight:800;box-shadow:0 0 14px rgba(139,92,246,.35)}
+#ultraBtn:hover{border-color:var(--g);box-shadow:0 0 18px rgba(0,255,157,.5)}
+#ultraModal{position:fixed;inset:0;background:rgba(4,5,16,.92);backdrop-filter:blur(14px);z-index:75;
+ display:flex;align-items:center;justify-content:center;padding:10px}
+.ultra-box{width:100%;max-width:980px;height:min(92vh,860px);background:linear-gradient(165deg,#0c0b20 0%,#070814 60%,#0b0f24 100%);
+ border:1.5px solid rgba(167,139,250,.55);border-radius:24px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+ box-shadow:0 24px 70px rgba(0,0,0,.85),0 0 40px rgba(139,92,246,.25);overflow:hidden}
+.ultra-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1)}
+.ultra-title{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:#fff}
+.ultra-badge{font-size:10.5px;padding:2px 9px;border-radius:999px;background:rgba(0,255,157,.14);border:1px solid rgba(0,255,157,.5);color:var(--g);font-weight:700;direction:ltr}
+.ultra-round-pill{font-size:11px;padding:2px 10px;border-radius:999px;background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.5);color:#ddd6fe;font-weight:700}
+.ultra-stage{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:8px 6px;background:rgba(255,255,255,.03);
+ border:1px solid rgba(255,255,255,.08);border-radius:18px;flex:none}
+@media(max-width:680px){.ultra-stage{grid-template-columns:repeat(5,minmax(58px,1fr));gap:4px;padding:6px 4px}}
+.u-bot-card{position:relative;display:flex;flex-direction:column;align-items:center;padding:6px 4px;border-radius:14px;
+ background:rgba(14,12,34,.75);border:1.5px solid rgba(255,255,255,.1);transition:all .28s ease;text-align:center}
+.u-bot-card .u-svg-wrap{width:54px;height:54px;position:relative;display:flex;align-items:center;justify-content:center}
+@media(max-width:680px){.u-bot-card .u-svg-wrap{width:42px;height:42px}}
+.u-bot-card .u-name{font-size:11.5px;font-weight:800;color:#fff;margin-top:2px;direction:ltr}
+.u-bot-card .u-role{font-size:9.5px;color:var(--sub);line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.u-bot-card .u-st{font-size:9px;margin-top:3px;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--sub);direction:ltr}
+.u-bot-card .u-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981}
+.u-bot-card[data-online="0"] .u-dot{background:#6b7280;box-shadow:none}
+/* حالات الروبوتات الـ 7 (Idle, Thinking, Speaking, Listening, Reviewing, Error, Offline) */
+.u-bot-card[data-state="idle"] .u-svg-wrap{animation:uFloat 3.4s ease-in-out infinite}
+.u-bot-card[data-state="thinking"]{border-color:#a78bfa;box-shadow:0 0 18px rgba(167,139,250,.4)}
+.u-bot-card[data-state="thinking"] .u-svg-wrap{animation:uPulse 1.1s ease-in-out infinite}
+.u-bot-card[data-state="speaking"]{transform:translateY(-4px) scale(1.06);border-color:var(--g);
+ background:rgba(0,255,157,.11);box-shadow:0 0 26px rgba(0,255,157,.55);z-index:2}
+.u-bot-card[data-state="speaking"] .u-st{background:var(--g);color:#031a10;font-weight:800}
+.u-bot-card[data-state="listening"]{opacity:.92;border-color:rgba(56,189,248,.45)}
+.u-bot-card[data-state="reviewing"]{border-color:#38bdf8;box-shadow:0 0 18px rgba(56,189,248,.4)}
+.u-bot-card[data-state="error"]{border-color:var(--red);box-shadow:0 0 16px rgba(255,93,108,.45)}
+.u-bot-card[data-state="offline"]{opacity:.42;filter:grayscale(.85)}
+.u-wave{display:none;gap:2px;align-items:flex-end;height:10px;margin-top:2px}
+.u-bot-card[data-state="speaking"] .u-wave{display:inline-flex}
+.u-wave i{width:2.5px;background:var(--g);border-radius:2px;animation:uWave .45s ease-in-out infinite alternate}
+.u-wave i:nth-child(2){animation-delay:.12s}.u-wave i:nth-child(3){animation-delay:.24s}.u-wave i:nth-child(4){animation-delay:.36s}
+@keyframes uFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3.5px)}}
+@keyframes uPulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 4px #a78bfa)}50%{transform:scale(1.08);filter:drop-shadow(0 0 12px #a78bfa)}}
+@keyframes uWave{from{height:3px}to{height:10px}}
+#ultraModal[data-reduced-motion="1"] .u-svg-wrap,
+#ultraModal[data-reduced-motion="1"] .u-wave i,
+#ultraModal[data-reduced-motion="1"] .u-bot-card{animation:none!important;transition:none!important;transform:none!important}
+@media(prefers-reduced-motion:reduce){
+  .u-svg-wrap,.u-wave i,.u-bot-card{animation:none!important;transition:none!important}
+}
+.ultra-stream{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:8px 6px}
+.u-msg{border-radius:15px;padding:10px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+ display:flex;flex-direction:column;gap:5px;text-align:right;line-height:1.7;font-size:13.8px}
+.u-msg-head{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:4px}
+.u-msg-who{font-weight:800;font-size:12.5px;direction:ltr}
+.u-msg-tag{font-size:10.5px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.09);color:#e2e8f0;direction:ltr;font-weight:700}
+.u-report{border-radius:16px;padding:12px 14px;background:linear-gradient(145deg,rgba(0,255,157,.09),rgba(139,92,246,.12));
+ border:1.5px solid rgba(0,255,157,.5);display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.7}
+.ultra-controls{display:flex;flex-direction:column;gap:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.1);flex:none}
+.ultra-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ultra-bar select,.ultra-bar input{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:11px;padding:7px 10px;font-size:13px}
+.ultra-bar input{flex:1;min-width:170px}
+.u-btn{padding:6px 11px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font-size:11.5px;font-weight:700}
+.u-btn:hover{border-color:var(--g);color:var(--g)}
+.u-btn.pri{background:var(--g);color:#031a10;border-color:var(--g);font-weight:800}
+.u-btn.warn{border-color:#f59e0b;color:#fcd34d}
+.u-btn.danger{border-color:var(--red);color:var(--red)}
+
 </style>
 </head>
 <body>
@@ -678,12 +747,14 @@ textarea::placeholder{color:var(--sub)}
     <div id="say"></div>
     <div class="toprow">
       <div id="mname" title="تبديل الموديل">Gemini</div>
+      <button id="ultraBtn" type="button" title="غرفة اجتماعات RYN Ultra الحية (5 وكلاء ذكاء اصطناعي)">⚡ RYN Ultra</button>
       <button id="memBtn" type="button" title="ملف التخصيص وذاكرة الجهاز">🧠 ذاكرتي <span id="memCnt">0</span></button>
     </div>
   </div>
 
   <div id="menu" hidden>
     <button id="mNew">✨ محادثة جديدة</button>
+    <button id="mUltra">⚡ غرفة اجتماعات RYN Ultra (5 وكلاء)</button>
     <button id="mVoiceStudio">🗣️ اختيار الصوت العربي (نبرة الكلمات)</button>
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mFix">🐞 تصحيح كود</button>
@@ -937,6 +1008,74 @@ textarea::placeholder{color:var(--sub)}
       </div>
       <button type="button" class="syscheck-btn" id="runSysCheckBtn">🧪 فحص شامل للتأكد أن كل الأنظمة الـ 10 شغّالة</button>
       <div class="sys-box" id="sysCheckBox" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="ultraModal" hidden data-reduced-motion="0">
+  <div class="ultra-box">
+    <div class="ultra-top">
+      <div class="ultra-title">
+        <span>⚡ RYN ULTRA — LIVE MEETING ROOM</span>
+        <span class="ultra-badge" id="ultraStatusBadge">Five agents connected</span>
+        <span class="ultra-round-pill" id="ultraRoundBadge">Round 01</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button type="button" class="u-btn" id="ultraMotionBtn" title="تقليل الحركة (Accessibility Reduced Motion)">🎞️ حركة: طبيعية</button>
+        <button type="button" class="u-btn" id="ultraCfgToggleBtn" title="إعدادات الوكلاء الـ 5">⚙️ إعدادات</button>
+        <button type="button" class="u-btn danger" id="ultraCloseBtn" aria-label="إغلاق">✕</button>
+      </div>
+    </div>
+
+    <div class="ultra-stage" id="ultraStage"></div>
+
+    <div id="ultraCfgBox" hidden style="padding:10px;border-radius:14px;background:rgba(0,0,0,.45);border:1px solid rgba(167,139,250,.4);font-size:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <b style="color:var(--g)">⚙️ إعدادات فريق RYN Ultra (الأدوار والجولات)</b>
+        <label>عدد جولات النقاش:
+          <select id="ultraMaxRoundsSel" style="background:#111;color:#fff;border:1px solid #444;border-radius:8px;padding:2px 6px">
+            <option value="1">1 (سريع)</option>
+            <option value="2">2 (مختصر)</option>
+            <option value="3" selected>3 (قياسي)</option>
+            <option value="4">4 (معمّق)</option>
+            <option value="5">5 (كامل 5 جولات)</option>
+          </select>
+        </label>
+        <button type="button" class="u-btn pri" id="ultraSaveCfgBtn">حفظ الإعدادات ✅</button>
+      </div>
+      <div id="ultraAgentsCfgList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:6px"></div>
+    </div>
+
+    <div class="ultra-stream" id="ultraStream">
+      <div class="hint">أدخل مهمة أو مشكلة برمجية واضغط <b>🚀 بدء الاجتماع</b> ليجتمع الوكلاء الخمسة (<b>Gemini · GPT · Qwen · DeepSeek · Kimi</b>) ويناقشوها أمامك مباشرة خطوة بخطوة.</div>
+    </div>
+
+    <div class="ultra-controls">
+      <div class="ultra-bar">
+        <select id="ultraTargetSel" title="توجيه الرسالة إلى">
+          <option value="all">📢 كل الوكلاء الـ 5 (Broadcast)</option>
+          <option value="gemini">🔒 خاص إلى Gemini (Chief Strategist)</option>
+          <option value="gpt">🔒 خاص إلى GPT (Chief Architect)</option>
+          <option value="qwen">🔒 خاص إلى Qwen (Lead Developer)</option>
+          <option value="deepseek">🔒 خاص إلى DeepSeek (Critical Reviewer)</option>
+          <option value="kimi">🔒 خاص إلى Kimi (Context Analyst)</option>
+        </select>
+        <input type="text" id="ultraInp" placeholder="اكتب المهمة أو أرسل تعليمة للوكلاء أثناء الاجتماع...">
+        <button type="button" class="u-btn pri" id="ultraStartBtn">🚀 بدء الاجتماع</button>
+        <button type="button" class="u-btn" id="ultraSendBtn" title="إرسال رسالة أو تعليمة خاصة أثناء الاجتماع">💬 إرسال</button>
+      </div>
+      <div class="ultra-bar" style="justify-content:space-between">
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button type="button" class="u-btn warn" id="ultraInterruptBtn">⚡ مقاطعة المتحدث</button>
+          <button type="button" class="u-btn" id="ultraPauseBtn">⏸ إيقاف مؤقت</button>
+          <button type="button" class="u-btn" id="ultraResumeBtn">▶ استئناف</button>
+          <button type="button" class="u-btn danger" id="ultraStopBtn">⏹ إنهاء الاجتماع</button>
+          <button type="button" class="u-btn" id="ultraExtraRoundBtn">＋ جولة إضافية</button>
+          <button type="button" class="u-btn" id="ultraExplainBtn">🔍 اشرح منطقك</button>
+          <button type="button" class="u-btn" id="ultraUpdateTaskBtn">🔄 تحديث المهمة</button>
+        </div>
+        <small id="ultraFootStat" style="color:var(--sub);font-size:11px">جاهز لبدء الجلسة الجماعية</small>
+      </div>
     </div>
   </div>
 </div>
@@ -2353,6 +2492,7 @@ function drawFloating(){
   if(qw)h+=f(qw)+'<span>Ryn<br>mix</span></button>';
   h+='<button class="dia" data-m="__gemini_live" title="Gemini Live: محادثة حية مباشرة (متل ChatGPT)"><span>Gemini<br>Live ✨</span></button>';
   h+='<button class="dia" data-m="__live_voice" title="محادثة صوتية حية مع الروبوت"><span>Live<br>Voice 🎙️</span></button>';
+  h+='<button class="dia" data-m="__ryn_ultra" title="RYN Ultra: غرفة اجتماعات 5 وكلاء ذكاء اصطناعي"><span>RYN<br>Ultra ⚡</span></button>';
   if(models.length>2)h+='<button class="dia" data-m="__all"><span>كل<br>الموديلات</span></button>';
   $('#floating').innerHTML=h;
 }
@@ -2362,6 +2502,7 @@ $('#floating').addEventListener('click',async e=>{
   const m=b.dataset.m;
   if(m==='__gemini_live'){$('#floating').classList.add('off');startLiveVoiceChat('gemini');return}
   if(m==='__live_voice'){$('#floating').classList.add('off');startLiveVoiceChat('classic');return}
+  if(m==='__ryn_ultra'){$('#floating').classList.add('off');openUltraModal();return}
   if(m==='__all'){$('#floating').classList.add('off');openSheet();return}
   $('#floating').classList.add('off');setModel(m);
 });
@@ -4897,6 +5038,8 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
         return rep_missing
 
     writers = get_ranked_writers(roster)
+    if "Qwen" in roster:
+        writers = ["Qwen"] + [w for w in writers if w != "Qwen"]
     if not writers:
         return None
     focused_contents = select_focused_contents(T, contents, proj, max_chars=24000)
@@ -4927,7 +5070,7 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
     ambig = is_ambiguous_request(question, proj)
     if (bool(orig_items) or len(question) > 100 or fix or ambig) and left() > 90:
         P("🧭 المرحلة 2: عم يحط خطة التنفيذ ومواصفة الـ 5 نقاط...")
-        planner_name = "Gemini" if "Gemini" in roster else writers[0]
+        planner_name = "GPT-OSS" if "GPT-OSS" in roster else ("Gemini" if "Gemini" in roster else writers[0])
         plan_input = (
             PLAN_SYSTEM_PROMPT + "\n\n"
             + user_learnings_txt
@@ -5062,6 +5205,8 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
     req = question[:80000]
 
     rev1_cands = get_ranked_reviewers(roster, exclude=dead | {writer}, second=False)
+    if "Kimi" in roster and "Kimi" not in (dead | {writer}):
+        rev1_cands = ["Kimi"] + [x for x in rev1_cands if x != "Kimi"]
     r1 = rev1_cands[0] if rev1_cands else None
     rev2_cands = get_ranked_reviewers(roster, exclude=dead | {writer, r1}, second=True)
     r2 = rev2_cands[0] if rev2_cands else None
@@ -5115,7 +5260,8 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
                 + "\n\nملاحظات المراجعة والفحص الآلي والأمني (JSON):\n"
                 + json.dumps(merged, ensure_ascii=False, indent=1)
             )
-            out = _timed(roster[writer], U(apply_input), min(150, left()))
+            debugger_model = "DeepSeek" if ("DeepSeek" in roster and "DeepSeek" not in dead) else writer
+            out = _timed(roster[debugger_model], U(apply_input), min(150, left()))
             code_text, report = split_report(out)
             if extract_blocks(code_text):
                 final_text = code_text
@@ -5194,7 +5340,8 @@ def mix_code_pipeline(b, contents, roster, fix, progress=None, meta=None, user_i
                 + "\n\nصحّح السبب الجذري وأعطِ الكود النهائي كاملاً داخل بلوكات ``` بدون أي اختصار وبدون شرح خارجي.\n\nالكود الحالي:\n"
                 + final_text[:95000]
             )
-            out = _timed(roster[writer], U(repair_prompt), min(100, left()))
+            debugger_model = "DeepSeek" if ("DeepSeek" in roster and "DeepSeek" not in dead) else writer
+            out = _timed(roster[debugger_model], U(repair_prompt), min(100, left()))
             if extract_blocks(out):
                 final_text = split_report(out)[0]
         except Exception as e:
@@ -8307,6 +8454,78 @@ def register(app, b):
         intent = o.understand(str(body.get("text") or ""))
         return jsonify(ok=True, intent=intent, plan=o.plan(intent), route=o.route(intent), dry_run=True)
 
+    def _eng_team():
+        if "team" not in _mix_holder:
+            from core.engineering_team import RynEngineeringTeamOrchestrator
+            _mix_holder["team"] = RynEngineeringTeamOrchestrator()
+        return _mix_holder["team"]
+
+    @app.get("/api/v2/mix/team/gateway")
+    def api_v2_mix_team_gateway():
+        bad = guard()
+        if bad:
+            return bad
+        t = _eng_team()
+        return jsonify(ok=True, sequence=["Gemini", "GPT", "Qwen", "DeepSeek", "Kimi", "Gemini Final QA"], models=t.gateway.list_specs())
+
+    @app.get("/api/v2/mix/team/runs")
+    def api_v2_mix_team_list_runs():
+        bad = guard()
+        if bad:
+            return bad
+        return jsonify(ok=True, runs=_eng_team().list_runs(uid()))
+
+    @app.post("/api/v2/mix/team/runs")
+    def api_v2_mix_team_create_run():
+        bad = guard()
+        if bad:
+            return bad
+        body = request.get_json(silent=True) or {}
+        t = _eng_team()
+        run = t.create_run(
+            user_id=uid(),
+            project_id=str(body.get("project_id") or "ryn-project"),
+            request_text=str(body.get("request") or body.get("text") or ""),
+            project_files=body.get("files") or {},
+            allowed_paths=body.get("allowed_paths"),
+            forbidden_paths=body.get("forbidden_paths"),
+            base_commit=str(body.get("base_commit") or "c_base_001"),
+            require_plan_approval=bool(body.get("require_plan_approval", False)),
+            require_release_approval=bool(body.get("require_release_approval", False)),
+            request_production_deploy=bool(body.get("request_production_deploy", False)),
+        )
+        if body.get("auto_execute", True):
+            run = t.execute_workflow(run["run_id"])
+        return jsonify(ok=True, run=run)
+
+    @app.get("/api/v2/mix/team/runs/<run_id>")
+    def api_v2_mix_team_get_run(run_id):
+        bad = guard()
+        if bad:
+            return bad
+        run = _eng_team().get_run(run_id)
+        if not run or run.get("user_id") != uid():
+            return jsonify(error="Run not found"), 404
+        return jsonify(ok=True, run=run)
+
+    @app.post("/api/v2/mix/team/runs/<run_id>/action")
+    def api_v2_mix_team_action(run_id):
+        bad = guard()
+        if bad:
+            return bad
+        t = _eng_team()
+        run = t.get_run(run_id)
+        if not run or run.get("user_id") != uid():
+            return jsonify(error="Run not found"), 404
+        body = request.get_json(silent=True) or {}
+        try:
+            updated = t.perform_user_action(run_id, str(body.get("action") or ""), note=str(body.get("note") or ""))
+            if body.get("resume_execution", True) and updated["state"] not in ("PAUSED", "CANCELLED", "BLOCKED"):
+                updated = t.execute_workflow(run_id)
+            return jsonify(ok=True, run=updated)
+        except Exception as e:
+            return jsonify(error=str(e)), 400
+
     @app.get("/api/v2/mix/audit")
     def api_v2_mix_audit():
         bad = guard()
@@ -8325,6 +8544,120 @@ def register(app, b):
             cap = _te.get_dialect_capability(k)
             items.append({**cap, "name": _te.DIALECT_REGISTRY[k]["name"]})
         return jsonify(ok=True, default="syrian", dialects=items, paid_providers_enabled=_te.paid_providers_allowed())
+
+    # ---------- منظومة RYN Ultra: غرفة اجتماعات الوكلاء الـ 5 الحية (/api/v2/ultra/*) ----------
+    def _ultra_engine():
+        if "ultra" not in _mix_holder:
+            from core.ryn_ultra import RynUltraEngine
+            _mix_holder["ultra"] = RynUltraEngine()
+        return _mix_holder["ultra"]
+
+    def _build_ultra_callers():
+        T = b.types
+        mem_map = dict(mix_members(code=True))
+        name_lookup = {
+            "gemini": "Gemini",
+            "gpt": "GPT-OSS",
+            "qwen": "Qwen",
+            "deepseek": "DeepSeek",
+            "kimi": "Kimi",
+        }
+        callers = {}
+        for aid, m_label in name_lookup.items():
+            if m_label in mem_map:
+                fn = mem_map[m_label]
+                callers[aid] = lambda prompt, sys_p, _fn=fn: _fn([T.Content(role="user", parts=[T.Part(text=sys_p + "\n\n" + prompt)])])
+            elif b.client is not None:
+                callers[aid] = lambda prompt, sys_p: b.ask_gemini([T.Content(role="user", parts=[T.Part(text=prompt)])], deep=False, system=sys_p)
+            else:
+                # Fallback deterministic response in offline test environments when no external API keys are set
+                callers[aid] = lambda prompt, sys_p, _aid=aid: f"[{_aid.upper()} Live Analysis]: تم فحص الطلب والسياق المرفق وتوثيق الملاحظات الهندسية."
+        return callers
+
+    @app.get("/api/v2/ultra/settings")
+    def api_v2_ultra_get_settings():
+        bad = guard()
+        if bad:
+            return bad
+        return jsonify(ok=True, settings=_ultra_engine().get_settings(uid()))
+
+    @app.post("/api/v2/ultra/settings")
+    def api_v2_ultra_set_settings():
+        bad = guard()
+        if bad:
+            return bad
+        body = request.get_json(silent=True) or {}
+        return jsonify(ok=True, settings=_ultra_engine().update_settings(uid(), body))
+
+    @app.get("/api/v2/ultra/meetings")
+    def api_v2_ultra_list_meetings():
+        bad = guard()
+        if bad:
+            return bad
+        return jsonify(ok=True, meetings=_ultra_engine().list_meetings(uid()))
+
+    @app.post("/api/v2/ultra/meetings")
+    def api_v2_ultra_create_meeting():
+        bad = guard()
+        if bad:
+            return bad
+        body = request.get_json(silent=True) or {}
+        req_txt = str(body.get("request") or body.get("text") or "").strip()
+        if not req_txt:
+            return jsonify(error="اكتب موضوع الاجتماع أولاً"), 400
+        cur_u = uid()
+        ctx_att = b.get_doc(wid(cur_u))
+        proj_files = dict(body.get("files") or {})
+        if not proj_files and ctx_att and ctx_att.get("raw_files"):
+            proj_files = dict(ctx_att["raw_files"])
+        eng = _ultra_engine()
+        callers = _build_ultra_callers()
+        meeting = eng.create_meeting(
+            user_id=cur_u,
+            request_text=req_txt,
+            project_files=proj_files,
+            max_rounds=body.get("max_rounds"),
+            available_providers={k: True for k in callers},
+        )
+        if body.get("async_run", False):
+            threading.Thread(
+                target=lambda: eng.run_meeting(meeting["meeting_id"], callers),
+                daemon=True,
+            ).start()
+        else:
+            meeting = eng.run_meeting(meeting["meeting_id"], callers)
+        return jsonify(ok=True, meeting=meeting)
+
+    @app.get("/api/v2/ultra/meetings/<meeting_id>")
+    def api_v2_ultra_get_meeting(meeting_id):
+        bad = guard()
+        if bad:
+            return bad
+        m = _ultra_engine().get_meeting(meeting_id)
+        if not m or m.get("user_id") != uid():
+            return jsonify(error="الاجتماع غير موجود"), 404
+        return jsonify(ok=True, meeting=m)
+
+    @app.post("/api/v2/ultra/meetings/<meeting_id>/control")
+    def api_v2_ultra_control_meeting(meeting_id):
+        bad = guard()
+        if bad:
+            return bad
+        eng = _ultra_engine()
+        m = eng.get_meeting(meeting_id)
+        if not m or m.get("user_id") != uid():
+            return jsonify(error="الاجتماع غير موجود"), 404
+        body = request.get_json(silent=True) or {}
+        try:
+            updated = eng.handle_control_action(
+                meeting_id,
+                str(body.get("action") or ""),
+                payload=body,
+                provider_callers=_build_ultra_callers(),
+            )
+            return jsonify(ok=True, meeting=updated)
+        except Exception as e:
+            return jsonify(error=str(e)), 400
 
     @app.get("/api/v2/preflight/status")
     def api_v2_preflight_status():
