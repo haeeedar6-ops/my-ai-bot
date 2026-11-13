@@ -941,29 +941,6 @@ MIX_SYSTEM = (
     "إذا في معلومة مو متأكد منها قول هيك بصراحة وما تخترع."
 )
 
-def get_mix_instructions():
-    """يقرأ ملف التوجيهات المستقل الخاص بـ Ryn mix (ryn_mix_instructions.txt) بشكل منفصل عن RYN Ultra."""
-    candidates = [
-        os.environ.get("RYN_MIX_INSTRUCTIONS_FILE", "").strip(),
-        os.path.join(BASE_DIR, "ryn_mix_instructions.txt"),
-        os.path.join(BASE_DIR, "knowledge", "ryn_mix_instructions.txt"),
-    ]
-    for path in candidates:
-        if path and os.path.isfile(path):
-            try:
-                with open(path, "r", encoding="utf-8") as fh:
-                    txt = fh.read().strip()
-                if txt:
-                    return "\n\n[RYN MIX CUSTOM INSTRUCTIONS]\n" + txt[:8000]
-            except Exception:
-                continue
-    return ""
-
-
-def get_mix_system_prompt():
-    return MIX_SYSTEM + get_mix_instructions()
-
-
 
 def _redact_bot_secrets(text):
     if webapp is not None and hasattr(webapp, "redact_secrets"):
@@ -1032,7 +1009,7 @@ def ask_mix(contents, deep=False):
     final = None
     try:
         final = ask_gemini([types.Content(role="user", parts=[types.Part(text=prompt)])],
-                           deep=False, system=get_mix_system_prompt())
+                           deep=False, system=MIX_SYSTEM)
     except Exception as e:
         log.warning("Ryn mix: الدمج فشل: %s", _redact_bot_secrets(str(e)[:160]))
     if not final:

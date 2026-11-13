@@ -5575,13 +5575,13 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
                 % (question[:120000], proj["summary_text"], block, warn, pick_rule)
             )
             final = big_gemini(b, [T.Content(role="user", parts=[T.Part(text=prompt)])],
-                               system=(b.get_mix_system_prompt() if hasattr(b, "get_mix_system_prompt") else MIX_SYSTEM) + "\n" + CLAUDE_CODE_STYLE + (FIX_RULES if fix else ""))
+                               system=MIX_SYSTEM + "\n" + CLAUDE_CODE_STYLE + (FIX_RULES if fix else ""))
         else:
             if _is_arabic_query(question):
                 prompt = "سؤال المستخدم:\n%s\n\n%s\n\nاكتب الجواب النهائي المدموج فقط باللغة العربية." % (question[:4000], block)
             else:
                 prompt = "User question:\n%s\n\nCandidate model answers:\n%s\n\nWrite ONLY the final synthesized answer in the exact same language as the user's question above (do NOT reply in Arabic)." % (question[:4000], block)
-            final = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=prompt)])], deep=False, system=(b.get_mix_system_prompt() if hasattr(b, "get_mix_system_prompt") else MIX_SYSTEM))
+            final = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=prompt)])], deep=False, system=MIX_SYSTEM)
     except Exception as e:
         log.warning("Ryn mix: الدمج فشل: %s", redact_secrets(str(e)[:160]))
     if not final:
