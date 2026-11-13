@@ -7166,10 +7166,8 @@ def register(app, b):
                     _cur_cfg = {}
                     _cur_repo = ""
 
-                if _spec is not None and _spec.operation == "CREATE_REPOSITORY" and gh_mgr._GH_MENTION_RE.search(text):
-                    _tok = gh_mgr._resolve_token(u) if hasattr(gh_mgr, "_resolve_token") else ""
-                    if not _tok:
-                        _tok = os.environ.get("GITHUB_TOKEN", "").strip()
+                if _spec is not None and _spec.operation == "CREATE_REPOSITORY" and (gh_mgr._GH_MENTION_RE.search(text) or bool(ctx_att) or _spec.repository_name != "unresolved"):
+                    _tok = (_cur_cfg.get("_token") or "").strip() or os.environ.get("GITHUB_TOKEN", "").strip()
                     if not _tok:
                         finish(job_id, {"status": "done", "text": "⚠️ لإنشاء مستودع جديد على GitHub، يرجى إضافة GitHub Token في إعدادات GitHub أولاً.", "note": "GitHub Token Missing"})
                         return
@@ -7215,7 +7213,7 @@ def register(app, b):
                         finish(job_id, {"status": "done", "text": f"❌ توقفت العملية في بوابة التحقق (`{_res.get('status')}`): {_err_detail}", "note": "Preflight / Verify Blocked"})
                         return
 
-                if ctx_att and gh_mgr._PROJECT_UPLOAD_CMD_RE.search(text) and gh_mgr._GH_MENTION_RE.search(text):
+                if ctx_att and (_spec is None or not _spec.repository_must_be_new) and gh_mgr._PROJECT_UPLOAD_CMD_RE.search(text) and gh_mgr._GH_MENTION_RE.search(text):
                     if ctx_att.get("zip_bytes"):
                         set_progress(job_id, "🐙 جاري فحص ورفع أرشيف المشروع كاملاً إلى GitHub...")
                         up_res = gh_mgr.extract_and_push_zip(ctx_att["zip_bytes"], commit_message=f"رفع المشروع ({ctx_att.get('name', 'zip')}) عبر Ryn", user_id=u)

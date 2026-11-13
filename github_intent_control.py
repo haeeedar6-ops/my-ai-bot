@@ -118,11 +118,19 @@ def _extract_repo_owner_and_name(text: str, default_owner: str = "") -> Tuple[st
 
     # 3. Named repository: "named pot-ai", "called pot-ai", "سميه poi-ai", "وسميه poi-ai", "باسم pot-ai"
     m_named = re.search(
-        r"(?i)(?:named|called|name\s+is|repo(?:sitory)?(?:\s+named)?|وسميه|سميه|سمّيه|اسمه|اسمو|باسم)\s+[`'\"]?([A-Za-z0-9][A-Za-z0-9_.-]{1,64})[`'\"]?",
+        r"(?i)(?:named|called|name\s+is|repo(?:sitory)?(?:\s+named)?|وسميه|سميه|سمّيه|سميها|وسميها|اسمه|إسمه|اسمو|باسم|بإسم)\s+[`'\"]?([A-Za-z0-9][A-Za-z0-9_.-]{1,64})[`'\"]?",
         text,
     )
-    if m_named:
+    if m_named and m_named.group(1).lower() not in {"github", "git", "new", "repo", "repository", "project"}:
         return (default_owner or "unresolved"), m_named.group(1)
+
+    # 4. Direct name after "مشروع جديد / مستودع جديد": e.g. "انشاء مشروع جديد poi-ai"
+    m_after_new = re.search(
+        r"(?i)(?:مشروع|مستودع|ريبو|مسودة|مسوده)\s+جديد(?:ة|ه)?(?:\s+على\s+(?:github|غيتهاب|جيتهاب|كيت\s*هاب))?\s+[`'\"]?([A-Za-z0-9][A-Za-z0-9_.-]{1,64})[`'\"]?",
+        text,
+    )
+    if m_after_new and m_after_new.group(1).lower() not in {"github", "git", "new", "repo", "repository", "project"}:
+        return (default_owner or "unresolved"), m_after_new.group(1)
 
     return (default_owner or "unresolved"), "unresolved"
 
@@ -168,13 +176,15 @@ def parse_task_spec(
     is_inspect = any(p in low for p in ("inspect", "show ", "check ", "list files", "read ", "افحص", "اعرض", "تحقق")) and not any(
         p in low for p in ("create", "upload", "edit", "update", "fix", "patch", "delete", "انشئ", "ارفع", "عدل")
     )
-    is_create_repo = any(p in low for p in (
+    _create_ar_re = re.compile(
+        r"(?:(?:انشئ|أنشئ|انشاء|إنشاء|افتح|إفتح|اعمل|أعمل|عملي|اعمللي|سوي|سويلي|ابدا|ابدأ)\s+(?:لي\s+)?(?:مشروع|مستودع|ريبو|مسودة|مسوده)\s+جديد"
+        r"|(?:مشروع|مستودع|ريبو|مسودة|مسوده)\s+جديد(?:ة|ه)?)",
+        re.I,
+    )
+    is_create_repo = bool(_create_ar_re.search(low)) or any(p in low for p in (
         "create a new repo", "create new repo", "new github repo", "new repository",
         "create a new project", "new github project", "open a new project",
         "open a new repo", "start a new project", "create repo",
-        "انشئ مستودع جديد", "أنشئ مستودع جديد", "سوي مستودع جديد", "مستودع جديد",
-        "افتح مشروع جديد", "افتح مستودع جديد", "افتح ريبو جديد", "سوي مشروع جديد",
-        "انشئ مشروع جديد", "أنشئ مشروع جديد", "مشروع جديد على github", "مشروع جديد على غيتهاب"
     ))
     is_upload = any(p in low for p in ("upload", "push these files", "ارفع الملفات", "رفع ملفات"))
     is_edit = any(p in low for p in ("edit", "patch", "replace", "delete", "rename", "fix", "update", "عدل", "حدث", "احذف"))
