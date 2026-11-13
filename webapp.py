@@ -94,8 +94,8 @@ INDEX_HTML = r'''<!doctype html>
 <meta name="author" content="haydar_xe">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"__APP_NAME__","description":"مساعد برمجي بالذكاء الاصطناعي بالعربي: بيكتب الكود وبيصلّحو وبيشرحو، وبيجاوب على أي سؤال. دردشة بعدة موديلات، توليد صور، بحث تلقائي بالإنترنت، وفهم الصور والملفات. من تطوير haydar_xe.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","inLanguage":"ar","creator":{"@type":"Person","name":"haydar_xe","url":"https://www.instagram.com/haydar_xe/"},"featureList":["كتابة وتصحيح وشرح الكود","دردشة بعدة موديلات ذكاء اصطناعي","Ryn mix: دمج أجوبة عدة موديلات","توليد صور","بحث تلقائي بالإنترنت وفهم فيديوهات يوتيوب","قراءة الصور والملفات","وضع المشاعر"]}</script>
 <style>
-:root{--g:#00ff9d;--g-rgb:0,255,157;--red:#ff5d6c;--txt:#eef0ff;--sub:rgba(238,240,255,.55);
- --acc:#8b5cf6;--acc-rgb:139,92,246;--me1:#4c1d95;--me2:#2e1065;--bg1:#070816;--bg2:#0d0a26}
+:root{--g:#34f5a2;--g-rgb:52,245,162;--red:#ff5d6c;--txt:#effff7;--sub:rgba(225,255,239,.62);
+ --acc:#10b981;--acc-rgb:16,185,129;--me1:#065f46;--me2:#064e3b;--bg1:#050d09;--bg2:#091b13}
 [data-theme=blue]{--acc:#38bdf8;--acc-rgb:56,189,248;--me1:#0c4a6e;--me2:#082f49;--bg1:#060b16;--bg2:#08142a}
 [data-theme=orange]{--acc:#fb923c;--acc-rgb:251,146,60;--me1:#7c2d12;--me2:#431407;--bg1:#0d0806;--bg2:#1a0d08}
 [data-theme=green]{--acc:#10b981;--acc-rgb:16,185,129;--me1:#064e34;--me2:#042f20;--bg1:#030906;--bg2:#051a10}
@@ -630,6 +630,27 @@ button:active,.mini:active,.ib:active,.dbtn:active{transform:scale(.97)}
 html[dir="ltr"] #app{direction:ltr}html[dir="rtl"] #app{direction:rtl}
 html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .mtxt{text-align:left}
 @media(max-width:520px){#langBtn{right:52px;top:calc(env(safe-area-inset-top,0px) + 7px)}}
+
+/* RYN visual refresh: emerald glass, clearer desktop spacing */
+#app{background:linear-gradient(160deg,rgba(8,31,21,.98),rgba(4,12,9,.99) 62%,rgba(7,25,17,.98));}
+@media(min-width:960px){
+ html:not([data-layout="mobile"]) #app{max-width:min(1440px,97vw);height:min(940px,96vh);border-color:rgba(52,245,162,.28);box-shadow:0 28px 80px rgba(0,0,0,.72),0 0 46px rgba(16,185,129,.16),inset 0 0 30px rgba(52,245,162,.045)}
+ html:not([data-layout="mobile"]) main#msgs{padding:20px 26px 32px;gap:24px}
+}
+.mini,#memBtn,.pill,.dbtn,.dia,#sheet,.drawer{backdrop-filter:blur(16px)}
+.mini{background:linear-gradient(145deg,rgba(16,185,129,.19),rgba(5,30,19,.78));border-color:rgba(52,245,162,.38)}
+#menu{background:rgba(5,20,13,.97);border:1px solid rgba(52,245,162,.32);box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 24px rgba(16,185,129,.12)}
+#menu button,#menu a{border-radius:12px;transition:background .18s ease,color .18s ease}
+#menu button:hover,#menu a:hover{background:rgba(16,185,129,.14);color:#7dffc1}
+.dia.ultra-launch{border-color:#35f0a0;background:linear-gradient(145deg,rgba(16,185,129,.38),rgba(4,35,22,.96));box-shadow:0 0 22px rgba(16,185,129,.38),inset 0 0 14px rgba(52,245,162,.15);transform:rotate(45deg) scale(1.04)}
+.dia.ultra-launch span{color:#baffd8;text-shadow:0 0 10px rgba(52,245,162,.35)}
+.dia.ultra-launch:hover{background:rgba(16,185,129,.42);transform:rotate(45deg) scale(1.1)}
+#sheet{background:rgba(4,19,12,.97);border-color:rgba(52,245,162,.48);box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 28px rgba(16,185,129,.16)}
+#sheet button:hover,#sheet button.on{background:rgba(16,185,129,.15);color:#72ffbd}
+.pill{border-color:rgba(52,245,162,.35);background:rgba(5,24,16,.92)}
+.pill:focus-within{border-color:#35f0a0;box-shadow:0 0 18px rgba(16,185,129,.22)}
+#send{background:linear-gradient(145deg,rgba(16,185,129,.22),rgba(4,35,22,.75))}
+@media(prefers-reduced-motion:reduce){.dia,.mini,#menu button,#menu a{transition:none!important}}
 </style>
 </head>
 <body>
@@ -710,7 +731,6 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
     <button id="mEmo">💗 وضع المشاعر: طافي</button>
     <button id="mSfx">🔊 الأصوات المستقبلية: شغّالة</button>
     <button id="mAbout">ℹ️ عن __APP_NAME__</button>
-    <a href="/ultra" id="mUltra">🤖 RYN Ultra · فريق الذكاء الاصطناعي</a>
     <button id="mFile">📎 حذف الملف المرفق</button>
     <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">📸 تواصل · إنستغرام @haydar_xe</a>
     <button id="mOut">🚪 تسجيل خروج</button>
@@ -2371,6 +2391,7 @@ function drawFloating(){
   if(img)h+=f(img)+'<span>رسم<br>🎨</span></button>';
   if(gem)h+=f(gem)+'<span>Gemini</span></button>';
   if(qw)h+=f(qw)+'<span>Ryn<br>mix</span></button>';
+  h+='<button class="dia ultra-launch" data-m="__ryn_ultra" title="RYN Ultra · فريق الذكاء الاصطناعي"><span>🤖<br>RYN Ultra</span></button>';
   h+='<button class="dia" data-m="__gemini_live" title="Gemini Live: محادثة حية مباشرة (متل ChatGPT)"><span>Gemini<br>Live ✨</span></button>';
   h+='<button class="dia" data-m="__live_voice" title="محادثة صوتية حية مع الروبوت"><span>Live<br>Voice 🎙️</span></button>';
   if(models.length>2)h+='<button class="dia" data-m="__all"><span>كل<br>الموديلات</span></button>';
@@ -2380,6 +2401,7 @@ function setPh(){inp.placeholder=current==='img:flux'?'RYN Visual Brain: أنش�
 $('#floating').addEventListener('click',async e=>{
   const b=e.target.closest('.dia');if(!b)return;e.stopPropagation();
   const m=b.dataset.m;
+  if(m==='__ryn_ultra'){ $('#floating').classList.add('off'); window.location.href='/ultra'; return }
   if(m==='__gemini_live'){$('#floating').classList.add('off');startLiveVoiceChat('gemini');return}
   if(m==='__live_voice'){$('#floating').classList.add('off');startLiveVoiceChat('classic');return}
   if(m==='__all'){$('#floating').classList.add('off');openSheet();return}

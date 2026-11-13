@@ -81,3 +81,9 @@
 - **النطق:** (1) Live: تعليمات نطق الحروف العربية بمخارجها. (2) Live Voice/TTS: الأرقام والرموز والكلمات اللاتينية (GitHub، API، Python...) بتتحول لحروف عربية قبل النطق.
 
 **تنبيه أمان:** بوضع المفتاح الخام المفتاح بيوصل لمتصفح المستخدم المسجّل. مقبول لـ 3 أشخاص تثق فيهم؛ للمنع اضبط `LIVE_ALLOW_RAW_KEY=0` (بيبقى التوكن المؤقت فقط).
+
+
+## RYN UI Refresh — Plus Launcher and Readability Update
+- Moved the RYN Ultra entry out of the three-dot menu into the plus launcher, directly below RYN Mix.
+- Refreshed the main RYN interface with an emerald-green glass visual treatment and improved desktop spacing.
+- Improved RYN Ultra transcript wrapping, width constraints, bidirectional text handling, and mobile readability.
