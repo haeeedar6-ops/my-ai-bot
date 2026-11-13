@@ -1,0 +1,16 @@
+{
+  "baseline_run": {
+    "total_tests": 231,
+    "passed": 211,
+    "failures": 9,
+    "errors": 11,
+    "status": "FAILED"
+  },
+  "post_repair_run": {
+    "total_tests": 262,
+    "passed": 262,
+    "failures": 0,
+    "errors": 0,
+    "status": "PASSED"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "protocol_version": "1.0-section-3-4",
+  "steps": [
+    "A. Prepare (resolve repository, branch, target path, base commit SHA, current file SHA)",
+    "B. Validate (reject empty/no-op patch, check stale base SHA conflict, run syntax check)",
+    "C. Apply (generate unified diff and compute expected Git blob SHA1)",
+    "D. Commit (commit via GitHub Contents API or divert to ryn/ai-run-<id> branch + Draft PR if branch is protected)",
+    "E. Read-Back Verification (re-fetch file from GitHub with cache-busting and compare SHA256 + Git blob SHA)",
+    "F. Verify Commit (confirm commit SHA exists on target branch)",
+    "G. Report (return SAVED_AND_VERIFIED, NEEDS_ATTENTION, NO_OP, CONFLICT, or FAILED)"
+  ],
+  "non_negotiable_rule": "Never report saved/edited/committed unless read-back content and blob SHA match expected bytes."
+}

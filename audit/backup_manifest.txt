@@ -1,0 +1,9 @@
+RYN Pre-Implementation Repair — Backup Manifest
+===============================================
+Repository: haeeedar6-ops/my-ai-bot
+Default Branch: main
+Active Repair Branch: ryn/ai-run-preflight-repair
+Timestamp (UTC): 2026-11-13T06:14:24Z
+Source Archive: my-ai-bot-main (8).zip
+Nested Archive Removed: my-ai-bot-main (30).zip
+f413f2b8da08a8135276c6decb1e1d1b6707c465616f2e06071d9775cafa6a22  user_uploaded_files/ttl=63d/user_uploaded/my-ai-bot-main (8).zip
