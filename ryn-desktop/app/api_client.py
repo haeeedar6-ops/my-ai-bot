@@ -30,10 +30,19 @@ class RynAgentApiClient:
                     json=payload,
                     timeout=self.timeout,
                 )
-                data = r.json() if r.content else {}
+                if r.status_code >= 500:
+                    last_err = RuntimeError(f"HTTP {r.status_code}")
+                    if attempt < retries - 1:
+                        time.sleep(0.8 * (2 ** attempt))
+                        continue
+                    raise last_err
+                try:
+                    data = r.json() if r.content else {}
+                except Exception:
+                    data = {}
                 if r.status_code >= 400:
-                    raise RuntimeError(data.get("error") or f"HTTP {r.status_code}")
-                return data
+                    raise RuntimeError((data.get("error") if isinstance(data, dict) else None) or f"HTTP {r.status_code}")
+                return data if isinstance(data, dict) else {"data": data}
             except requests.RequestException as e:
                 last_err = e
                 if attempt < retries - 1:

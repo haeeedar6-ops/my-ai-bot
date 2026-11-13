@@ -13,7 +13,11 @@ class TestGithubRouteGate(unittest.TestCase):
         os.environ["WEB_PASSWORD"] = "pw-test-123"
         os.environ.setdefault("FLASK_SECRET_KEY", "x" * 32)
         import importlib
-        import flask
+        try:
+            import flask
+        except ModuleNotFoundError:
+            import _flask_compat as flask
+            sys.modules["flask"] = flask
         webapp = importlib.import_module("webapp")
         cls.app = flask.Flask("t")
         cls.app.secret_key = "k" * 32

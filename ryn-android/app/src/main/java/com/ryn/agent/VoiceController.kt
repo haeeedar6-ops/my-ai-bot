@@ -254,6 +254,7 @@ class VoiceController(private val context: Context) {
             return
         }
         thread {
+            var served = false
             try {
                 val baseUrl = pairing.getServerUrl().trim().trimEnd('/')
                 val tok = pairing.getDeviceToken()
@@ -476,6 +477,7 @@ class VoiceController(private val context: Context) {
                     }
 
                     if (chunkPayloads.isNotEmpty()) {
+                        served = true
                         isFallbackTts = json.optString("fallback_provider") == "gtts"
                         lastProviderUsed = json.optString("tts_provider_used").ifEmpty { "server-neural" }
                         isPlaying = true
@@ -489,7 +491,7 @@ class VoiceController(private val context: Context) {
                 // ننتقل لمسار الطوارئ المحلي أدناه
             }
 
-            if (token == playbackToken.get() && !stopRequested.get()) {
+            if (!served && token == playbackToken.get() && !stopRequested.get()) {
                 speakWithAndroidTtsFallback(cleanInput, detectedLang, targetSpeed, token, onComplete, onFallbackUsed)
             }
         }

@@ -3,11 +3,11 @@
 block_cipher = None
 
 a = Analysis(
-    ['app/main.py'],
+    ['run_desktop.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['mss', 'PIL', 'pyautogui', 'keyring'],
+    hiddenimports=['mss', 'PIL', 'pyautogui', 'keyring', 'pynput'],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],

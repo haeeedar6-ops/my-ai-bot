@@ -54,7 +54,8 @@ class TestDuplexVad(unittest.TestCase):
 
 class TestWebIntegration(unittest.TestCase):
     def test_script_inlined_and_hooked(self):
-        src = open(os.path.join(ROOT, "webapp.py"), encoding="utf-8").read()
+        with open(os.path.join(ROOT, "webapp.py"), encoding="utf-8") as _f:
+            src = _f.read()
         self.assertIn("__RYN_DUPLEX_JS__", src)
         self.assertIn("RynDuplex.arm", src)
         self.assertIn("RynDuplex.close()", src)

@@ -45,11 +45,16 @@ class DesktopTaskRunner:
                 self.log_cb(f"⚠️ توقف آمن بسبب انقطاع الشبكة (لا يُعاد تشغيل أوامر قديمة): {net_e}")
                 return {"status": "PAUSED_OFFLINE", "error": str(net_e), "sequence": sequence}
 
-            st = step_resp.get("status", "")
+            st = str(step_resp.get("status") or "").strip().upper()
+            act = str(step_resp.get("action") or "").strip().lower()
             if st == "WAITING_FOR_APPROVAL":
                 self.log_cb("⏳ بانتظار موافقة المستخدم على العملية من لوحة التحكم...")
                 time.sleep(1.5)
                 continue
+            if st == "NEEDS_USER_INPUT" or act == "ask_user":
+                q = str(step_resp.get("question") or step_resp.get("reason") or "")
+                self.log_cb(f"❓ المهمة بانتظار رد المستخدم: {q}")
+                return {"status": "NEEDS_USER_INPUT", "question": q, "sequence": sequence}
             if st in ("COMPLETED", "CANCELLED", "FAILED", "IDLE"):
                 self.log_cb(f"✅ انتهت المهمة بحالة: {st}")
                 return {"status": st, "sequence": sequence}
