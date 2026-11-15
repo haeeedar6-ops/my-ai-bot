@@ -612,51 +612,150 @@ textarea::placeholder{color:var(--sub)}
  html:not([data-layout="mobile"]) #app footer{padding:6px 8px}
 }
 
-/* RYN visual refresh: emerald glass, calmer contrast, smoother controls */
-:root{--g:#35e69a;--g-rgb:53,230,154;--bg1:#06120c;--bg2:#0b1c12;--txt:#effff6;--sub:rgba(226,248,236,.66)}
-[data-theme=green]{--acc:#22c982;--acc-rgb:34,201,130;--me1:#075331;--me2:#063b25;--bg1:#04100a;--bg2:#092017}
-body{background-color:var(--bg1);background-image:radial-gradient(circle at 12% 12%,rgba(var(--g-rgb),.15),transparent 42%),radial-gradient(circle at 90% 85%,rgba(var(--acc-rgb),.12),transparent 40%),linear-gradient(rgba(var(--g-rgb),.025) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--g-rgb),.025) 1px,transparent 1px);background-size:100% 100%,100% 100%,38px 38px,38px 38px}
-#app{background:linear-gradient(180deg,rgba(8,25,16,.96),rgba(5,16,10,.98));border-color:rgba(var(--g-rgb),.16);box-shadow:0 24px 80px #0008}
-.bubble{backdrop-filter:blur(14px);line-height:1.82;transition:transform .18s ease,border-color .18s ease}
-.bot{background:linear-gradient(145deg,rgba(12,39,25,.96),rgba(8,26,17,.96));border-color:rgba(var(--g-rgb),.5);box-shadow:0 8px 26px #0005,0 0 18px rgba(var(--g-rgb),.12)}
-.me{background:linear-gradient(135deg,#0d6942,#08462d);border-color:rgba(var(--g-rgb),.65);box-shadow:0 8px 26px #0005,0 0 18px rgba(var(--g-rgb),.15)}
-#menu,.mbox{background:rgba(6,23,14,.97);border-color:rgba(var(--g-rgb),.45);box-shadow:0 16px 50px #0008}
-#menu button:hover,.mbtns button:hover{background:rgba(var(--g-rgb),.12)}
-button,.mini,.ib,.dbtn{transition:transform .16s ease,filter .16s ease,background .16s ease}
-button:active,.mini:active,.ib:active,.dbtn:active{transform:scale(.97)}
-#inp:focus,.minp:focus,.mtxt:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(var(--g-rgb),.12)}
-#say{color:var(--g)}
-#langBtn{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);right:56px;z-index:35;min-width:40px;height:34px;border:1px solid rgba(var(--g-rgb),.45);border-radius:11px;background:rgba(5,24,14,.86);color:var(--g);font-weight:800;font-size:11px}
-html[dir="ltr"] #app{direction:ltr}html[dir="rtl"] #app{direction:rtl}
-html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .mtxt{text-align:left}
-@media(max-width:520px){#langBtn{right:52px;top:calc(env(safe-area-inset-top,0px) + 7px)}}
-
-/* RYN visual refresh: emerald glass, clearer desktop spacing */
-#app{background:linear-gradient(160deg,rgba(8,31,21,.98),rgba(4,12,9,.99) 62%,rgba(7,25,17,.98));}
-@media(min-width:960px){
- html:not([data-layout="mobile"]) #app{max-width:min(1440px,97vw);height:min(940px,96vh);border-color:rgba(52,245,162,.28);box-shadow:0 28px 80px rgba(0,0,0,.72),0 0 46px rgba(16,185,129,.16),inset 0 0 30px rgba(52,245,162,.045)}
- html:not([data-layout="mobile"]) main#msgs{padding:20px 26px 32px;gap:24px}
+/* ===== Google Gemini Studio Aesthetic + Interactive RYN Robot ===== */
+:root{
+  --bg1:#131314;
+  --bg2:#1e1f20;
+  --pop:#282a2c;
+  --surf:rgba(255,255,255,.06);
+  --surf2:rgba(255,255,255,.11);
+  --line:rgba(255,255,255,.11);
+  --txt:#e3e3e3;
+  --sub:#9aa0a6;
+  --g:#8ab4f8;
+  --g-rgb:138,180,248;
+  --acc:#4285f4;
+  --acc-rgb:66,133,244;
+  --gem-grad:linear-gradient(135deg,#4285f4 0%,#9b72cb 52%,#34d399 100%);
 }
-.mini,#memBtn,.pill,.dbtn,.dia,#sheet,.drawer{backdrop-filter:blur(16px)}
-.mini{background:linear-gradient(145deg,rgba(16,185,129,.19),rgba(5,30,19,.78));border-color:rgba(52,245,162,.38)}
-#menu{background:rgba(5,20,13,.97);border:1px solid rgba(52,245,162,.32);box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 24px rgba(16,185,129,.12)}
-#menu button,#menu a{border-radius:12px;transition:background .18s ease,color .18s ease}
-#menu button:hover,#menu a:hover{background:rgba(16,185,129,.14);color:#7dffc1}
-.dia.ultra-launch{border-color:#35f0a0;background:linear-gradient(145deg,rgba(16,185,129,.38),rgba(4,35,22,.96));box-shadow:0 0 22px rgba(16,185,129,.38),inset 0 0 14px rgba(52,245,162,.15);transform:rotate(45deg) scale(1.04)}
-.dia.ultra-launch span{color:#baffd8;text-shadow:0 0 10px rgba(52,245,162,.35)}
-.dia.ultra-launch:hover{background:rgba(16,185,129,.42);transform:rotate(45deg) scale(1.1)}
-#sheet{background:rgba(4,19,12,.97);border-color:rgba(52,245,162,.48);box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 28px rgba(16,185,129,.16)}
-#sheet button:hover,#sheet button.on{background:rgba(16,185,129,.15);color:#72ffbd}
-.pill{border-color:rgba(52,245,162,.35);background:rgba(5,24,16,.92)}
-.pill:focus-within{border-color:#35f0a0;box-shadow:0 0 18px rgba(16,185,129,.22)}
-#send{background:linear-gradient(145deg,rgba(16,185,129,.22),rgba(4,35,22,.75))}
+[data-theme=green]{--acc:#34d399;--acc-rgb:52,211,153;--g:#8ab4f8;--g-rgb:138,180,248;--me1:#1e293b;--me2:#1e1f20}
+[data-theme=blue]{--acc:#8ab4f8;--acc-rgb:138,180,248;--g:#38bdf8;--g-rgb:56,189,248;--me1:#1e293b;--me2:#1e1f20}
+[data-theme=violet]{--acc:#c084fc;--acc-rgb:192,132,252;--g:#a78bfa;--g-rgb:167,139,250;--me1:#261f35;--me2:#1e1f20}
+[data-theme=orange]{--acc:#fb923c;--acc-rgb:251,146,60;--g:#fdba74;--g-rgb:253,186,116;--me1:#312018;--me2:#1e1f20}
+body{
+  background-color:var(--bg1);
+  background-image:
+    radial-gradient(ellipse at 18% -6%,rgba(66,133,244,.16),transparent 45%),
+    radial-gradient(ellipse at 82% 0%,rgba(167,139,250,.12),transparent 42%),
+    radial-gradient(ellipse at 50% 102%,rgba(52,211,153,.08),transparent 45%);
+}
+#app{
+  background:
+    radial-gradient(ellipse at 20% 0%,rgba(var(--g-rgb),.11),transparent 46%),
+    radial-gradient(ellipse at 85% 95%,rgba(var(--acc-rgb),.08),transparent 44%),
+    var(--bg1);
+  border:0;box-shadow:none;
+}
+.grid3d{opacity:.18}
+#fx{opacity:.42}
+.top{padding-top:4px;padding-bottom:6px}
+.botwrap{cursor:pointer}
+.botwrap::before{border:1.5px dashed rgba(var(--g-rgb),.38)}
+.botwrap::after{box-shadow:0 0 28px rgba(var(--g-rgb),.22),inset 0 0 18px rgba(var(--acc-rgb),.12);background:radial-gradient(circle,rgba(var(--g-rgb),.15) 0%,transparent 70%)}
+#say{color:#c4c7c5;font-weight:500;text-shadow:none}
+#mname{
+  background:var(--surf);border:1px solid var(--line);color:var(--txt);
+  font-size:13.5px;font-weight:700;padding:4px 13px;border-radius:999px;
+}
+#mname:hover{background:var(--surf2);border-color:var(--g)}
+#memBtn,#ultraTopBtn{
+  font-size:12px;color:var(--txt);background:var(--surf);border:1px solid var(--line);
+  border-radius:999px;padding:4px 12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;
+}
+#ultraTopBtn{
+  background:linear-gradient(135deg,rgba(66,133,244,.18),rgba(155,114,203,.18));
+  border-color:rgba(138,180,248,.38);color:#d2e3fc;font-weight:700;
+}
+#ultraTopBtn:hover,#memBtn:hover{border-color:var(--g);background:var(--surf2)}
+#langBtn{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);right:54px;z-index:35;
+  min-width:44px;height:36px;border:1px solid var(--line);border-radius:999px;
+  background:var(--bg2);color:var(--txt);font-weight:700;font-size:11.5px;padding:0 11px;
+}
+#langBtn:hover{border-color:var(--g);background:var(--pop)}
+.mini{background:var(--bg2);border:1px solid var(--line);border-radius:50%;color:var(--txt)}
+.mini:hover{background:var(--pop);border-color:var(--g);box-shadow:none}
+/* Gemini message bubbles */
+#app main#msgs{gap:22px;padding:12px max(16px,calc((100% - 780px)/2)) 28px}
+#app .bubble.bot{
+  align-self:flex-start;max-width:92%;
+  background:transparent;border:0;box-shadow:none;padding:4px 6px;
+  color:var(--txt);font-size:15.5px;line-height:1.85;
+}
+#app .bubble.me{
+  align-self:flex-end;max-width:80%;
+  background:var(--pop);border:1px solid var(--line);
+  border-radius:24px 24px 6px 24px;padding:11px 18px;
+  color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.22);
+}
+html[dir="ltr"] #app .bubble.me{border-radius:24px 24px 24px 6px}
+html[dir="ltr"] #app{direction:ltr}html[dir="rtl"] #app{direction:rtl}
+html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .mtxt,html[dir="ltr"] textarea{text-align:left}
+/* Gemini welcome card & quick chips */
+.hint{
+  margin:auto;text-align:center;color:var(--sub);font-size:15px;line-height:1.9;
+  max-width:560px;padding:20px 14px;
+}
+.hint .gem-hello{
+  font-size:26px;font-weight:800;margin-bottom:6px;display:block;
+  background:linear-gradient(90deg,#8ab4f8,#c084fc,#34d399);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hint-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+.hint-chip{
+  background:var(--bg2);border:1px solid var(--line);color:var(--txt);
+  padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:600;
+  transition:all .18s ease;
+}
+.hint-chip:hover{background:var(--pop);border-color:var(--g);transform:translateY(-1px)}
+/* Gemini composer bar */
+#app footer{
+  width:calc(100% - 24px);max-width:780px;margin:0 auto calc(env(safe-area-inset-bottom,0px) + 12px);
+  padding:7px 10px;gap:8px;
+  background:var(--bg2);border:1px solid var(--line);border-radius:32px;
+  box-shadow:0 8px 28px rgba(0,0,0,.38);
+}
+#app footer:focus-within{border-color:rgba(138,180,248,.45);box-shadow:0 8px 32px rgba(66,133,244,.16)}
+.pill{background:transparent;border:0;box-shadow:none}
+.dbtn{transform:none;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;background:var(--pop);box-shadow:none;margin:0}
+.dbtn:hover{background:var(--surf2);border-color:var(--g)}
+.dbtn svg{transform:none;width:19px;height:19px;stroke:var(--txt);filter:none}
+#app #send{background:var(--gem-grad);border:0;box-shadow:0 4px 14px rgba(66,133,244,.28)}
+#app #send svg{stroke:#0b0f17;filter:none}
+/* Floating launcher pills (Gemini style, no 45deg diamond rotation) */
+.floating{gap:10px;align-items:flex-end}
+.dia{
+  transform:none!important;width:auto;min-width:62px;height:44px;padding:0 14px;
+  border-radius:999px;background:var(--bg2);border:1px solid var(--line);
+  box-shadow:0 8px 24px rgba(0,0,0,.45);
+}
+.dia span{transform:none!important;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.dia span br{display:none}
+.dia:hover,.dia.on{background:var(--pop);border-color:var(--g);box-shadow:0 6px 20px rgba(66,133,244,.22)}
+.dia.ultra-launch{
+  border-color:rgba(138,180,248,.5);
+  background:linear-gradient(135deg,rgba(66,133,244,.26),rgba(155,114,203,.24));
+}
+.dia.ultra-launch span{color:#e8f0fe;text-shadow:none}
+/* Drawer, Menu, Sheet & Modals */
+#app .drawer{background:#18191b;border-left:1px solid var(--line)}
+#menu,#sheet,.mbox{background:#1e1f20;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.65)}
+#menu button,#menu a{border-radius:12px}
+#menu button:hover,#menu a:hover,#sheet button:hover,#sheet button.on{background:var(--pop);color:var(--g)}
+@media(min-width:960px){
+ html:not([data-layout="mobile"]) #app{max-width:none;width:100%;height:100vh;height:100dvh;border-radius:0;border:0;padding:8px 290px 0 0}
+ html:not([data-layout="mobile"]) #app #drawer{width:290px;background:#18191b;border-left:1px solid var(--line)}
+ html:not([data-layout="mobile"]) #app .floating{right:308px;bottom:92px}
+ html:not([data-layout="mobile"]) #app #sheet{right:308px;left:16px;max-width:560px}
+}
+@media(max-width:520px){#langBtn{right:50px;top:calc(env(safe-area-inset-top,0px) + 7px)}}
 @media(prefers-reduced-motion:reduce){.dia,.mini,#menu button,#menu a{transition:none!important}}
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <linearGradient id="hd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14452f"/><stop offset="1" stop-color="#071a11"/></linearGradient>
-  <linearGradient id="vz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#030d08"/><stop offset="1" stop-color="#082115"/></linearGradient>
+  <linearGradient id="hd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#282a2c"/><stop offset="1" stop-color="#17181a"/></linearGradient>
+  <linearGradient id="vz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d0e10"/><stop offset="1" stop-color="#181a1f"/></linearGradient>
 </defs></svg>
 
 <template id="botTpl">
@@ -718,12 +817,14 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
     <div id="say"></div>
     <div class="toprow">
       <div id="mname" title="تبديل الموديل">Gemini</div>
+      <button id="ultraTopBtn" type="button" title="RYN Ultra · فريق الذكاء الاصطناعي">✦ RYN Ultra</button>
       <button id="memBtn" type="button" title="ملف التخصيص وذاكرة الجهاز">🧠 ذاكرتي <span id="memCnt">0</span></button>
     </div>
   </div>
 
   <div id="menu" hidden>
     <button id="mNew">✨ محادثة جديدة</button>
+    <button id="mUltra">🤖 RYN Ultra · فريق الذكاء الاصطناعي</button>
     <button id="mVoiceStudio">🗣️ اختيار الصوت العربي (نبرة الكلمات)</button>
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
     <button id="mFix">🐞 تصحيح كود</button>
@@ -1012,9 +1113,17 @@ function say(t){
   clearInterval(sayT);const el=$('#say');el.textContent='';let i=0;
   sayT=setInterval(()=>{el.textContent=t.slice(0,++i);if(i>=t.length)clearInterval(sayT)},26);
 }
-const IDLE=['أهلاً! اسألني أي شي 🤖','جاهز للمساعدة 💚','ارفع صورة وبشوفها 👀','اطلب كود وبكتبه 💻','عندك ملف؟ ارفعه وبقراه 📎'];
+const IDLE_AR=['أهلاً! اسألني أي شي 🤖','جاهز للمساعدة ✦','ارفع صورة وبشوفها 👀','اطلب كود وبكتبه 💻','عندك ملف؟ ارفعه وبقراه 📎','جرّب RYN Ultra لنقاش 5 نماذج معاً 🚀'];
+const IDLE_EN=['Hi! Ask me anything 🤖','Ready to help ✦','Upload an image & I will analyze it 👀','Ask for code & I will write it 💻','Have a file? Attach it 📎','Try RYN Ultra for a 5-agent debate 🚀'];
 let idleN=0;
-idleI=setInterval(()=>{if(!busy&&!inp.value&&bot.classList.contains('idle')&&$('#login').hidden){say(IDLE[idleN++%IDLE.length])}},14000);
+idleI=setInterval(()=>{if(!busy&&!inp.value&&bot.classList.contains('idle')&&$('#login').hidden){const arr=(typeof rynUiLang!=='undefined'&&rynUiLang==='en')?IDLE_EN:IDLE_AR;say(arr[idleN++%arr.length])}},14000);
+$('#botBox').addEventListener('click',()=>{
+  if(busy)return;
+  setMood('excited',3500);setBot('happy',1400);
+  if(typeof sfx!=='undefined')sfx.receive();
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
+  say(en?'🤖 RYN is active & ready! Ask me anything ✦':'🤖 أنا رين، جاهز ومتفاعل معك! اسألني أي شي ✦');
+});
 document.addEventListener('pointermove',e=>{
   const r=bot.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;
   const dx=Math.max(-1,Math.min(1,(e.clientX-cx)/220)),dy=Math.max(-1,Math.min(1,(e.clientY-cy)/220));
@@ -1108,20 +1217,21 @@ function selectRelevantMemoryForRequest(queryText){
   };
 }
 function updateMemUI(){
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
   const cnt=(mem.facts?mem.facts.length:0)+(mem.name.trim()?1:0)+(mem.custom.trim()?1:0);
   const cEl=$('#memCnt');if(cEl)cEl.textContent=cnt;
   const bEl=$('#memBtn');if(bEl)bEl.classList.toggle('off',!mem.enabled);
-  const st=$('#memStat');if(st)st.textContent=(mem.facts?mem.facts.length:0)+' معلومة محلية';
+  const st=$('#memStat');if(st)st.textContent=(mem.facts?mem.facts.length:0)+(en?' local facts':' معلومة محلية');
   const metaEl=$('#memStorageMeta');
   if(metaEl){
     let rawLen=0;try{rawLen=(localStorage.getItem(MEM_LS)||'').length}catch(e){}
     const kb=(rawLen/1024).toFixed(1);
-    const bk=mem.lastBackupAt?new Date(mem.lastBackupAt).toLocaleString('ar-SY'):'لم يتم بعد';
-    metaEl.textContent='🟢 Memory is local · التخزين: جهازك المحلي فقط · الحجم: '+kb+' KB · آخر نسخ احتياطي: '+bk;
+    const bk=mem.lastBackupAt?new Date(mem.lastBackupAt).toLocaleString(en?'en-US':'ar-SY'):(en?'Never':'لم يتم بعد');
+    metaEl.textContent=en?('🟢 Memory is local · Stored on your device only · Size: '+kb+' KB · Last backup: '+bk):('🟢 Memory is local · التخزين: جهازك المحلي فقط · الحجم: '+kb+' KB · آخر نسخ احتياطي: '+bk);
   }
   const lst=$('#memList');
   if(lst){
-    lst.innerHTML=(mem.facts&&mem.facts.length)?mem.facts.map((f,i)=>'<div class="mitem"><span>'+esc(f)+'</span><button type="button" data-mdel="'+i+'" title="حذف من الجهاز">✕</button></div>').join(''):'<small style="text-align:center;padding:6px">ما في ذكريات مضافة بعد.</small>';
+    lst.innerHTML=(mem.facts&&mem.facts.length)?mem.facts.map((f,i)=>'<div class="mitem"><span>'+esc(f)+'</span><button type="button" data-mdel="'+i+'" title="'+(en?'Delete from device':'حذف من الجهاز')+'">✕</button></div>').join(''):('<small style="text-align:center;padding:6px">'+(en?'No saved memories yet.':'ما في ذكريات مضافة بعد.')+'</small>');
   }
 }
 function openMemModal(){
@@ -1140,7 +1250,7 @@ $('#mAbout').onclick=showAbout;$('#loginAbout').onclick=showAbout;
 $('#aboutClose').onclick=()=>{$('#aboutModal').hidden=true};
 $('#aboutModal').onclick=e=>{if(e.target===$('#aboutModal'))$('#aboutModal').hidden=true};
 let emo=false;try{emo=localStorage.getItem('ryn_emo')==='1'}catch(e){}
-function paintEmo(){$('#mEmo').textContent=emo?'💗 وضع المشاعر: شغّال':'💗 وضع المشاعر: طافي'}
+function paintEmo(){const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');$('#mEmo').textContent=en?(emo?'💗 Emotion mode: On':'💗 Emotion mode: Off'):(emo?'💗 وضع المشاعر: شغّال':'💗 وضع المشاعر: طافي')}
 paintEmo();
 $('#mEmo').onclick=()=>{emo=!emo;try{localStorage.setItem('ryn_emo',emo?'1':'0')}catch(e){}paintEmo();$('#menu').hidden=true;toast(emo?'💗 صار عندي مشاعر هلق':'تم إيقاف وضع المشاعر');if(emo){setMood('happy',4500);say('😄 يلا نحكي!')}else setMood('neutral')};
 $('#memClose').onclick=closeMemModal;
@@ -1387,7 +1497,7 @@ function stopAllRynSpeech(isBargeIn){
   rynSpeakToken++;
   if(window.speechSynthesis){try{window.speechSynthesis.cancel()}catch(e){}}
   if(rynTtsAudio){try{rynTtsAudio.pause();rynTtsAudio=null}catch(e){}}
-  document.querySelectorAll('[data-speak]').forEach(b=>{b.dataset.speaking='0';b.textContent='🔊 استماع'});
+  document.querySelectorAll('[data-speak]').forEach(b=>{b.dataset.speaking='0';b.textContent=(typeof rynUiLang!=='undefined'&&rynUiLang==='en')?'🔊 Listen':'🔊 استماع'});
   setBot('idle');
   notifyVoicePlaybackState(isBargeIn?'barge_in':'playback_stopped',!!isBargeIn);
 }
@@ -1581,18 +1691,19 @@ function ensureLvRobotCloned(){
   }
 }
 function setLvUiState(st,subText){
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
   const tEl=$('#lvStatusTitle'),bEl=$('#lvTranscriptBox'),dot=$('#lvDot'),aura=$('#lvAura');
   if(!liveVoiceActive)return;
   if(st==='listening'){
     if(window.RynDuplex)RynDuplex.disarm();
     setBot('listening');
-    if(tEl)tEl.textContent='عم أسمعك... احكي براحتك 🎙️';
+    if(tEl)tEl.textContent=en?'Listening... speak freely 🎙️':'عم أسمعك... احكي براحتك 🎙️';
     if(dot){dot.style.background='#00ff9d';dot.style.boxShadow='0 0 12px #00ff9d';}
     if(aura)aura.style.transform='scale(1.05)';
   }else if(st==='thinking'){
     if(window.RynDuplex)RynDuplex.disarm();
     setBot('thinking');
-    if(tEl)tEl.textContent='عم أفكّر بجوابك... 🧠';
+    if(tEl)tEl.textContent=en?'Thinking about your message... 🧠':'عم أفكّر بجوابك... 🧠';
     if(dot){dot.style.background='#a855f7';dot.style.boxShadow='0 0 12px #a855f7';}
     if(aura)aura.style.transform='scale(0.96)';
   }else if(st==='speaking'){
@@ -1600,16 +1711,16 @@ function setLvUiState(st,subText){
     if(window.RynDuplex&&!liveMuted){RynDuplex.arm(function(){
       if(!liveVoiceActive)return;
       stopAllRynSpeech(true);
-      setLvUiState('listening','سمعتك... احكي 🎙️');
+      setLvUiState('listening',en?'I heard you... go ahead 🎙️':'سمعتك... احكي 🎙️');
       startLiveListeningTurn();
     });}
-    if(tEl)tEl.textContent='رين يحكي معك الآن... (احكي أو اضغط 🗣️ للمقاطعة)';
+    if(tEl)tEl.textContent=en?'RYN is speaking... (speak or tap 🗣️ to interrupt)':'رين يحكي معك الآن... (احكي أو اضغط 🗣️ للمقاطعة)';
     if(dot){dot.style.background='#38bdf8';dot.style.boxShadow='0 0 14px #38bdf8';}
     if(aura)aura.style.transform='scale(1.12)';
   }else if(st==='muted'){
     if(window.RynDuplex)RynDuplex.disarm();
     setBot('idle');
-    if(tEl)tEl.textContent='الميكروفون مكتوم 🔇';
+    if(tEl)tEl.textContent=en?'Microphone muted 🔇':'الميكروفون مكتوم 🔇';
     if(dot){dot.style.background='#ff5d6c';dot.style.boxShadow='none';}
     if(aura)aura.style.transform='scale(1)';
   }
@@ -1891,7 +2002,7 @@ function newChat(silent){
   if(c&&!c.msgs.length&&!silent){closeDrawer();return}
   const n={id:uid(),title:'محادثة جديدة',ts:Date.now(),msgs:[]};
   store.chats.unshift(n);store.cur=n.id;
-  if(!silent){saveStore();render();drawDrawer();closeDrawer();clearFile();say('محادثة جديدة، تفضّل 🙂')}
+  if(!silent){saveStore();render();drawDrawer();closeDrawer();clearFile();say((typeof rynUiLang!=='undefined'&&rynUiLang==='en')?'New chat started, go ahead 🙂':'محادثة جديدة، تفضّل 🙂')}
 }
 function switchChat(id){store.cur=id;saveStore();render();drawDrawer();closeDrawer();clearFile()}
 function delChat(id){
@@ -1900,7 +2011,14 @@ function delChat(id){
   if(!store.chats.find(c=>c.id===store.cur))store.cur=store.chats[0].id;
   saveStore();render();drawDrawer();
 }
-function ago(ts){const s=(Date.now()-ts)/1000;if(s<60)return 'الآن';if(s<3600)return 'قبل '+Math.floor(s/60)+' د';if(s<86400)return 'قبل '+Math.floor(s/3600)+' س';return 'قبل '+Math.floor(s/86400)+' يوم'}
+function ago(ts){
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
+  const s=(Date.now()-ts)/1000;
+  if(s<60)return en?'Just now':'الآن';
+  if(s<3600)return en?(Math.floor(s/60)+'m ago'):('قبل '+Math.floor(s/60)+' د');
+  if(s<86400)return en?(Math.floor(s/3600)+'h ago'):('قبل '+Math.floor(s/3600)+' س');
+  return en?(Math.floor(s/86400)+'d ago'):('قبل '+Math.floor(s/86400)+' يوم');
+}
 /* ===== إضافة: بحث بالمحادثات (العنوان + نص الرسائل) ===== */
 let chatQ='';
 function hl(t,q){
@@ -1925,9 +2043,14 @@ function visibleChats(){
   return store.chats.filter(c=>c.title.toLowerCase().includes(q)||c.msgs.some(m=>chatHit(m,q)));
 }
 function drawDrawer(){
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
   const q=chatQ.trim().toLowerCase(),list=visibleChats();
   $('#dCnt').textContent=list.length;
-  $('#dList').innerHTML=list.length?list.map(c=>'<div class="ci'+(c.id===store.cur?' on':'')+'" data-id="'+c.id+'"><div class="t"><b>'+hl(c.title,q)+'</b><small>'+ago(c.ts)+' · '+c.msgs.filter(m=>m.role!=='sys').length+' رسالة</small>'+(q?'<small class="sn">'+esc(chatSnip(c,q))+'</small>':'')+'</div><button data-del="'+c.id+'" aria-label="حذف">🗑️</button></div>').join(''):'<div class="dempty">ما في محادثة بهذا البحث 🔍<br>جرّب كلمة تانية</div>';
+  $('#dList').innerHTML=list.length?list.map(c=>{
+    const dispTitle=(en&&c.title==='محادثة جديدة')?'New chat':c.title;
+    const msgCount=c.msgs.filter(m=>m.role!=='sys').length;
+    return '<div class="ci'+(c.id===store.cur?' on':'')+'" data-id="'+c.id+'"><div class="t"><b>'+hl(dispTitle,q)+'</b><small>'+ago(c.ts)+' · '+msgCount+(en?' msgs':' رسالة')+'</small>'+(q?'<small class="sn">'+esc(chatSnip(c,q))+'</small>':'')+'</div><button data-del="'+c.id+'" aria-label="'+(en?'Delete':'حذف')+'">🗑️</button></div>';
+  }).join(''):('<div class="dempty">'+(en?'No matching chats found 🔍<br>Try another keyword':'ما في محادثة بهذا البحث 🔍<br>جرّب كلمة تانية')+'</div>');
 }
 function openDrawer(){drawDrawer();$('#scrim').hidden=false;$('#drawer').classList.add('on')}
 function closeDrawer(){$('#drawer').classList.remove('on');$('#scrim').hidden=true}
@@ -1971,33 +2094,37 @@ function md(text){
     if(m){list.push(m[1])}else{flush();html+=ln+'<br>'}
   }
   flush();
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
   return html.replace(/<br>$/,'').replace(/\u0000(\d+)\u0000/g,(m,i)=>{
     const b=blocks[+i];
-    return '<div class="code"><div class="ch"><span>'+esc(b.l||'code')+'</span><div class="ch-btns"><button type="button" class="cp">نسخ</button></div></div><pre><code>'+esc(b.c.replace(/\n$/,''))+'</code></pre></div>';
+    return '<div class="code"><div class="ch"><span>'+esc(b.l||'code')+'</span><div class="ch-btns"><button type="button" class="cp">'+(en?'Copy':'نسخ')+'</button></div></div><pre><code>'+esc(b.c.replace(/\n$/,''))+'</code></pre></div>';
   });
 }
 const pm=t=>md((t.match(/```/g)||[]).length%2?t+'\n```':t);
 let reveal=null;
 function render(){
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
   const ms=M();
   if(!ms.length){
-    msgs.innerHTML='<div class="hint">أهلاً فيك 👋<br><b>اسأل أي سؤال</b>، أو ارفع صورة 📷 أو ملف 📎،<br>أو اطلب كود وبيتكتب تلقائياً.</div>';
+    msgs.innerHTML=en
+      ? '<div class="hint"><span class="gem-hello">Hello, welcome to RYN ✦</span><b>How can I help you today?</b><br>Ask any question, upload an image 📷 or project ZIP 📎, or generate clean code.<div class="hint-chips"><button type="button" class="hint-chip" data-qchip="code">💻 Write & debug code</button><button type="button" class="hint-chip" data-qchip="img">🎨 Create or edit image</button><button type="button" class="hint-chip" data-qchip="mix">🧩 RYN Mix Hybrid</button><button type="button" class="hint-chip" data-qchip="ultra">🤖 RYN Ultra (5 Agents)</button></div></div>'
+      : '<div class="hint"><span class="gem-hello">أهلاً بك في RYN ✦</span><b>كيف أقدر أساعدك اليوم؟</b><br>اسأل أي سؤال، أو ارفع صورة 📷 أو ملف مشروع 📎، أو اطلب كتابة وتصحيح كود.<div class="hint-chips"><button type="button" class="hint-chip" data-qchip="code">💻 كتابة وتصحيح كود</button><button type="button" class="hint-chip" data-qchip="img">🎨 توليد وتعديل صورة</button><button type="button" class="hint-chip" data-qchip="mix">🧩 عقل RYN Mix الهجين</button><button type="button" class="hint-chip" data-qchip="ultra">🤖 فريق RYN Ultra (5 نماذج)</button></div></div>';
     return;
   }
   const lastUser=ms.map(m=>m.role).lastIndexOf('user');
   msgs.innerHTML=ms.map((m,i)=>{
     if(m.role==='sys')return '<div class="sys">'+esc(m.text)+'</div>';
     const me=m.role==='user';
-    const pic=(m.img&&String(m.img).startsWith('data:image/'))?'<img class="pic" data-i="'+i+'" src="'+m.img+'" alt="صورة">':'';
+    const pic=(m.img&&String(m.img).startsWith('data:image/'))?'<img class="pic" data-i="'+i+'" src="'+m.img+'" alt="image">':'';
     const ext=m.file?(String(m.file).includes('.')?String(m.file).split('.').pop().slice(0,5):'FILE'):'';
-    const fbox=m.file?'<div class="fcard"><div class="fico">'+esc(ext)+'</div><div class="fmeta"><b>'+esc(m.file)+'</b><small>ملف مرفق 📎</small></div></div>':'';
+    const fbox=m.file?'<div class="fcard"><div class="fico">'+esc(ext)+'</div><div class="fmeta"><b>'+esc(m.file)+'</b><small>'+(en?'Attached file 📎':'ملف مرفق 📎')+'</small></div></div>':'';
     const dls=(m.dfiles&&m.dfiles.length)?m.dfiles:(m.dfile?[m.dfile]:[]);
-    const dbox=dls.map(f=>'<a class="fcard dl" href="'+f.url+'" download="'+esc(f.name)+'" title="اضغط لتحميل الملف"><div class="fico">'+esc(String(f.ext).toUpperCase())+'</div><div class="fmeta"><b>'+esc(f.name)+'</b><small>💾 ملف جاهز للتحميل'+(f.size?(f.size>1024?' · '+Math.round(f.size/1024)+' KB':' · '+f.size+' B'):'')+'</small></div><div class="dlico">⬇️</div></a>').join('');
-    const shown=(me&&String(m.text).length>3000)?String(m.text).slice(0,3000)+'\n… (انرسل كامل: '+String(m.text).length+' حرف)':m.text;
+    const dbox=dls.map(f=>'<a class="fcard dl" href="'+f.url+'" download="'+esc(f.name)+'" title="'+(en?'Click to download file':'اضغط لتحميل الملف')+'"><div class="fico">'+esc(String(f.ext).toUpperCase())+'</div><div class="fmeta"><b>'+esc(f.name)+'</b><small>'+(en?'💾 File ready to download':'💾 ملف جاهز للتحميل')+(f.size?(f.size>1024?' · '+Math.round(f.size/1024)+' KB':' · '+f.size+' B'):'')+'</small></div><div class="dlico">⬇️</div></a>').join('');
+    const shown=(me&&String(m.text).length>3000)?String(m.text).slice(0,3000)+(en?'\n… (Sent in full: '+String(m.text).length+' chars)':'\n… (انرسل كامل: '+String(m.text).length+' حرف)'):m.text;
     const body=pic+fbox+dbox+(m.reveal?'':md(shown));
     return '<div class="bubble '+(me?'me':'bot')+(m.err?' err':'')+'"'+(m.reveal?' data-rev="1"':'')+'>'+body+'</div>'+
       (m.note?'<div class="note">'+esc(m.note)+'</div>':'')+
-      (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">✏️ تعديل</button></div>':''):'<div class="acts"><button data-copy="'+i+'">نسخ الرد</button><button data-speak="'+i+'">🔊 استماع</button></div>');
+      (me?((i===lastUser&&!busy)?'<div class="acts me"><button data-edit="'+i+'">'+(en?'✏️ Edit':'✏️ تعديل')+'</button></div>':''):'<div class="acts"><button data-copy="'+i+'">'+(en?'Copy reply':'نسخ الرد')+'</button><button data-speak="'+i+'">'+(en?'🔊 Listen':'🔊 استماع')+'</button></div>');
   }).join('')+(busy?'<div class="bubble bot"><span class="typing"><i></i><i></i><i></i></span></div>':'');
   msgs.scrollTop=msgs.scrollHeight;
   const rv=ms.findIndex(m=>m.reveal);if(rv>=0)startReveal(rv);
@@ -2022,6 +2149,14 @@ function startReveal(idx){
   },30);
 }
 msgs.addEventListener('click',e=>{
+  const qchip=e.target.closest('[data-qchip]');
+  if(qchip){
+    const k=qchip.dataset.qchip;
+    if(k==='ultra'){window.location.href='/ultra';return;}
+    if(k==='img'){setModel('img:flux');inp.focus();return;}
+    if(k==='mix'){setModel('mix');inp.focus();return;}
+    if(k==='code'){$('#mFix').click();return;}
+  }
   const pic=e.target.closest('.pic');
   if(pic){$('#lbImg').src=pic.src;$('#lbSave').href=pic.src;$('#lb').hidden=false;return}
   const ed=e.target.closest('[data-edit]');
@@ -2364,16 +2499,19 @@ $('#micBtn').onclick=micToggle;
 
 /* ===== تنزيل الكود تلقائياً + تصحيح كود ===== */
 let autoDl=true;try{autoDl=localStorage.getItem('ryn_adl')!=='0'}catch(e){}
-function paintAdl(){$('#mAdl').textContent=autoDl?'⬇️ تنزيل الكود تلقائياً: شغّال':'⬇️ تنزيل الكود تلقائياً: طافي'}
+function paintAdl(){const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');$('#mAdl').textContent=en?(autoDl?'⬇️ Auto-download code: On':'⬇️ Auto-download code: Off'):(autoDl?'⬇️ تنزيل الكود تلقائياً: شغّال':'⬇️ تنزيل الكود تلقائياً: طافي')}
 paintAdl();
-$('#mAdl').onclick=()=>{autoDl=!autoDl;try{localStorage.setItem('ryn_adl',autoDl?'1':'0')}catch(e){}paintAdl();$('#menu').hidden=true;toast(autoDl?'⬇️ الكود رح ينزل بملف تلقائياً':'تم إيقاف التنزيل التلقائي (بيضل زر التحميل)')};
+$('#mAdl').onclick=()=>{autoDl=!autoDl;try{localStorage.setItem('ryn_adl',autoDl?'1':'0')}catch(e){}paintAdl();$('#menu').hidden=true;const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');toast(en?(autoDl?'⬇️ Code will auto-download as a file':'Auto-download disabled'):(autoDl?'⬇️ الكود رح ينزل بملف تلقائياً':'تم إيقاف التنزيل التلقائي (بيضل زر التحميل)'))};
 function autoDownload(f){try{const a=document.createElement('a');a.href=f.url;a.download=f.name;document.body.appendChild(a);a.click();a.remove()}catch(e){}}
 $('#mFix').onclick=()=>{
   $('#menu').hidden=true;
-  const head='صحّح هالكود وقلّي شو كان الغلط:\n```\n';
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
+  const head=en?'Debug and fix this code, and explain what was wrong:\n```\n':'صحّح هالكود وقلّي شو كان الغلط:\n```\n';
   inp.value=head+'\n```';grow();inp.focus();inp.setSelectionRange(head.length,head.length);
-  toast('الصق الكودك بين العلامتين (أو ارفع الملف بالمشبك 📎)');
+  toast(en?'Paste your code between the backticks (or attach a file 📎)':'الصق الكود بين العلامتين (أو ارفع الملف بالمشبك 📎)');
 };
+if($('#ultraTopBtn'))$('#ultraTopBtn').onclick=()=>{window.location.href='/ultra'};
+if($('#mUltra'))$('#mUltra').onclick=()=>{$('#menu').hidden=true;window.location.href='/ultra'};
 
 /* ===== القائمة والموديلات ===== */
 $('#menuBtn').onclick=e=>{e.stopPropagation();$('#menu').hidden=!$('#menu').hidden};
@@ -2385,19 +2523,27 @@ $('#mOut').onclick=async()=>{try{await api('/api/logout',{method:'POST'})}catch(
 $('#plus').onclick=e=>{e.stopPropagation();$('#sheet').hidden=true;$('#floating').classList.toggle('off')};
 $('#mname').onclick=e=>{e.stopPropagation();$('#floating').classList.add('off');openSheet()};
 function drawFloating(){
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
   const f=o=>o?'<button class="dia'+(current===o.id?' on':'')+'" data-m="'+esc(o.id)+'">':'';
   const img=models.find(o=>o.id==='img:flux'),gem=models.find(o=>o.id==='gemini'),qw=models.find(o=>o.id==='mix');
   let h='';
-  if(img)h+=f(img)+'<span>رسم<br>🎨</span></button>';
-  if(gem)h+=f(gem)+'<span>Gemini</span></button>';
-  if(qw)h+=f(qw)+'<span>Ryn<br>mix</span></button>';
-  h+='<button class="dia ultra-launch" data-m="__ryn_ultra" title="RYN Ultra · فريق الذكاء الاصطناعي"><span>🤖<br>RYN Ultra</span></button>';
-  h+='<button class="dia" data-m="__gemini_live" title="Gemini Live: محادثة حية مباشرة (متل ChatGPT)"><span>Gemini<br>Live ✨</span></button>';
-  h+='<button class="dia" data-m="__live_voice" title="محادثة صوتية حية مع الروبوت"><span>Live<br>Voice 🎙️</span></button>';
-  if(models.length>2)h+='<button class="dia" data-m="__all"><span>كل<br>الموديلات</span></button>';
+  if(img)h+=f(img)+'<span>'+(en?'🎨 Draw':'🎨 رسم')+'</span></button>';
+  if(gem)h+=f(gem)+'<span>✦ Gemini</span></button>';
+  if(qw)h+=f(qw)+'<span>🧩 Ryn mix</span></button>';
+  h+='<button class="dia ultra-launch" data-m="__ryn_ultra" title="'+(en?'RYN Ultra · 5-Agent AI Team':'RYN Ultra · فريق الذكاء الاصطناعي')+'"><span>🤖 RYN Ultra</span></button>';
+  h+='<button class="dia" data-m="__gemini_live" title="'+(en?'Gemini Live: Real-time duplex voice chat':'Gemini Live: محادثة حية مباشرة (متل ChatGPT)')+'"><span>Gemini<br>Live ✨</span></button>';
+  h+='<button class="dia" data-m="__live_voice" title="'+(en?'Live Voice Chat with Ryn':'محادثة صوتية حية مع الروبوت')+'"><span>Live<br>Voice 🎙️</span></button>';
+  if(models.length>2)h+='<button class="dia" data-m="__all"><span>'+(en?'All Models':'كل الموديلات')+'</span></button>';
   $('#floating').innerHTML=h;
 }
-function setPh(){inp.placeholder=current==='img:flux'?'RYN Visual Brain: أنشئ صورة أو ارفع صورة وعدّلها (خلفية، إضاءة، ملابس، حذف عنصر، ترميم)...':'اكتب رسالة...'}
+function setPh(){
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
+  if(current==='img:flux'){
+    inp.placeholder=en?'RYN Visual Brain: Describe an image to generate or upload one to edit...':'RYN Visual Brain: أنشئ صورة أو ارفع صورة وعدّلها (خلفية، إضاءة، ملابس، حذف عنصر، ترميم)...';
+  }else{
+    inp.placeholder=en?'Ask RYN anything...':'اسأل RYN أي شيء...';
+  }
+}
 $('#floating').addEventListener('click',async e=>{
   const b=e.target.closest('.dia');if(!b)return;e.stopPropagation();
   const m=b.dataset.m;
@@ -2407,18 +2553,57 @@ $('#floating').addEventListener('click',async e=>{
   if(m==='__all'){$('#floating').classList.add('off');openSheet();return}
   $('#floating').classList.add('off');setModel(m);
 });
+function translateModelDesc(desc){
+  const s=String(desc||'');
+  if(typeof rynUiLang==='undefined'||rynUiLang!=='en')return s;
+  const map={
+    'العقل الهجين المحسّن · كود ومشاريع مراجَعة بـ LangGraph وحارس 18/18':'Enhanced Hybrid Brain · Multi-model synthesis via LangGraph & AST Guard',
+    'تلقائي ذكي · دردشة شاملة وصور وملفات وGitHub':'Smart Auto · Multimodal chat, coding, images & files (Free)',
+    'بمفتاح Gemini على Render · الأحدث للهندسة البرمجية والمشاريع (مجاني)':'Flagship Free Gemini 3.8 Flash · Software engineering & reasoning',
+    'بمفتاح Gemini على Render · الأحدث للهندسة البرمجية والمشاريع':'Flagship Free Gemini 3.8 Flash · Software engineering & reasoning',
+    'بمفتاح Gemini على Render · سريع ومتوازن للمهام والوسائط (مجاني)':'Free Gemini 3.6 Flash · Fast & balanced multimodal model',
+    'بمفتاح Gemini على Render · سريع ومتوازن للمهام والوسائط':'Free Gemini 3.6 Flash · Fast & balanced multimodal model',
+    'بمفتاح Gemini على Render · متوازن للبرمجة والتحليل (مجاني)':'Free Gemini · Balanced coding & analysis',
+    'بمفتاح Gemini على Render · متوازن للبرمجة والتحليل':'Free Gemini · Balanced coding & analysis',
+    'بمفتاح Gemini على Render · خفيف وفائق السرعة بحصة يومية عالية (مجاني)':'Free Gemini Flash-Lite · Ultra-fast with high daily quota',
+    'بمفتاح Gemini على Render · خفيف وفائق السرعة بحصة يومية عالية':'Free Gemini Flash-Lite · Ultra-fast with high daily quota',
+    'بمفتاح Gemini على Render · تفكير عميق وهندسة مشاريع معقدة':'Gemini Pro · Deep reasoning & complex project engineering',
+    'بمفتاح Gemini على Render · الجيل الرابع للاستنتاج وسياق 1M':'Gemini 4 Argon · Gen-4 reasoning & 1M context',
+    'Mistral مجاني · متخصص بكتابة وتصحيح الكود':'Mistral Free · Specialized in coding & debugging',
+    'Groq مجاني · تفكير عميق وهندسة كود (120B)':'Groq Free LPU · Deep reasoning & code engineering (120B)',
+    'Groq مجاني · برمجة وتحليل سريع جداً (20B)':'Groq Free LPU · Ultra-fast coding & analysis (20B)',
+    'Groq مجاني · برمجة متقدمة وعربية ممتازة':'Groq Free LPU · Advanced coding & strong Arabic',
+    'Groq مجاني · أحدث جيل Llama 4 متعدد المهام':'Groq Free LPU · Latest Llama 4 multimodal & coding',
+    'Groq مجاني · Llama 4 سريع بسياق طويل':'Groq Free LPU · Fast Llama 4 with long context',
+    'Groq مجاني · استنتاج منطقي ورياضيات وبرمجة':'Groq Free LPU · Logical reasoning, math & coding',
+    'Groq مجاني · محادثة شاملة وكود (70B)':'Groq Free LPU · Versatile chat & code (70B)',
+    'Groq مجاني · دردشة سريعة وخفيفة':'Groq Free LPU · Fast lightweight chat',
+    'Groq مجاني · برمجة ومشاريع طويلة (Kimi K2)':'Groq Free LPU · Long-context projects & coding (Kimi K2)',
+    'Groq مجاني · خفيف وسريع من Google':'Groq Free LPU · Fast lightweight Google Gemma',
+    'Groq مجاني · استجابة فورية':'Groq Free LPU · Instant response',
+    'OpenRouter مجاني · يختار أفضل نموذج مجاني تلقائياً':'OpenRouter Free · Auto-selects the best free model',
+    'OpenRouter مجاني · متخصص بهندسة وتصحيح الكود':'OpenRouter Free · Specialized in software engineering',
+    'OpenRouter مجاني · استنتاج عميق وتفكير متسلسل':'OpenRouter Free · Deep chain-of-thought reasoning',
+    'OpenRouter مجاني · كود احترافي وتحليل عميق':'OpenRouter Free · Professional coding & deep analysis',
+    'OpenRouter مجاني · عملاق Qwen3 للبرمجة والتحليل':'OpenRouter Free · Qwen3 flagship for coding & analysis',
+    'OpenRouter مجاني · سياق ضخم ومشاريع كاملة':'OpenRouter Free · Long context & full projects'
+  };
+  if(map[s])return map[s];
+  return s.replace('OpenRouter مجاني ·','OpenRouter Free ·').replace('Groq مجاني ·','Groq Free ·').replace('بمفتاح Gemini على Render ·','Google Gemini API ·');
+}
 function openSheet(){
-  $('#sheet').innerHTML=models.map(o=>'<button class="'+(o.id===current?'on':'')+'" data-m="'+esc(o.id)+'"><b>'+esc(o.label)+'</b>'+(o.desc?'<small>'+esc(o.desc)+'</small>':'')+'</button>').join('');
+  $('#sheet').innerHTML=models.map(o=>'<button class="'+(o.id===current?'on':'')+'" data-m="'+esc(o.id)+'"><b>'+esc(o.label)+'</b>'+(o.desc?'<small>'+esc(translateModelDesc(o.desc))+'</small>':'')+'</button>').join('');
   $('#sheet').hidden=false;
 }
 $('#sheet').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;e.stopPropagation();$('#sheet').hidden=true;setModel(b.dataset.m)});
 async function setModel(id){
   try{
+    const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
     const r=await api('/api/model',{method:'POST',body:JSON.stringify({id})});const d=await r.json();
-    if(!r.ok){toast(d.error||'ما انبدّل');loadModels();return}
+    if(!r.ok){toast(d.error||(en?'Could not switch model':'ما انبدّل'));loadModels();return}
     current=id;$('#mname').textContent=label(id);drawFloating();setPh();applyFx(id);
-    M().push({role:'sys',text:'تم تفعيل: '+label(id)+' ✅'});render();saveStore();
-    sfx.switchModel();setBot('happy',1200);say('تمام! صرت '+label(id));
+    M().push({role:'sys',text:(en?'Activated: ':'تم تفعيل: ')+label(id)+' ✅'});render();saveStore();
+    sfx.switchModel();setBot('happy',1200);say((en?'Switched to ':'تمام! صرت ')+label(id));
   }catch(x){}
 }
 async function loadModels(){
@@ -2517,7 +2702,7 @@ const sfx={
     }catch(e){}
   }
 };
-function paintSfx(){const el=$('#mSfx');if(el)el.textContent=sfxOn?'🔊 الأصوات المستقبلية: شغّالة':'🔇 الأصوات المستقبلية: طافية'}
+function paintSfx(){const el=$('#mSfx');if(!el)return;const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');el.textContent=en?(sfxOn?'🔊 Futuristic sounds: On':'🔇 Futuristic sounds: Off'):(sfxOn?'🔊 الأصوات المستقبلية: شغّالة':'🔇 الأصوات المستقبلية: طافية')}
 paintSfx();
 if($('#mSfx'))$('#mSfx').onclick=()=>{sfxOn=!sfxOn;try{localStorage.setItem('ryn_sfx',sfxOn?'1':'0')}catch(e){}paintSfx();if(sfxOn)sfx.switchModel();$('#menu').hidden=true;toast(sfxOn?'🔊 تم تفعيل الأصوات المستقبلية':'🔇 تم كتم الأصوات')};
 document.addEventListener('click',e=>{
@@ -2528,9 +2713,10 @@ document.addEventListener('click',e=>{
 /* ===== نافذة حدود استخدام كل نموذج + الفحص الشامل للأنظمة الـ 10 (#quotaModal) ===== */
 async function openQuotaModal(){
   closeDrawer();
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
   const listEl=$('#quotaList');
   $('#sysCheckBox').hidden=true;
-  listEl.innerHTML='<small style="text-align:center;padding:14px;color:var(--g)">⚡ جاري جلب إحصائيات وحدود النماذج...</small>';
+  listEl.innerHTML='<small style="text-align:center;padding:14px;color:var(--g)">'+(en?'⚡ Loading model usage & quotas...':'⚡ جاري جلب إحصائيات وحدود النماذج...')+'</small>';
   $('#quotaModal').hidden=false;
   try{
     const r=await api('/api/model-quotas');
@@ -2538,7 +2724,7 @@ async function openQuotaModal(){
     const fmt=n=>Number(n||0).toLocaleString('en-US');
     const items=d.models||[];
     if(!items.length){
-      listEl.innerHTML='<small style="text-align:center;padding:12px">لا توجد بيانات حالياً.</small>';
+      listEl.innerHTML='<small style="text-align:center;padding:12px">'+(en?'No quota data available yet.':'لا توجد بيانات حالياً.')+'</small>';
       return;
     }
     listEl.innerHTML=items.map(m=>{
@@ -2546,29 +2732,30 @@ async function openQuotaModal(){
       const warn=pct>=85?' warn':'';
       return '<div class="qm-item">'+
         '<div class="qm-top"><b>'+esc(m.label)+'</b><small>'+esc(m.provider)+'</small></div>'+
-        '<div class="qm-meta"><span>'+fmt(m.requests_used)+' / '+fmt(m.requests_limit)+' reqs</span><small>التوكنات: '+fmt(m.tokens_used)+' · المتبقي: '+fmt(m.requests_remaining)+' طلب</small></div>'+
+        '<div class="qm-meta"><span>'+fmt(m.requests_used)+' / '+fmt(m.requests_limit)+' reqs</span><small>'+(en?('Tokens: '+fmt(m.tokens_used)+' · Left: '+fmt(m.requests_remaining)+' reqs'):('التوكنات: '+fmt(m.tokens_used)+' · المتبقي: '+fmt(m.requests_remaining)+' طلب'))+'</small></div>'+
         '<div class="qm-bar"><div class="qm-fill'+warn+'" style="width:'+pct+'%"></div></div>'+
       '</div>';
     }).join('');
   }catch(e){
-    listEl.innerHTML='<small style="text-align:center;color:var(--red);padding:12px">تعذر جلب حدود الاستخدام حالياً.</small>';
+    listEl.innerHTML='<small style="text-align:center;color:var(--red);padding:12px">'+(en?'Could not load model quotas right now.':'تعذر جلب حدود الاستخدام حالياً.')+'</small>';
   }
 }
 async function runSystemDiagnostics(){
+  const en=(typeof rynUiLang!=='undefined'&&rynUiLang==='en');
   const box=$('#sysCheckBox'),btn=$('#runSysCheckBtn');
   box.hidden=false;
-  box.innerHTML='<small style="color:var(--g);text-align:center">🔍 جاري فحص جميع الأنظمة الـ 10...</small>';
+  box.innerHTML='<small style="color:var(--g);text-align:center">'+(en?'🔍 Running diagnostics across all 10 systems...':'🔍 جاري فحص جميع الأنظمة الـ 10...')+'</small>';
   btn.disabled=true;
   try{
     const r=await api('/api/system-check');
     const d=await r.json();
     const checks=d.checks||[];
     box.innerHTML='<div style="text-align:center;font-weight:800;color:'+(d.passed_all?'var(--g)':'var(--red)')+';margin-bottom:4px">'+
-      (d.passed_all?'✅ جميع الأنظمة تعمل بنجاح ('+d.passed_count+'/'+d.total+' · '+d.elapsed_ms+'ms)':'⚠️ بعض الأنظمة تحتاج مراجعة')+'</div>'+
+      (d.passed_all?(en?('✅ All systems operational ('+d.passed_count+'/'+d.total+' · '+d.elapsed_ms+'ms)'):('✅ جميع الأنظمة تعمل بنجاح ('+d.passed_count+'/'+d.total+' · '+d.elapsed_ms+'ms)')):(en?'⚠️ Some systems need attention':'⚠️ بعض الأنظمة تحتاج مراجعة'))+'</div>'+
       checks.map(c=>'<div class="sys-row"><b>'+(c.ok?'✅ ':'❌ ')+esc(c.name)+'</b><span>'+esc(c.detail)+'</span></div>').join('');
-    if(d.passed_all){sfx.receive();toast('✅ الفحص الشامل: كل الأنظمة الـ 10 شغّالة 100%')}else{sfx.error()}
+    if(d.passed_all){sfx.receive();toast(en?'✅ Full diagnostics passed (10/10)':'✅ الفحص الشامل: كل الأنظمة الـ 10 شغّالة 100%')}else{sfx.error()}
   }catch(e){
-    box.innerHTML='<small style="color:var(--red);text-align:center">تعذر تشغيل الفحص الشامل.</small>';
+    box.innerHTML='<small style="color:var(--red);text-align:center">'+(en?'Diagnostics check failed.':'تعذر تشغيل الفحص الشامل.')+'</small>';
     sfx.error();
   }
   btn.disabled=false;
@@ -2579,8 +2766,8 @@ if($('#runSysCheckBtn'))$('#runSysCheckBtn').onclick=runSystemDiagnostics;
 if($('#quotaClose'))$('#quotaClose').onclick=()=>{$('#quotaModal').hidden=true};
 if($('#quotaModal'))$('#quotaModal').onclick=e=>{if(e.target===$('#quotaModal'))$('#quotaModal').hidden=true};
 
-/* ===== واجهة عربية / إنجليزية ===== */
-let rynUiLang=localStorage.getItem('ryn_ui_lang')||'ar';
+/* ===== واجهة عربية / إنجليزية شاملة بجميع الأماكن ===== */
+let rynUiLang=localStorage.getItem('ryn_ui_lang')||localStorage.getItem('ryn_ultra_lang')||'ar';
 const rynUiText={
  '✨ محادثة جديدة':['✨ New chat','✨ محادثة جديدة'],
  '🗣️ اختيار الصوت العربي (نبرة الكلمات)':['🗣️ Voice settings','🗣️ اختيار الصوت العربي (نبرة الكلمات)'],
@@ -2706,13 +2893,28 @@ function applyRynUiLanguage(){
    if(orig.aria&&rynAttrPairs[orig.aria])el.setAttribute('aria-label',rynAttrPairs[orig.aria][en?0:1]);
   });
  }
- const mem=document.getElementById('memBtn');
- if(mem&&mem.childNodes.length){
-  const first=mem.childNodes[0];
+ const memEl=document.getElementById('memBtn');
+ if(memEl&&memEl.childNodes.length){
+  const first=memEl.childNodes[0];
   if(first.nodeType===Node.TEXT_NODE)first.nodeValue=en?'🧠 My memory ':'🧠 ذاكرتي ';
  }
+ const aboutBody=document.querySelector('#aboutModal .mbody.about');
+ if(aboutBody){
+  aboutBody.innerHTML=en
+   ? '<p><b>RYN</b> is a comprehensive AI software engineering & reasoning assistant with Google Gemini Studio design, multi-model routing, and an interactive robot companion.</p><ul class="alist"><li>💻 <b>Coding & Architecture</b>: Writes, explains, and debugs code across all languages, and inspects full ZIP projects.</li><li>🐞 <b>Automated AST Verification</b>: Validates syntax and repairs code blocks before delivery.</li><li>🎙️ <b>Voice & Gemini Live</b>: Real-time duplex voice chat, Arabic/multilingual neural TTS, and speech-to-text.</li><li>💬 <b>Latest Free Gemini & Global Models</b>: Gemini 3.8 Flash, Gemini 3.6 Flash, Gemini 3.5 Flash/Lite, Gemini 2.5 Pro/Flash, GPT-OSS 120B/20B, Qwen3 235B/32B/Coder, DeepSeek R1/V3, Kimi K2, Llama 4 Maverick/Scout, Gemma 3, and Mistral/Codestral.</li><li>🤖 <b>RYN Ultra (5-Agent Studio)</b>: Live collaborative debate room with Gemini, GPT, Qwen, DeepSeek, and Kimi.</li><li>🧩 <b>Enhanced Ryn mix</b>: Hybrid multi-agent synthesis via LangGraph + DSPy + AST + Security Guard (18/18).</li><li>🎨 <b>RYN Visual Brain</b>: Photorealistic image generation and identity-preserving editing.</li><li>🧠 <b>Local Device Memory</b>: Private personalization stored on your device with JSON backup/restore.</li></ul><div class="aby">Developed by <b>haydar_xe</b> · <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">Instagram @haydar_xe</a></div>'
+   : '<p><b>RYN</b> مساعد ذكي شامل بتصميم Google Gemini الحديث: يكتب الكود ويصلّحه ويشرحه، ويجاوب على أي سؤال مع روبوت متفاعل وفريق نماذج متكامل.</p><ul class="alist"><li>💻 <b>برمجة وهندسة</b>: كتابة وشرح كود بكل اللغات، وقراءة وتحليل ملفات ومشاريع zip كاملة.</li><li>🐞 <b>تصحيح الكود</b>: فحص آلي للصياغة (AST) وإصلاح الأخطاء قبل تسليم الكود.</li><li>🎙️ <b>صوت حي و Gemini Live</b>: محادثة صوتية حية ونطق طبيعي بعدة لهجات ولغات.</li><li>💬 <b>أحدث نماذج Gemini المجانية وباقي النماذج</b>: Gemini 3.8 Flash و Gemini 3.6 Flash و Gemini 3.5 Flash/Lite و Gemini 2.5 Pro/Flash و GPT-OSS 120B/20B و Qwen3 235B/32B/Coder و DeepSeek R1/V3 و Kimi K2 و Llama 4 و Gemma 3 و Mistral/Codestral.</li><li>🤖 <b>استوديو RYN Ultra</b>: غرفة اجتماعات ونقاش مباشر بين 5 نماذج ذكاء اصطناعي (Gemini و GPT و Qwen و DeepSeek و Kimi).</li><li>🧩 <b>Ryn mix المحسّن</b>: عقل هجين يدمج أقوى الموديلات عبر LangGraph + DSPy + الحارس الأمني (18/18).</li><li>🎨 <b>توليد وتعديل صور</b> واقعية عبر RYN Visual Brain.</li><li>🧠 <b>ذاكرة محلية خاصة</b>: ملف التخصيص محفوظ على جهازك مع نسخ احتياطي واسترجاع.</li></ul><div class="aby">من تطوير <b>haydar_xe</b> · <a href="https://www.instagram.com/haydar_xe/" target="_blank" rel="noopener noreferrer">إنستغرام @haydar_xe</a></div>';
+ }
+ if(typeof paintAdl==='function')paintAdl();
+ if(typeof paintEmo==='function')paintEmo();
+ if(typeof paintSfx==='function')paintSfx();
+ if(typeof setPh==='function')setPh();
+ if(typeof drawFloating==='function')drawFloating();
+ if(typeof updateMemUI==='function')updateMemUI();
+ if(typeof drawDrawer==='function')drawDrawer();
+ if(typeof render==='function'&&typeof store!=='undefined'&&store.cur)render();
+ if(!$('#sheet').hidden&&typeof openSheet==='function')openSheet();
 }
-if(document.getElementById('langBtn'))document.getElementById('langBtn').onclick=()=>{rynUiLang=rynUiLang==='ar'?'en':'ar';try{localStorage.setItem('ryn_ui_lang',rynUiLang)}catch(e){}applyRynUiLanguage();toast(rynUiLang==='en'?'English interface enabled':'تم تفعيل الواجهة العربية')};
+if(document.getElementById('langBtn'))document.getElementById('langBtn').onclick=()=>{rynUiLang=rynUiLang==='ar'?'en':'ar';try{localStorage.setItem('ryn_ui_lang',rynUiLang);localStorage.setItem('ryn_ultra_lang',rynUiLang)}catch(e){}applyRynUiLanguage();toast(rynUiLang==='en'?'English interface enabled':'تم تفعيل الواجهة العربية')};
 applyRynUiLanguage();
 
 /* ===== الدخول ===== */
@@ -2722,7 +2924,7 @@ async function login(){
   try{
     const r=await fetch('/api/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'astra'},body:JSON.stringify({password:$('#pw').value})});
     const d=await r.json();
-    if(r.ok){$('#pw').value='';$('#login').hidden=true;loadModels();render();say('أهلاً فيك! 👋 كيف بقدر ساعدك؟');resumeBackgroundJob()}
+    if(r.ok){$('#pw').value='';$('#login').hidden=true;loadModels();render();say((typeof rynUiLang!=='undefined'&&rynUiLang==='en')?'Welcome! 👋 How can I help you?':'أهلاً فيك! 👋 كيف بقدر ساعدك؟');resumeBackgroundJob()}
     else{$('#lerr').textContent=d.error||'غلط'}
   }catch(e){$('#lerr').textContent='ما في اتصال'}
 }
@@ -2732,7 +2934,7 @@ $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 (async()=>{
   loadMem();loadStore();render();drawDrawer();
   try{const d=await (await fetch('/api/me',{credentials:'same-origin'})).json();
-    if(d.ok){loadModels();say('أهلاً فيك! 👋 كيف بقدر ساعدك؟');resumeBackgroundJob()}else{showLogin()}}catch(e){showLogin()}
+    if(d.ok){loadModels();say((typeof rynUiLang!=='undefined'&&rynUiLang==='en')?'Welcome! 👋 How can I help you?':'أهلاً فيك! 👋 كيف بقدر ساعدك؟');resumeBackgroundJob()}else{showLogin()}}catch(e){showLogin()}
   if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 })();
 </script>
@@ -6838,15 +7040,15 @@ def register(app, b):
         opts = [
             {"id": "img:flux", "label": "RYN Visual Brain 🎨", "desc": describe("img:flux", ready=image_ready())},
             {"id": "mix", "label": "Ryn mix 🧩 (العقل الهجين)", "desc": describe("mix")},
-            {"id": "gemini", "label": "Gemini Auto ⚡", "desc": describe("gemini")},
-            {"id": "gemini:gemini-3.8-flash", "label": "Gemini 3.8 Flash", "desc": describe("gemini:gemini-3.8-flash")},
-            {"id": "gemini:gemini-4-argon", "label": "Gemini 4 Argon", "desc": describe("gemini:gemini-4-argon")},
-            {"id": "gemini:gemini-3.6-flash", "label": "Gemini 3.6 Flash", "desc": describe("gemini:gemini-3.6-flash")},
-            {"id": "gemini:gemini-3.5-flash", "label": "Gemini 3.5 Flash", "desc": describe("gemini:gemini-3.5-flash")},
-            {"id": "gemini:gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite", "desc": describe("gemini:gemini-3.5-flash-lite")},
-            {"id": "gemini:gemini-3.1-flash-lite", "label": "Gemini 3.1 Flash-Lite", "desc": describe("gemini:gemini-3.1-flash-lite")},
+            {"id": "gemini", "label": "Gemini Auto ⚡ (Free)", "desc": describe("gemini")},
+            {"id": "gemini:gemini-3.8-flash", "label": "Gemini 3.8 Flash ✨ (Free)", "desc": describe("gemini:gemini-3.8-flash")},
+            {"id": "gemini:gemini-3.6-flash", "label": "Gemini 3.6 Flash ⚡ (Free)", "desc": describe("gemini:gemini-3.6-flash")},
+            {"id": "gemini:gemini-3.5-flash", "label": "Gemini 3.5 Flash (Free)", "desc": describe("gemini:gemini-3.5-flash")},
+            {"id": "gemini:gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite (Free)", "desc": describe("gemini:gemini-3.5-flash-lite")},
+            {"id": "gemini:gemini-3.1-flash-lite", "label": "Gemini 3.1 Flash-Lite (Free)", "desc": describe("gemini:gemini-3.1-flash-lite")},
+            {"id": "gemini:gemini-2.5-flash", "label": "Gemini 2.5 Flash (Free)", "desc": describe("gemini:gemini-2.5-flash")},
             {"id": "gemini:gemini-2.5-pro", "label": "Gemini 2.5 Pro", "desc": describe("gemini:gemini-2.5-pro")},
-            {"id": "gemini:gemini-2.5-flash", "label": "Gemini 2.5 Flash", "desc": describe("gemini:gemini-2.5-flash")},
+            {"id": "gemini:gemini-4-argon", "label": "Gemini 4 Argon", "desc": describe("gemini:gemini-4-argon")},
         ]
         seen_ids = {o["id"] for o in opts}
 

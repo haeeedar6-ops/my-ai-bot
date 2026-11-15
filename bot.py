@@ -42,30 +42,31 @@ visual = None
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'").strip()
 PORT = int(os.environ.get("PORT", 10000))
 
-# موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
+# موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة (مرتبة بأحدث نماذج Gemini المجانية أولاً).
 FAST_MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip(),
-    "gemini-3.5-flash",
+    os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip(),
     "gemini-3.8-flash",
     "gemini-3.6-flash",
+    "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-lite",
     "gemini-3-flash-preview",
     "gemini-4-argon",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
 ]
 DEEP_MODELS = [
     os.environ.get("GEMINI_DEEP_MODEL", "gemini-3.8-flash").strip(),
     "gemini-3.8-flash",
-    "gemini-4-argon",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
-    "gemini-3.1-pro-preview",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3.1-pro-preview",
+    "gemini-4-argon",
 ]
 MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
