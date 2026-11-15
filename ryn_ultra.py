@@ -29,66 +29,8 @@ except ImportError:  # lightweight test compatibility layer
         return generator
 
 
-GEMINI_FREE_MODELS = [
-    "gemini-3.8-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
-]
-
-_ULTRA_OR_FREE_MODELS: Dict[str, List[str]] = {
-    "gpt": [
-        "openai/gpt-oss-120b:free",
-        "openai/gpt-oss-20b:free",
-        "openrouter/free",
-    ],
-    "qwen": [
-        "qwen/qwen3-235b-a22b:free",
-        "qwen/qwen-2.5-coder-32b-instruct:free",
-        "qwen/qwen3-32b:free",
-        "openrouter/free",
-    ],
-    "deepseek": [
-        "deepseek/deepseek-r1:free",
-        "deepseek/deepseek-chat-v3-0324:free",
-        "openrouter/free",
-    ],
-    "kimi": [
-        "moonshotai/kimi-k2:free",
-        "openrouter/free",
-    ],
-}
-
-_ULTRA_GROQ_FREE_MODELS: Dict[str, List[str]] = {
-    "gpt": [
-        "openai/gpt-oss-120b",
-        "openai/gpt-oss-20b",
-        "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "llama-3.3-70b-versatile",
-    ],
-    "qwen": [
-        "qwen/qwen3.8-27b",
-        "qwen/qwen3.6-27b",
-        "qwen/qwen3-32b",
-        "openai/gpt-oss-120b",
-    ],
-    "deepseek": [
-        "deepseek-r1-distill-llama-70b",
-        "openai/gpt-oss-120b",
-        "llama-3.3-70b-versatile",
-    ],
-    "kimi": [
-        "moonshotai/kimi-k2-instruct",
-        "meta-llama/llama-4-scout-17b-16e-instruct",
-        "llama-3.3-70b-versatile",
-    ],
-}
-
 AGENTS = [
-    {"id": "gemini", "name": "Gemini", "role": "Chief Strategist", "color": "#8ab4f8",
+    {"id": "gemini", "name": "Gemini", "role": "Chief Strategist", "color": "#a78bfa",
      "provider": "gemini", "match": (), "env_model": "RYN_ULTRA_GEMINI_MODEL",
      "instruction": "Understand the objective, assumptions, constraints, risks, and possible approaches."},
     {"id": "gpt", "name": "GPT", "role": "Chief Architect", "color": "#34d399",
@@ -100,7 +42,7 @@ AGENTS = [
     {"id": "deepseek", "name": "DeepSeek", "role": "Critical Reviewer", "color": "#38bdf8",
      "provider": "deepseek", "match": ("deepseek",), "env_model": "RYN_ULTRA_DEEPSEEK_MODEL",
      "instruction": "Critically review claims, detect bugs and security risks, and propose verifiable corrections."},
-    {"id": "kimi", "name": "Kimi", "role": "Context Analyst", "color": "#c084fc",
+    {"id": "kimi", "name": "Kimi", "role": "Context Analyst", "color": "#e2e8f0",
      "provider": "kimi", "match": ("kimi", "moonshot"), "env_model": "RYN_ULTRA_KIMI_MODEL",
      "instruction": "Track requirements and context, analyze long project materials, and find omissions or contradictions."},
 ]
@@ -263,75 +205,44 @@ def _get_session(session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
-def _candidate_routes_for(b: Any, agent: Dict[str, Any]) -> List[Tuple[Dict[str, Any], List[str], str]]:
-    """Return ordered (backend, models, provider_label) routes for an agent with curated free-tier fallbacks."""
+def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], List[str], str]:
+    """Resolve a real configured API route and model IDs. No silent provider fallback."""
     agent_id = agent["id"]
     explicit = os.environ.get(agent.get("env_model", ""), "").strip()
-    routes: List[Tuple[Dict[str, Any], List[str], str]] = []
-
     if agent_id == "gemini":
         if getattr(b, "client", None) is None or not getattr(b, "GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")):
-            return []
-        env_gem = explicit or os.environ.get("GEMINI_DEEP_MODEL", "").strip() or os.environ.get("GEMINI_MODEL", "").strip()
-        gem_chain = []
-        for m in ([env_gem] if env_gem else []) + list(GEMINI_FREE_MODELS):
-            if m and m not in gem_chain:
-                gem_chain.append(m)
-        routes.append(({"kind": "gemini", "system": ""}, gem_chain, "Google Gemini API"))
-        return routes
+            return None, [], "GEMINI_API_KEY / Gemini client غير متاح"
+        return {"kind": "gemini", "system": ""}, ([explicit] if explicit else ["auto"]), "Google Gemini API"
 
     provider_name = agent["provider"]
     or_key = getattr(b, "_or_key", lambda: "")()
-    groq_ready = bool(getattr(b, "_groq_ready", lambda: False)())
-
-    # Route A: OpenRouter (discovered free models + curated free fallbacks)
     if or_key:
         try:
-            discovered_or = list(b.or_models_for(provider_name, agent["match"], deep=True) or [])
+            models = [explicit] if explicit else list(b.or_models_for(provider_name, agent["match"], deep=True) or [])
+            backends = getattr(b, "PROVIDERS", {}).get(provider_name, {}).get("backends", [])
+            if models and backends:
+                return dict(backends[0]), models[:5], "OpenRouter"
         except Exception:
-            discovered_or = []
-        or_models: List[str] = []
-        for m in ([explicit] if explicit else []) + discovered_or + _ULTRA_OR_FREE_MODELS.get(agent_id, []):
-            if m and m not in or_models:
-                or_models.append(m)
-        backends = getattr(b, "PROVIDERS", {}).get(provider_name, {}).get("backends", [])
-        or_backend = dict(backends[0]) if backends else (dict(getattr(b, "OR_BACKEND")) if getattr(b, "OR_BACKEND", None) else None)
-        if or_models and or_backend:
-            routes.append((or_backend, or_models[:6], "OpenRouter"))
+            pass
 
-    # Route B: Groq LPU (discovered catalog matches + curated free fallbacks)
-    if groq_ready and getattr(b, "GROQ_CHAT_BACKEND", None):
+    # GPT-OSS, Qwen, DeepSeek and Kimi may also be available through the existing Groq route.
+    groq_ready = bool(getattr(b, "_groq_ready", lambda: False)())
+    if groq_ready:
         try:
             catalog = list(getattr(b, "groq_catalog", lambda: [])() or [])
+            if agent_id == "gpt":
+                matches = [m for m in catalog if ("gpt-oss" in m.lower() or m.lower().startswith("openai/"))]
+            else:
+                matches = [m for m in catalog if any(k in m.lower() for k in agent["match"])]
+            if explicit:
+                matches = [explicit] if explicit in catalog else []
+            if matches and getattr(b, "GROQ_CHAT_BACKEND", None):
+                return dict(b.GROQ_CHAT_BACKEND), matches[:5], "Groq"
         except Exception:
-            catalog = []
-        if agent_id == "gpt":
-            cat_matches = [m for m in catalog if ("gpt-oss" in m.lower() or m.lower().startswith("openai/"))]
-        else:
-            cat_matches = [m for m in catalog if any(k in m.lower() for k in agent["match"])]
-        groq_models: List[str] = []
-        seed_groq = ([explicit] if (explicit and (not catalog or explicit in catalog)) else []) + cat_matches + _ULTRA_GROQ_FREE_MODELS.get(agent_id, [])
-        for m in seed_groq:
-            if m and (not catalog or m in catalog or not cat_matches) and m not in groq_models:
-                groq_models.append(m)
-        if not groq_models:
-            groq_models = list(_ULTRA_GROQ_FREE_MODELS.get(agent_id, []))
-        if groq_models:
-            routes.append((dict(b.GROQ_CHAT_BACKEND), groq_models[:6], "Groq"))
+            pass
 
-    return routes
-
-
-def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], List[str], str]:
-    """Resolve the primary configured API route and model IDs."""
-    routes = _candidate_routes_for(b, agent)
-    if routes:
-        return routes[0]
-    if agent["id"] == "gemini":
-        return None, [], "GEMINI_API_KEY / Gemini client غير متاح"
-    or_key = getattr(b, "_or_key", lambda: "")()
-    if not or_key and not bool(getattr(b, "_groq_ready", lambda: False)()):
-        return None, [], "OPENROUTER_API_KEY / GROQ_API_KEY غير متاح"
+    if not or_key:
+        return None, [], "OPENROUTER_API_KEY / matching provider model غير متاح"
     return None, [], "لا يوجد موديل متاح من العائلة المطلوبة حالياً"
 
 
@@ -343,8 +254,7 @@ def get_agent_status(b: Any) -> List[Dict[str, Any]]:
         out.append({"id": agent["id"], "name": agent["name"], "role": agent["role"],
                     "color": agent["color"], "online": online,
                     "provider": provider if online else "Not connected",
-                    "model": models[0] if models else ("gemini-3.8-flash" if online else ""),
-                    "models": models[:5] if online else [],
+                    "model": models[0] if models else ("Gemini configured" if online else ""),
                     "reason": "" if online else provider})
     return out
 
@@ -380,59 +290,31 @@ def _reserve_call(session_id: str, user_id: str, agent_id: str, model_id: str = 
 
 
 def _invoke_agent(b: Any, agent: Dict[str, Any], prompt: str, deep: bool = True) -> Tuple[str, str, str]:
-    routes = _candidate_routes_for(b, agent)
+    backend, models, provider = _provider_for(b, agent)
     if agent["id"] == "gemini":
-        if not routes:
-            _b, _m, reason = _provider_for(b, agent)
-            raise RuntimeError(reason)
-        _backend, models, provider = routes[0]
-        preferred = models[0] if models and models[0] != "auto" else "gemini-3.8-flash"
+        if backend is None:
+            raise RuntimeError(provider)
+        preferred = models[0] if models and models[0] != "auto" else None
         answer = b.ask_gemini(_contents(b, prompt), deep=deep,
                               system=_agent_system(agent), preferred_model=preferred)
         if not answer or not str(answer).strip():
             raise RuntimeError("Gemini returned an empty response")
-        return str(answer).strip(), preferred, provider
-
-    if not routes:
-        _b, _m, reason = _provider_for(b, agent)
-        raise RuntimeError(reason or "provider unavailable")
-
+        return str(answer).strip(), (models[0] if models else "auto"), provider
+    if not backend or not models:
+        raise RuntimeError(provider or "provider unavailable")
+    backend = dict(backend)
+    backend["system"] = _agent_system(agent)
     timeout = max(15, min(180, int(os.environ.get("RYN_ULTRA_AGENT_TIMEOUT", "90"))))
-    max_tok = max(512, min(8000, int(os.environ.get("RYN_ULTRA_MAX_OUTPUT_TOKENS", "5000"))))
-    max_ch = min(90000, max(8000, int(os.environ.get("RYN_ULTRA_MAX_INPUT_CHARS", "70000"))))
-    sys_prompt = _agent_system(agent)
-    last_exc: Optional[Exception] = None
-
-    for route_backend, route_models, route_provider in routes:
-        cfg = dict(route_backend)
-        cfg["system"] = sys_prompt
-        cfg["timeout_fast"] = timeout
-        cfg["timeout_deep"] = timeout
-        cfg["max_tokens"] = max_tok
-        cfg["max_chars"] = max_ch
-        used: Dict[str, Any] = {}
-        try:
-            answer = b._call_backend(cfg, _contents(b, prompt), deep=deep, json_mode=False,
-                                     models=route_models, out=used)
-            if answer and str(answer).strip():
-                return str(answer).strip(), str(used.get("model") or route_models[0]), route_provider
-        except Exception as exc:
-            last_exc = exc
-            continue
-
-    # Emergency resilience: if all external free endpoints (OpenRouter/Groq) were rate-limited, fallback to Gemini if available
-    if getattr(b, "client", None) is not None and hasattr(b, "ask_gemini"):
-        try:
-            fallback_ans = b.ask_gemini(_contents(b, prompt), deep=deep,
-                                        system=sys_prompt, preferred_model="gemini-3.8-flash")
-            if fallback_ans and str(fallback_ans).strip():
-                return str(fallback_ans).strip(), "gemini-3.8-flash (fallback)", "Google Gemini API"
-        except Exception as gem_exc:
-            last_exc = last_exc or gem_exc
-
-    if last_exc:
-        raise last_exc
-    raise RuntimeError("provider returned an empty response")
+    backend["timeout_fast"] = timeout
+    backend["timeout_deep"] = timeout
+    backend["max_tokens"] = max(512, min(8000, int(os.environ.get("RYN_ULTRA_MAX_OUTPUT_TOKENS", "5000"))))
+    backend["max_chars"] = min(90000, max(8000, int(os.environ.get("RYN_ULTRA_MAX_INPUT_CHARS", "70000"))))
+    used = {}
+    answer = b._call_backend(backend, _contents(b, prompt), deep=deep, json_mode=False,
+                             models=models, out=used)
+    if not answer or not str(answer).strip():
+        raise RuntimeError("provider returned an empty response")
+    return str(answer).strip(), str(used.get("model") or models[0]), provider
 
 
 def _agent_system(agent: Dict[str, Any]) -> str:

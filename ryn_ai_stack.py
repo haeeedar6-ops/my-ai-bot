@@ -41,7 +41,7 @@ def _limit_env(k: str, default_val: int) -> int:
 DEFAULT_MODEL_LIMITS: Dict[str, Dict[str, Any]] = {
     "gemini": {
         "id": "gemini",
-        "label": "✨ Gemini (3.8 Flash / 3.6 Flash / 2.5)",
+        "label": "✨ Gemini (2.5 Flash / Pro)",
         "provider": "Google Gemini API",
         "req_limit": int(os.environ.get("LIMIT_GEMINI_DAILY", "120")),
         "tok_limit": _limit_env("LIMIT_GEMINI_TOKENS", 300000),
@@ -225,7 +225,7 @@ class LiteLLMRouter:
             try:
                 if low.startswith("gemini") or low == "auto":
                     ans = b_module.ask_gemini(contents, deep=deep, system=system, json_mode=json_mode)
-                    used_model = "gemini-3.8-flash"
+                    used_model = "gemini-2.5-flash"
                     bucket = "gemini"
                 elif low.startswith("groq:") or "gpt-oss" in low or "qwen" in low:
                     mdl_id = target.split(":", 1)[1] if ":" in target else target
