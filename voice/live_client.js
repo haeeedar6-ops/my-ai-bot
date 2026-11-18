@@ -190,7 +190,7 @@
     if(!cfg||!cfg.endpoint||!cfg.token){st.cb('onError','token_failed','ما وصل توكن الاتصال');return;}
     var url=cfg.endpoint+'?'+(cfg.auth_param||'key')+'='+encodeURIComponent(cfg.token);
     var attempts=[];
-    (cfg.models&&cfg.models.length?cfg.models:['gemini-3.1-flash-live-preview']).slice(0,3).forEach(function(m){
+    (cfg.models&&cfg.models.length?cfg.models:['gemini-3.8-live']).slice(0,3).forEach(function(m){
       buildSetupVariants(m,cfg.voice||'Charon',cfg.system_instruction||'').forEach(function(v,i){attempts.push({m:m,v:v,i:i});});
     });
     attempts=attempts.slice(0,5);

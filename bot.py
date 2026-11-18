@@ -20,7 +20,7 @@ except ModuleNotFoundError:
 try:
     from google import genai
     from google.genai import types, errors
-except ModuleNotFoundError:
+except ImportError:   # ModuleNotFoundError أو "cannot import name 'genai' from 'google'"
     genai = None
     types = None
     errors = None
@@ -43,15 +43,16 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("
 PORT = int(os.environ.get("PORT", 10000))
 
 # موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
+# تم التحقق من الأسماء مقابل صفحة Models الرسمية لـ Gemini API (آخر تحديث لها 2026-10-28).
+# gemini-3.5-flash مو موجود بالقائمة الحالية فانشال من الافتراضي (كان بيعمل طلب فاشل بأول كل رد).
+# ask_gemini بيفلتر هالقوائم بالموديلات المتاحة فعلاً على مفتاحك وبيتذكّر الأسماء الميتة.
 FAST_MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip(),
-    "gemini-3.5-flash",
+    os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip(),
     "gemini-3.8-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
     "gemini-3-flash-preview",
-    "gemini-4-argon",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
 ]
@@ -60,7 +61,6 @@ DEEP_MODELS = [
     "gemini-3.8-flash",
     "gemini-4-argon",
     "gemini-3.6-flash",
-    "gemini-3.5-flash",
     "gemini-3.1-pro-preview",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
@@ -130,27 +130,6 @@ def load_knowledge():
 
 def get_system_prompt():
     return SYSTEM_PROMPT
-
-def detect_message_language_rule(text):
-    """يكتشف لغة أحدث رسالة من المستخدم (مع تجاهل الكود والروابط) ويفرض على كل الموديلات الرد بنفس اللغة."""
-    cleaned = re.sub(r"```[\s\S]*?```", " ", str(text or ""))
-    cleaned = re.sub(r"https?://\S+", " ", cleaned)
-    # Remove bracketed system/memory headers injected before the user message
-    cleaned = re.sub(r"^\[[\s\S]*?---\n", "", cleaned)
-    ar_chars = len(re.findall(r"[\u0600-\u06FF]", cleaned))
-    foreign_chars = len(re.findall(r"[A-Za-z\u00C0-\u024F\u0400-\u04FF]", cleaned))
-    if ar_chars > 0 and ar_chars >= max(1, int(foreign_chars * 0.25)):
-        return (
-            "\n\n[قاعدة اللغة الإلزامية — LANGUAGE LOCK]: المستخدم كتب رسالته باللغة العربية. "
-            "يجب أن ترد باللغة العربية بالكامل (وبلهجة شامية لطيفة وواضحة عند المناسبة)، مع إبقاء الكود البرمجي والمصطلحات التقنية بالإنجليزية."
-        )
-    if foreign_chars > 0:
-        return (
-            "\n\n[CRITICAL LANGUAGE LOCK]: The user wrote their message in a non-Arabic language (e.g. English or another foreign language). "
-            "Regardless of any Arabic instructions in the system prompt or memory, you MUST reply 100% in the exact same language used by the user in their latest message. "
-            "Do NOT reply in Arabic unless explicitly asked to translate into Arabic."
-        )
-    return ""
 
 
 MAX_HISTORY = 20          # عدد الرسائل المحفوظة لكل مستخدم (سؤال + جواب)
@@ -225,7 +204,8 @@ def is_deep_question(text):
     return bool(tokens & DEEP_WORDS)
 
 
-_gemini_live_cache = {"t": 0.0, "ids": []}
+_gemini_live_cache = {"t": 0.0, "ids": [], "fail_t": 0.0}
+_gemini_dead = {}   # اسم موديل -> وقت (time.time) بيصير مسموح نجرّبو فيه مرة تانية
 
 
 def discover_gemini_models():
@@ -235,6 +215,8 @@ def discover_gemini_models():
     now = time.time()
     if _gemini_live_cache["ids"] and now - _gemini_live_cache["t"] < 6 * 3600:
         return _gemini_live_cache["ids"]
+    if now - _gemini_live_cache.get("fail_t", 0.0) < 120:   # فشل قريب: لا تعيد الطلب مع كل رسالة
+        return []
     found = []
     try:
         for m in client.models.list():
@@ -242,13 +224,23 @@ def discover_gemini_models():
             if name.startswith("models/"):
                 name = name[7:]
             low = name.lower()
-            if low.startswith("gemini-") and not any(x in low for x in ("embedding", "tts", "image", "veo", "lyria", "robotics", "computer-use", "audio", "transcribe", "live")):
+            if low.startswith("gemini-") and not any(x in low for x in ("embedding", "tts", "image", "veo", "lyria", "robotics", "computer-use", "audio", "transcribe", "live", "omni", "nano-banana")):
                 found.append(name)
     except Exception as _ge:
         log.warning("Gemini model discovery warning: %s", _ge)
     if found:
-        _gemini_live_cache.update(t=now, ids=found)
+        _gemini_live_cache.update(t=now, ids=found, fail_t=0.0)
+    else:
+        _gemini_live_cache["fail_t"] = now
     return found
+
+
+def _gemini_model_missing(e):
+    """هل الخطأ معناه إنو اسم الموديل غير موجود/ملغى (مو مشكلة مؤقتة)؟"""
+    if getattr(e, "code", None) == 404:
+        return True
+    msg = str(e).lower()
+    return "is not found" in msg or "not supported for generatecontent" in msg or "no longer available" in msg
 
 
 def make_config(deep, system, use_thinking=True, json_mode=False, model=""):
@@ -281,18 +273,15 @@ def ask_gemini(contents, deep=False, system=None, json_mode=False, preferred_mod
     for m in ordered:
         if m and m not in models:
             models.append(m)
-    last_user_txt = ""
-    try:
-        for _c in reversed(contents or []):
-            if getattr(_c, "role", "user") != "model":
-                last_user_txt = "\n".join(getattr(_p, "text", "") for _p in getattr(_c, "parts", []) if getattr(_p, "text", None))
-                if last_user_txt:
-                    break
-    except Exception:
-        last_user_txt = ""
-    system = (system or get_system_prompt()) + detect_message_language_rule(last_user_txt)
+    system = system or get_system_prompt()
     last_err = None
     tried = set()
+    # تجاوز الأسماء يلي رجّعت "غير موجود" قبل شوي، وتفضيل الموديلات الموجودة فعلاً بقائمة مفتاحك
+    _now = time.time()
+    _live = set(discover_gemini_models())
+    _usable = [m for m in models if _gemini_dead.get(m, 0.0) <= _now]
+    _pruned = [m for m in _usable if not _live or m in _live or m == preferred_model]
+    models = _pruned or _usable or models
     for model in models:
         tried.add(model)
         for use_thinking in (True, False):
@@ -311,6 +300,8 @@ def ask_gemini(contents, deep=False, system=None, json_mode=False, preferred_mod
                     raise
                 if code == 400 and use_thinking:
                     continue
+                if _gemini_model_missing(e):
+                    _gemini_dead[model] = time.time() + 1800   # نص ساعة ما نجرّبو
                 break
     for dyn_model in discover_gemini_models():
         if dyn_model in tried:
@@ -564,16 +555,7 @@ def _compact_prompt():
 
 
 def _build_messages(b, contents):
-    last_u = ""
-    try:
-        for _c in reversed(contents or []):
-            if getattr(_c, "role", "user") != "model":
-                last_u = "\n".join(getattr(_p, "text", "") for _p in getattr(_c, "parts", []) if getattr(_p, "text", None))
-                if last_u:
-                    break
-    except Exception:
-        last_u = ""
-    system = (b.get("system") or (_compact_prompt() if b.get("compact") else get_system_prompt())) + detect_message_language_rule(last_u)
+    system = b.get("system") or (_compact_prompt() if b.get("compact") else get_system_prompt())
     msgs = []
     for c in contents:
         text = "\n".join(p.text for p in c.parts if getattr(p, "text", None))
@@ -682,44 +664,20 @@ GROQ_BACKEND = {
     "timeout_fast": 60, "timeout_deep": 120,
     "system": CODE_SYSTEM_PROMPT, "max_chars": 24000, "max_tokens": 6000,
 }
+# تم التحقق (2026-11) من صفحتي Groq: Supported Models + Deprecations. الأسماء التالية انسحبت من الطبقة المجانية:
+#   llama-3.3-70b-versatile, llama-3.1-8b-instant (16/8)، qwen3-32b, llama-4-scout (17/7)، qwen3.6-27b (14/9),
+#   kimi-k2-instruct(-0905), llama-4-maverick, deepseek-r1-distill-llama-70b, gemma2-9b-it.
+# الموجود فعلاً: gpt-oss-120b / gpt-oss-20b (Production) و qwen3.8-27b (Preview). groq_code_models() بيفلتر بالكتالوج الحي كمان.
 GROQ_CODE_PREF = (
     "openai/gpt-oss-120b",
     "qwen/qwen3.8-27b",
-    "qwen/qwen3.6-27b",
     "openai/gpt-oss-20b",
-    "qwen/qwen3-32b",
-    "moonshotai/kimi-k2-instruct",
-    "meta-llama/llama-4-maverick-17b-128e-instruct",
-    "llama-3.3-70b-versatile",
 )
-GROQ_FREE_DEFAULTS = (
-    "openai/gpt-oss-120b",
-    "qwen/qwen3.8-27b",
-    "qwen/qwen3.6-27b",
-    "openai/gpt-oss-20b",
-    "qwen/qwen3-32b",
-    "moonshotai/kimi-k2-instruct",
-    "meta-llama/llama-4-maverick-17b-128e-instruct",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
-    "llama-3.3-70b-versatile",
-    "deepseek-r1-distill-llama-70b",
-    "llama-3.1-8b-instant",
-    "gemma2-9b-it",
-)
+GROQ_FREE_DEFAULTS = GROQ_CODE_PREF
+# OpenRouter: قائمة المجاني بتتبدّل كل شوي (DeepSeek ما عاد عندو نسخة مجانية)؛ الاختيار الفعلي من الكتالوج الحي بـ or_models_for().
 OR_FREE_DEFAULTS = (
     "openrouter/free",
-    "deepseek/deepseek-r1:free",
-    "deepseek/deepseek-chat-v3-0324:free",
-    "qwen/qwen3-235b-a22b:free",
-    "qwen/qwen-2.5-coder-32b-instruct:free",
-    "moonshotai/kimi-k2:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "meta-llama/llama-4-maverick:free",
-    "google/gemma-3-27b-it:free",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "nvidia/llama-3.1-nemotron-ultra-253b-v1:free",
-    "thudm/glm-z1-32b:free",
-    "microsoft/mai-ds-r1:free",
+    "qwen/qwen3.8-27b:free",
 )
 GROQ_CHAT_BACKEND = {**GROQ_BACKEND, "system": None, "compact": True}
 _GROQ_SKIP = ("whisper", "tts", "guard", "safeguard", "vision", "embed", "compound", "orpheus", "playai")

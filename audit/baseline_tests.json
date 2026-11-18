@@ -7,10 +7,11 @@
     "status": "FAILED"
   },
   "post_repair_run": {
-    "total_tests": 262,
-    "passed": 262,
+    "total_tests": 221,
+    "passed": 221,
     "failures": 0,
     "errors": 0,
-    "status": "PASSED"
+    "status": "PASSED",
+    "js_assertions": 45
   }
 }

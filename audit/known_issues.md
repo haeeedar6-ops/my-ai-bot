@@ -22,3 +22,11 @@ All 20 baseline issues and all Phase 0–3 requirements from `RYN_Preflight_Repa
 - The first implementation is intentionally read-only for project files. ZIP inspection creates a bounded text context only; there is no automatic write, delete, shell, deployment, or GitHub patch execution route in this feature.
 - Live meeting updates are streamed as completed agent/event messages over SSE. Individual token-by-token streaming is not implemented in this release.
 - The five roles require their corresponding model families to be configured and accessible. A meeting can start with at least two available agents; unavailable agents are visibly marked offline rather than simulated.
+
+
+## Review follow-up (Nov 2026)
+Open items that code cannot fix:
+- `ryn-desktop/`, `ryn-android/`, `ryn_agent.py`, `code_intelligence/` are not part of this package; sections 2 and 4 above describe features that live in the full repository (the code here reports `github_editing_removed` / `device_agents_removed`).
+- Set `RYN_DATA_DIR` to a persistent disk, otherwise server-side data (Ultra history, local server memory) is lost on every deploy. Device memory is unaffected because it lives in the browser.
+- Run a single gunicorn worker with threads (`--workers 1 --threads 8`): meeting workers and request counters are per process.
+- DeepSeek and Kimi have no free OpenRouter models any more; they stay offline in Ultra unless `OR_ALLOW_PAID` is enabled.

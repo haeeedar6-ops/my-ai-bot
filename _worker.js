@@ -25,7 +25,7 @@ export default {
 
     const out = new Headers(res.headers);
     const loc = out.get("location");
-    if (loc) out.set("location", loc.split(ORIGIN).join(myHost));
+    if (loc) out.set("location", loc.split(ORIGIN).join("https://" + myHost));   // مع https:// وإلا بيصير الرابط نسبي غلط
     return new Response(res.body, { status: res.status, statusText: res.statusText, headers: out });
   },
 };

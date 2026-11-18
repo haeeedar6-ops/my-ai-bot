@@ -38,7 +38,8 @@ LIVE_VOICES = (
     "Achernar", "Gacrux", "Pulcherrima", "Vindemiatrix", "Sulafat",
 )
 DEFAULT_LIVE_VOICE = "Charon"
-FALLBACK_MODELS = ("gemini-3.1-flash-live-preview", "gemini-3.8-live", "gemini-live-2.5-flash-preview")
+# gemini-3.8-live هو الموصى به حالياً؛ 3.1 Live "قديم" وصار احتياطي، و2.5 Live اسمو الرسمي native-audio (Google، 2026-10-28)
+FALLBACK_MODELS = ("gemini-3.8-live", "gemini-3.1-flash-live-preview", "gemini-2.5-flash-native-audio-preview-12-2025")
 MAX_FRAME_BYTES = 64 * 1024
 MAX_MEMORY_CHARS = 1500
 MAX_HISTORY_TURNS = 8
