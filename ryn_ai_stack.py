@@ -225,7 +225,7 @@ class LiteLLMRouter:
             try:
                 if low.startswith("gemini") or low == "auto":
                     ans = b_module.ask_gemini(contents, deep=deep, system=system, json_mode=json_mode)
-                    used_model = "gemini-2.5-flash"
+                    used_model = "gemini-auto"   # ask_gemini بيختار الموديل ديناميكياً
                     bucket = "gemini"
                 elif low.startswith("groq:") or "gpt-oss" in low or "qwen" in low:
                     mdl_id = target.split(":", 1)[1] if ":" in target else target

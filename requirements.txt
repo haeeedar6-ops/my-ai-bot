@@ -7,3 +7,4 @@ edge-tts
 gtts
 Pillow
 flask-sock
+gunicorn

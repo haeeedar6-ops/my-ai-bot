@@ -1,5 +1,5 @@
 """موقع Ryn: واجهة دردشة خاصة (تطبيق ويب PWA) فوق نفس عقل البوت.
-بيشتغل جنب بوت تيليجرام، وبيتفعّل لما تحط WEB_PASSWORD على Render."""
+بيتفعّل لما تحط WEB_PASSWORD على Render."""
 import os
 import re
 import hmac
@@ -10,6 +10,7 @@ import base64
 import hashlib
 import threading
 import logging
+import math
 import io
 import ast
 import shutil
@@ -71,8 +72,107 @@ def _load_duplex_js() -> str:
         return "window.RynDuplex=null;"
 
 
+def _load_memory_js() -> str:
+    """مكتبة ذاكرة الجهاز المشتركة (ryn_memory.js): نفسها بالصفحة الرئيسية وبصفحة RYN Ultra."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ryn_memory.js"), encoding="utf-8") as f:
+            return f.read().replace("</script", "<\\/script")
+    except Exception:
+        return "window.RynMem=null;"
+
+
+# ---- ترتيب معلومات الذاكرة حسب الصلة (نفس منطق ryn_memory.js) ----
+# المتصفح بيرتّب وبيبعت الأنسب بس؛ هاد احتياط لو انبعتت ذاكرة كبيرة (صوت مباشر، عميل قديم).
+_MEM_DIAC = re.compile("[\u064B-\u065F\u0670\u0640]")
+_MEM_STOP = set(("في من الي على عن ان انو انا انت هو هي هاد هاي هيك هذا هذه شو ايش ليش كيف لا ما مع او يا كل كان عند هل لو بس كمان يعني "
+                 "the a an is are to of and in on for with i my me you it this that do does what how why").split())
+_MEM_PRE = ("وال", "بال", "كال", "فال", "لل", "ال", "و", "ب", "ف", "ل", "ك")
+_MEM_SUF = ("ات", "ون", "ين", "ان", "ها", "هم", "هن", "كم", "نا", "تي", "ي", "ه", "ك")
+_MEM_AL = ("وال", "بال", "كال", "فال", "لل", "ال")
+
+
+def _mem_norm(s):
+    s = _MEM_DIAC.sub("", str(s or "").lower())
+    s = re.sub("[أإآٱ]", "ا", s).replace("ى", "ي").replace("ة", "ه").replace("ؤ", "و").replace("ئ", "ي")
+    return re.sub("[^a-z0-9\u0621-\u063A\u0641-\u064A]+", " ", s).strip()
+
+
+def _mem_stem(w):
+    if re.fullmatch(r"[a-z0-9]+", w):
+        for suf, cut, minlen in (("ing", 3, 5), ("ed", 2, 4), ("es", 2, 4), ("s", 1, 4)):
+            if len(w) >= minlen and w.endswith(suf):
+                return w[:-cut]
+        return w
+    r = w
+    for p in _MEM_PRE:
+        if len(r) - len(p) >= 3 and r.startswith(p):
+            r = r[len(p):]
+            break
+    for s in _MEM_SUF:
+        if len(r) - len(s) >= 3 and r.endswith(s):
+            r = r[:-len(s)]
+            break
+    return r
+
+
+def _mem_variants(w):
+    a = w
+    for p in _MEM_AL:
+        if len(w) - len(p) >= 3 and w.startswith(p):
+            a = w[len(p):]
+            break
+    out = [w]
+    for v in (a, _mem_stem(w)):
+        if v not in out:
+            out.append(v)
+    return out
+
+
+def _mem_token_variants(s):
+    return [_mem_variants(w) for w in _mem_norm(s).split() if len(w) >= 2 and w not in _MEM_STOP]
+
+
+def mem_rank(facts, query, k=12):
+    """أنسب k معلومة للسؤال (BM25 مبسّط)، وإذا ما في تطابق كافي بتنضاف أحدث المعلومات."""
+    facts = list(facts)
+    q = _mem_token_variants(query)
+    if not q or not facts:
+        return facts[:k]
+    docs, df = [], {}
+    for f in facts:
+        tf = {}
+        for vs in _mem_token_variants(f):
+            for v in vs:
+                tf[v] = tf.get(v, 0) + 1
+        docs.append(tf)
+        for v in tf:
+            df[v] = df.get(v, 0) + 1
+    n, scored = len(facts), []
+    for i, tf in enumerate(docs):
+        s = 0.0
+        for vs in q:
+            best = partial = 0.0
+            for v in vs:
+                if v in tf:
+                    d = df.get(v, 0)
+                    best = max(best, math.log(1 + (n - d + 0.5) / (d + 0.5)) * (tf[v] * 2.2) / (tf[v] + 1.2))
+                elif not partial and len(v) >= 4 and any(len(w) >= 4 and (v in w or w in v) for w in tf):
+                    partial = 0.6
+            s += best or partial
+        if s > 0:
+            scored.append((s + 0.15 * (1 - i / n), i))
+    scored.sort(key=lambda x: -x[0])
+    picked = [facts[i] for _, i in scored[:k]]
+    for f in facts:
+        if len(picked) >= min(3, len(facts)):
+            break
+        if f not in picked:
+            picked.append(f)
+    return picked
+
+
 INDEX_HTML = r'''<!doctype html>
-<html lang="ar" dir="rtl" data-theme="green">
+<html lang="ar" dir="rtl" data-theme="violet">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -655,8 +755,8 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <linearGradient id="hd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14452f"/><stop offset="1" stop-color="#071a11"/></linearGradient>
-  <linearGradient id="vz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#030d08"/><stop offset="1" stop-color="#082115"/></linearGradient>
+  <linearGradient id="hd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262a5c"/><stop offset="1" stop-color="#0f1030"/></linearGradient>
+  <linearGradient id="vz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#03040f"/><stop offset="1" stop-color="#0a0c25"/></linearGradient>
 </defs></svg>
 
 <template id="botTpl">
@@ -664,8 +764,8 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
  <g class="float">
   <line x1="60" y1="20" x2="60" y2="31" stroke="var(--acc)" stroke-width="3" stroke-linecap="round"/>
   <circle class="orb" cx="60" cy="15" r="5.5" fill="var(--g)"/>
-  <rect class="ear" x="11" y="51" width="9" height="22" rx="4" fill="#0c291b" stroke="var(--acc)" stroke-width="2"/>
-  <rect class="ear" x="100" y="51" width="9" height="22" rx="4" fill="#0c291b" stroke="var(--acc)" stroke-width="2"/>
+  <rect class="ear" x="11" y="51" width="9" height="22" rx="4" fill="#14163a" stroke="var(--acc)" stroke-width="2"/>
+  <rect class="ear" x="100" y="51" width="9" height="22" rx="4" fill="#14163a" stroke="var(--acc)" stroke-width="2"/>
   <rect x="20" y="31" width="80" height="62" rx="24" fill="url(#hd)" stroke="var(--g)" stroke-width="2.5"/>
   <rect x="29" y="41" width="62" height="40" rx="16" fill="url(#vz)" stroke="var(--acc)" stroke-width="1.6"/>
   <g id="eyes">
@@ -677,8 +777,8 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
   <ellipse class="m m-open" cx="60" cy="74" rx="8" ry="5.5" fill="var(--g)"/>
   <path class="m m-sad" d="M50 77 Q60 70 70 77" stroke="var(--red)" stroke-width="3" fill="none" stroke-linecap="round"/>
   <circle cx="35" cy="86" r="2" fill="var(--acc)"/><circle cx="85" cy="86" r="2" fill="var(--acc)"/>
-  <rect x="50" y="93" width="20" height="7" rx="3" fill="#0c291b" stroke="var(--acc)" stroke-width="1.5"/>
-  <path d="M28 114 Q28 101 60 101 Q92 101 92 114" fill="#0c291b" stroke="var(--g)" stroke-width="2"/>
+  <rect x="50" y="93" width="20" height="7" rx="3" fill="#14163a" stroke="var(--acc)" stroke-width="1.5"/>
+  <path d="M28 114 Q28 101 60 101 Q92 101 92 114" fill="#14163a" stroke="var(--g)" stroke-width="2"/>
   <circle class="chest" cx="60" cy="109" r="3.2" fill="var(--g)"/>
   <g class="brows" stroke="var(--red)" stroke-width="3.4" stroke-linecap="round"><line x1="37" y1="45" x2="55" y2="50"/><line x1="83" y1="45" x2="65" y2="50"/></g>
   <g class="arcs" fill="none" stroke="var(--g)" stroke-width="4" stroke-linecap="round"><path d="M40 66 Q47 54 54 66"/><path d="M66 66 Q73 54 80 66"/></g>
@@ -695,9 +795,9 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
     <circle cx="96.8" cy="23.2" r="4.4" fill="#a78bfa"/><circle cx="96.8" cy="96.8" r="4.4" fill="#34d399"/>
     <circle cx="23.2" cy="96.8" r="4.4" fill="#38bdf8"/><circle cx="23.2" cy="23.2" r="4.4" fill="#fb923c"/>
    </g>
-   <rect x="31" y="97" width="58" height="21" rx="5" fill="#071f14" stroke="#facc15" stroke-width="2"/>
+   <rect x="31" y="97" width="58" height="21" rx="5" fill="#0d0f2e" stroke="#facc15" stroke-width="2"/>
    <text x="60" y="112.5" text-anchor="middle" font-size="13.5" font-weight="800" fill="#facc15" font-family="system-ui,Segoe UI,Arial,sans-serif">Ryn</text>
-   <circle cx="29" cy="108" r="4.4" fill="#0c291b" stroke="#facc15" stroke-width="1.8"/><circle cx="91" cy="108" r="4.4" fill="#0c291b" stroke="#facc15" stroke-width="1.8"/>
+   <circle cx="29" cy="108" r="4.4" fill="#14163a" stroke="#facc15" stroke-width="1.8"/><circle cx="91" cy="108" r="4.4" fill="#14163a" stroke="#facc15" stroke-width="1.8"/>
   </g>
  </g>
 </svg>
@@ -860,6 +960,7 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
           <input class="minp" id="memNew" placeholder="أضف معلومة يتذكرها عنك دايماً...">
           <button type="button" id="memAddBtn" title="إضافة">＋</button>
         </div>
+        <input class="minp" id="memSearch" placeholder="🔎 ابحث بالذاكرة...">
         <div id="memList"></div>
       </div>
       <div class="msec">
@@ -995,7 +1096,7 @@ function label(id){const o=models.find(x=>x.id===id);return o?o.label:(id==='gem
 /* ===== الثيم ===== */
 function applyTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem('astra_theme',t)}catch(e){}
   document.querySelectorAll('#themes i').forEach(i=>i.classList.toggle('on',i.dataset.t===t))}
-applyTheme((()=>{try{return localStorage.getItem('astra_theme')||'green'}catch(e){return 'green'}})());
+applyTheme((()=>{try{return localStorage.getItem('astra_theme')||'violet'}catch(e){return 'violet'}})());
 $('#themes').addEventListener('click',e=>{const i=e.target.closest('i');if(i){e.stopPropagation();applyTheme(i.dataset.t)}});
 
 /* ===== الروبوت ===== */
@@ -1076,20 +1177,29 @@ function loadMem(){
   updateMemUI();
 }
 function saveMem(){
-  try{localStorage.setItem(MEM_LS,JSON.stringify(mem))}catch(e){}
+  let saved=true;
+  try{localStorage.setItem(MEM_LS,JSON.stringify(mem))}catch(e){saved=false}
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
   updateMemUI();
+  if(!saved)toast('⚠️ مساحة تخزين المتصفح ممتلية: ما قدرت أحفظ الذاكرة، نزّل نسخة احتياطية أو امسح محادثات قديمة');
+  return saved;
 }
 function addMemFact(txt){
-  const t=String(txt||'').trim();if(!t)return false;
+  const t=String(txt||'').trim().slice(0,400);if(!t)return false;
   if(hasSecretPattern(t)){toast('⛔ تم رفض حفظ نص يحتوي على مفتاح سري أو كلمة مرور بالذاكرة');return false;}
-  if(!mem.facts.some(x=>x.toLowerCase()===t.toLowerCase())){mem.facts.unshift(t);if(mem.facts.length>60)mem.facts.pop();saveMem();return true}
+  if(window.RynMem){   /* ذاكرة طويلة (حتى 800 معلومة) مع منع التكرار التقريبي */
+    const r=window.RynMem.addFact(t,mem);if(!r.ok)return false;
+    if(mem.facts.length>window.RynMem.MAX_FACTS)mem.facts.length=window.RynMem.MAX_FACTS;
+    return saveMem();
+  }
+  if(!mem.facts.some(x=>x.toLowerCase()===t.toLowerCase())){mem.facts.unshift(t);if(mem.facts.length>300)mem.facts.pop();return saveMem()}
   return false;
 }
 function hasSecretPattern(txt){
   return /(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_\-]{20,}|AIza[0-9A-Za-z_\-]{30,}|(?:password|passwd|api_key|secret_key|كلمة\s*السر|كلمة\s*المرور|توكن)\s*[:=]\s*\S+)/i.test(String(txt||''));
 }
 function selectRelevantMemoryForRequest(queryText){
+  if(window.RynMem&&mem)return window.RynMem.select(mem,queryText);   /* مشتركة مع صفحة RYN Ultra */
   if(!mem||mem.enabled===false)return {enabled:false,local_only:true,name:'',custom:'',facts:[]};
   const q=String(queryText||'').toLowerCase();
   const qWords=q.split(/[^a-z0-9\u0600-\u06FF]+/i).filter(w=>w.length>=3);
@@ -1121,7 +1231,12 @@ function updateMemUI(){
   }
   const lst=$('#memList');
   if(lst){
-    lst.innerHTML=(mem.facts&&mem.facts.length)?mem.facts.map((f,i)=>'<div class="mitem"><span>'+esc(f)+'</span><button type="button" data-mdel="'+i+'" title="حذف من الجهاز">✕</button></div>').join(''):'<small style="text-align:center;padding:6px">ما في ذكريات مضافة بعد.</small>';
+    const sq=(($('#memSearch')&&$('#memSearch').value)||'').trim();
+    let rows=(mem.facts||[]).map((f,i)=>({f:f,i:i}));
+    if(sq&&window.RynMem)rows=window.RynMem.search(mem,sq,60).map(h=>({f:h.text,i:h.index}));
+    else if(sq)rows=rows.filter(x=>String(x.f).toLowerCase().includes(sq.toLowerCase()));
+    if(rows.length>200)rows=rows.slice(0,200);
+    lst.innerHTML=rows.length?rows.map(r=>'<div class="mitem"><span>'+esc(r.f)+'</span><button type="button" data-mdel="'+r.i+'" title="حذف من الجهاز">✕</button></div>').join(''):'<small style="text-align:center;padding:6px">'+(sq?'ما لقيت شي بهالبحث.':'ما في ذكريات مضافة بعد.')+'</small>';
   }
 }
 function openMemModal(){
@@ -1134,6 +1249,7 @@ function openMemModal(){
 }
 function closeMemModal(){$('#memModal').hidden=true}
 $('#memBtn').onclick=openMemModal;
+if(window.RynMem)window.RynMem.onChange(()=>{try{loadMem()}catch(_e){}});
 $('#mMem').onclick=openMemModal;
 function showAbout(e){if(e)e.preventDefault();$('#menu').hidden=true;$('#aboutModal').hidden=false}
 $('#mAbout').onclick=showAbout;$('#loginAbout').onclick=showAbout;
@@ -1146,6 +1262,7 @@ $('#mEmo').onclick=()=>{emo=!emo;try{localStorage.setItem('ryn_emo',emo?'1':'0')
 $('#memClose').onclick=closeMemModal;
 $('#memModal').onclick=e=>{if(e.target===$('#memModal'))closeMemModal()};
 $('#memAddBtn').onclick=()=>{const v=$('#memNew').value.trim();if(v){addMemFact(v);$('#memNew').value='';toast('انضافت للذاكرة 🧠')}};
+$('#memSearch').addEventListener('input',()=>updateMemUI());
 $('#memNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#memAddBtn').click()}});
 $('#memList').addEventListener('click',e=>{const b=e.target.closest('[data-mdel]');if(b){mem.facts.splice(+b.dataset.mdel,1);saveMem()}});
 $('#memSave').onclick=()=>{
@@ -1568,6 +1685,7 @@ async function rynDiagVoice(){
 if($('#vTestVoiceBtn'))$('#vTestVoiceBtn').onclick=()=>{rynDiagVoice()};
 
 /* ===== وضع المحادثة الصوتية الحية بشاشة كاملة مع الروبوت وتفاعلاته (Full-Screen Live Voice Chat) ===== */
+__RYN_MEMORY_JS__
 __RYN_DUPLEX_JS__
 __RYN_LIVE_JS__
 let rynLiveOn=false;
@@ -2204,6 +2322,7 @@ async function send(){
   sfx.send();setBot('thinking');acquireWakeLock();
   say(isImg?'عم أرسم 🎨...':(/(python|javascript|html|css|sql|كود|برمج|code)/i.test(text)?'عم أكتب الكود 💻':($('#chip').hidden?'عم أفكّر...':'عم أقرا المرفق 📎')));
   render();saveStore();
+  try{if(!isImg&&window.RynMem){const cap=window.RynMem.captureFromText(text);if(cap&&cap.ok)loadMem()}}catch(_cap){}
   let ok=true;
   try{
     let r=null,d=null;
@@ -2625,92 +2744,10 @@ const rynUiText={
  '🗣️ تغيير الصوت':['🗣️ Change voice','🗣️ تغيير الصوت'],
  '📊 حدود النماذج وفحص المنظومة':['📊 Model limits & system diagnostics','📊 حدود النماذج وفحص المنظومة']
 };
-Object.assign(rynUiText,{
- '📸 تواصل · إنستغرام @haydar_xe':['📸 Contact · Instagram @haydar_xe','📸 تواصل · إنستغرام @haydar_xe'],
- 'ℹ️ تعرّف على __APP_NAME__ · موقع خاص بكلمة سر':['ℹ️ About __APP_NAME__ · Password-protected','ℹ️ تعرّف على __APP_NAME__ · موقع خاص بكلمة سر'],
- '🟢 Memory is local — الذاكرة محلية على جهازك فقط':['🟢 Memory is local — stored on your device only','🟢 Memory is local — الذاكرة محلية على جهازك فقط'],
- '💡 فينك تضيف هون يدوياً، أو تقول بالشات «تذكر أني...» وبيحفظها تلقائياً!':['💡 Add facts here manually, or say "Remember that I..." in chat!','💡 فينك تضيف هون يدوياً، أو تقول بالشات «تذكر أني...» وبيحفظها تلقائياً!'],
- '📱 ملف الذاكرة على جهازك (.json)':['📱 Local memory file (.json)','📱 ملف الذاكرة على جهازك (.json)'],
- 'احفظ نسخة كملف حقيقي على هاتفك أو استرجعها بأي وقت لو غيرت الجهاز أو المتصفح.':['Export a backup file to your device or restore it anytime on another browser.','احفظ نسخة كملف حقيقي على هاتفك أو استرجعها بأي وقت لو غيرت الجهاز أو المتصفح.'],
- '🌍 لغة التعرّف الصوتي (ASR):':['🌍 Speech recognition language (ASR):','🌍 لغة التعرّف الصوتي (ASR):'],
- '🌐 تلقائي (Auto-Detect)':['🌐 Auto-Detect','🌐 تلقائي (Auto-Detect)'],
- 'عم أسمعك... احكي براحتك 🎙️':['Listening... speak freely 🎙️','عم أسمعك... احكي براحتك 🎙️'],
- 'تحدث مباشرة وكأنك تحكي مع صديقك...':['Speak naturally just like talking to a friend...','تحدث مباشرة وكأنك تحكي مع صديقك...'],
- '🧪 فحص شامل للتأكد أن كل الأنظمة الـ 10 شغّالة':['🧪 Run full diagnostics across all 10 systems','🧪 فحص شامل للتأكد أن كل الأنظمة الـ 10 شغّالة'],
- 'الكل':['All','الكل'],
- 'رسم':['Draw','رسم']
-});
-const rynAttrPairs={
- 'المحادثات السابقة':['Chat history','المحادثات السابقة'],
- 'تبديل عرض الكمبيوتر (PC) / الهاتف':['Toggle PC / Mobile layout','تبديل عرض الكمبيوتر (PC) / الهاتف'],
- 'القائمة':['Menu','القائمة'],
- 'تبديل الموديل':['Switch model','تبديل الموديل'],
- 'ملف التخصيص وذاكرة الجهاز':['Personalization & device memory','ملف التخصيص وذاكرة الجهاز'],
- 'النزول لآخر رسالة':['Scroll to latest message','النزول لآخر رسالة'],
- 'حذف المرفق':['Remove attachment','حذف المرفق'],
- 'اختيار موديل':['Choose model / mode','اختيار موديل'],
- 'اكتب رسالة...':['Write a message...','اكتب رسالة...'],
- 'تسجيل صوت':['Voice input','تسجيل صوت'],
- 'رفع صورة':['Upload image','رفع صورة'],
- 'رفع ملف':['Upload file','رفع ملف'],
- 'إرسال':['Send','إرسال'],
- 'إغلاق':['Close','إغلاق'],
- 'ابحث بالعناوين والرسائل...':['Search titles & messages...','ابحث بالعناوين والرسائل...'],
- 'مسح البحث':['Clear search','مسح البحث'],
- 'كلمة السر':['Password','كلمة السر'],
- 'اسمك أو لقبك (مثال: حيدر)':['Your name or nickname (e.g. Haydar)','اسمك أو لقبك (مثال: حيدر)'],
- 'كيف بتحب Ryn يجاوبك؟ شو اهتماماتك أو مجالك؟ (مثال: جاوبني باختصار، بهتم ببايثون وجافاسكربت...)':['How should Ryn reply? What are your interests? (e.g. Keep it concise, Python & JS...)','كيف بتحب Ryn يجاوبك؟ شو اهتماماتك أو مجالك؟ (مثال: جاوبني باختصار، بهتم ببايثون وجافاسكربت...)'],
- 'أضف معلومة يتذكرها عنك دايماً...':['Add a fact for Ryn to always remember...','أضف معلومة يتذكرها عنك دايماً...'],
- 'إضافة':['Add','إضافة'],
- 'كتم / تشغيل الميكروفون':['Mute / unmute microphone','كتم / تشغيل الميكروفون'],
- 'اضغط للتحدث الآن أو مقاطعة الرد':['Tap to speak or interrupt reply','اضغط للتحدث الآن أو مقاطعة الرد'],
- 'إنهاء المكالمة الصوتية والعودة للدردشة':['End voice call & return to chat','إنهاء المكالمة الصوتية والعودة للدردشة'],
- 'RYN Ultra · فريق الذكاء الاصطناعي':['RYN Ultra · 5-Agent AI Team','RYN Ultra · فريق الذكاء الاصطناعي'],
- 'Gemini Live: محادثة حية مباشرة (متل ChatGPT)':['Gemini Live: Real-time duplex voice chat','Gemini Live: محادثة حية مباشرة (متل ChatGPT)'],
- 'محادثة صوتية حية مع الروبوت':['Live Voice Chat with Ryn','محادثة صوتية حية مع الروبوت']
-};
 const rynTextOriginals=new WeakMap();
-const rynAttrOriginals=new WeakMap();
-function applyRynUiLanguage(){
- const en=rynUiLang==='en';
- document.documentElement.lang=en?'en':'ar';
- document.documentElement.dir=en?'ltr':'rtl';
- document.title=en?'RYN · AI Assistant':'RYN · مساعد ذكي';
- const btn=document.getElementById('langBtn');
- if(btn){btn.textContent=en?'عربي':'EN';btn.title=en?'Switch to Arabic':'التبديل إلى الإنجليزية'}
- const root=document.body;
- if(root){
-  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-  let node;
-  while((node=walker.nextNode())){
-   if(node.parentElement&&node.parentElement.closest('#msgs,script,style'))continue;
-   let raw=rynTextOriginals.get(node);
-   if(raw===undefined){raw=node.nodeValue;rynTextOriginals.set(node,raw)}
-   const key=raw.trim();
-   const pair=rynUiText[key];
-   if(pair){
-    const lead=raw.match(/^\s*/)?.[0]||'';
-    const tail=raw.match(/\s*$/)?.[0]||'';
-    node.nodeValue=lead+pair[en?0:1]+tail;
-   }
-  }
-  root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(el=>{
-   if(el.id==='langBtn')return;
-   let orig=rynAttrOriginals.get(el);
-   if(!orig){
-    orig={placeholder:el.getAttribute('placeholder'),title:el.getAttribute('title'),aria:el.getAttribute('aria-label')};
-    rynAttrOriginals.set(el,orig);
-   }
-   if(orig.placeholder&&rynAttrPairs[orig.placeholder])el.setAttribute('placeholder',rynAttrPairs[orig.placeholder][en?0:1]);
-   if(orig.title&&rynAttrPairs[orig.title])el.setAttribute('title',rynAttrPairs[orig.title][en?0:1]);
-   if(orig.aria&&rynAttrPairs[orig.aria])el.setAttribute('aria-label',rynAttrPairs[orig.aria][en?0:1]);
-  });
- }
- const mem=document.getElementById('memBtn');
- if(mem&&mem.childNodes.length){
-  const first=mem.childNodes[0];
-  if(first.nodeType===Node.TEXT_NODE)first.nodeValue=en?'🧠 My memory ':'🧠 ذاكرتي ';
- }
+function applyRynUiLanguage(){const en=rynUiLang==='en';document.documentElement.lang=en?'en':'ar';document.documentElement.dir=en?'ltr':'rtl';document.title=en?'RYN · AI Assistant':'RYN · مساعد ذكي';const btn=document.getElementById('langBtn');if(btn){btn.textContent=en?'عربي':'EN';btn.title=en?'Switch to Arabic':'التبديل إلى الإنجليزية'};const inp=document.getElementById('inp');if(inp)inp.placeholder=en?'Write a message...':'اكتب رسالة...';
+ const root=document.getElementById('app');if(root){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;while((node=walker.nextNode())){if(node.parentElement&&node.parentElement.closest('#msgs,script,style'))continue;let raw=rynTextOriginals.get(node);if(raw===undefined){raw=node.nodeValue;rynTextOriginals.set(node,raw)}const key=raw.trim();const pair=rynUiText[key];if(pair){const lead=raw.match(/^\s*/)?.[0]||'';const tail=raw.match(/\s*$/)?.[0]||'';node.nodeValue=lead+pair[en?0:1]+tail}}}
+ const mem=document.getElementById('memBtn');if(mem&&mem.childNodes.length){const first=mem.childNodes[0];if(first.nodeType===Node.TEXT_NODE)first.nodeValue=en?'🧠 My memory ':'🧠 ذاكرتي '}
 }
 if(document.getElementById('langBtn'))document.getElementById('langBtn').onclick=()=>{rynUiLang=rynUiLang==='ar'?'en':'ar';try{localStorage.setItem('ryn_ui_lang',rynUiLang)}catch(e){}applyRynUiLanguage();toast(rynUiLang==='en'?'English interface enabled':'تم تفعيل الواجهة العربية')};
 applyRynUiLanguage();
@@ -5577,10 +5614,7 @@ def mix_answer(b, contents, members, code=False, fix=False, progress=None, meta=
             final = big_gemini(b, [T.Content(role="user", parts=[T.Part(text=prompt)])],
                                system=MIX_SYSTEM + "\n" + CLAUDE_CODE_STYLE + (FIX_RULES if fix else ""))
         else:
-            if _is_arabic_query(question):
-                prompt = "سؤال المستخدم:\n%s\n\n%s\n\nاكتب الجواب النهائي المدموج فقط باللغة العربية." % (question[:4000], block)
-            else:
-                prompt = "User question:\n%s\n\nCandidate model answers:\n%s\n\nWrite ONLY the final synthesized answer in the exact same language as the user's question above (do NOT reply in Arabic)." % (question[:4000], block)
+            prompt = "سؤال المستخدم:\n%s\n\n%s\n\nاكتب الجواب النهائي المدموج فقط." % (question[:4000], block)
             final = b.ask_gemini([T.Content(role="user", parts=[T.Part(text=prompt)])], deep=False, system=MIX_SYSTEM)
     except Exception as e:
         log.warning("Ryn mix: الدمج فشل: %s", redact_secrets(str(e)[:160]))
@@ -5700,13 +5734,13 @@ def sniff_image(data):
 def img_models():
     """سلسلة موديلات رسم Gemini بالترتيب (الأقوى أول، قابل للتخصيص بـ GEMINI_IMAGE_MODEL)."""
     seen = []
+    # الأسماء الرسمية الحالية (Gemini API، تحديث 2026-10-28): Nano Banana 2.1 / 2 / 2 Lite / Pro / الأول
     for m in [os.environ.get("GEMINI_IMAGE_MODEL", "").strip(),
+              "gemini-nano-banana-2.1",
               "gemini-3.1-flash-image",
               "gemini-3.1-flash-lite-image",
               "gemini-3-pro-image",
-              "gemini-3.1-flash-image-preview",
-              "gemini-2.5-flash-image",
-              "gemini-3-pro-image-preview"]:
+              "gemini-2.5-flash-image"]:
         if m and m not in seen:
             seen.append(m)
     return seen
@@ -6647,9 +6681,38 @@ def register(app, b):
         return us
 
     users = load_users()
-    password = "|".join(users.values())   # للمفتاح السري وللتأكد إنو في مستخدمين
-    app.secret_key = os.environ.get("WEB_SECRET") or hashlib.sha256(
-        ("astra-web|" + password + "|" + str(getattr(b, "BOT_TOKEN", ""))).encode()).hexdigest()
+
+    def _load_or_create_secret():
+        """مفتاح توقيع الجلسات. الأفضل تضيف WEB_SECRET (نص عشوائي طويل) على Render.
+        إذا ما انضاف: بنولّد مفتاح عشوائي ونخزّنو بملف (0600) جوّا RYN_DATA_DIR بدل ما نشتقّو من كلمات السر،
+        لأنو المشتق من كلمات السر بيتخمّن أوفلاين ولو بس مين عندو كوكي صالح."""
+        sec = os.environ.get("WEB_SECRET", "").strip()
+        if sec:
+            return sec
+        base = os.environ.get("RYN_DATA_DIR", "").strip() or tempfile.gettempdir()
+        path = os.path.join(base, "ryn_web_secret.key")
+        try:
+            os.makedirs(base, exist_ok=True)
+            for _ in range(2):
+                if os.path.exists(path):
+                    with open(path, encoding="utf-8") as fh:
+                        val = fh.read().strip()
+                    if len(val) >= 32:
+                        return val
+                val = os.urandom(32).hex()
+                try:
+                    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                except FileExistsError:
+                    continue   # عملية تانية سبقتنا: اقرأ مفتاحها
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    fh.write(val)
+                log.warning("WEB_SECRET غير مضاف: ولّدت مفتاح جلسات عشوائي بـ %s. الأفضل تضيف WEB_SECRET بـ Render.", path)
+                return val
+        except Exception as e_sec:
+            log.warning("تعذّر حفظ مفتاح الجلسات (%s): مفتاح عشوائي بالذاكرة، الجلسات بتنفك مع كل إعادة تشغيل", type(e_sec).__name__)
+        return os.urandom(32).hex()
+
+    app.secret_key = _load_or_create_secret()
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -6857,19 +6920,11 @@ def register(app, b):
 
         # 1) كافة نماذج Groq المجانية السريعة
         gid = groq_ids()
+        # الأسماء المؤكدة عند Groq (2026-11). غيرها انسحب من الطبقة المجانية (llama 3.x/4، kimi، deepseek-distill، gemma2، qwen3/3.6).
         groq_curated = (
             ("openai/gpt-oss-120b", "GPT-OSS 120B (Groq)"),
             ("qwen/qwen3.8-27b", "Qwen 3.8 27B (Groq)"),
-            ("qwen/qwen3.6-27b", "Qwen 3.6 27B (Groq)"),
             ("openai/gpt-oss-20b", "GPT-OSS 20B (Groq)"),
-            ("qwen/qwen3-32b", "Qwen3 32B (Groq)"),
-            ("moonshotai/kimi-k2-instruct", "Kimi K2 (Groq)"),
-            ("meta-llama/llama-4-maverick-17b-128e-instruct", "Llama 4 Maverick (Groq)"),
-            ("meta-llama/llama-4-scout-17b-16e-instruct", "Llama 4 Scout (Groq)"),
-            ("llama-3.3-70b-versatile", "Llama 3.3 70B (Groq)"),
-            ("deepseek-r1-distill-llama-70b", "DeepSeek R1 70B (Groq)"),
-            ("llama-3.1-8b-instant", "Llama 3.1 8B Instant (Groq)"),
-            ("gemma2-9b-it", "Gemma 2 9B (Groq)"),
         )
         if b._groq_ready():
             for gm_id, gm_label in groq_curated:
@@ -6888,23 +6943,19 @@ def register(app, b):
 
         # 3) كافة نماذج OpenRouter المجانية
         if b._or_key():
+            # قائمة المجاني عند OpenRouter بتتبدّل كل شوي (DeepSeek ما عاد عندو نسخة مجانية): هون بس الثابت،
+            # والباقي بيتضاف تلقائياً من الكتالوج الحي تحت (free_chat_models).
             or_curated_free = (
                 ("openrouter/free", "OpenRouter Auto Free"),
-                ("deepseek/deepseek-r1:free", "DeepSeek R1 (Free)"),
-                ("deepseek/deepseek-chat-v3-0324:free", "DeepSeek V3 (Free)"),
-                ("qwen/qwen3-235b-a22b:free", "Qwen3 235B (Free)"),
-                ("qwen/qwen-2.5-coder-32b-instruct:free", "Qwen 2.5 Coder 32B (Free)"),
-                ("moonshotai/kimi-k2:free", "Kimi K2 (OR Free)"),
-                ("meta-llama/llama-4-maverick:free", "Llama 4 Maverick (OR Free)"),
-                ("meta-llama/llama-3.3-70b-instruct:free", "Llama 3.3 70B (OR Free)"),
-                ("google/gemma-3-27b-it:free", "Gemma 3 27B (OR Free)"),
-                ("mistralai/mistral-small-3.1-24b-instruct:free", "Mistral Small 3.1 (Free)"),
-                ("nvidia/llama-3.1-nemotron-ultra-253b-v1:free", "Nemotron Ultra 253B (Free)"),
-                ("thudm/glm-z1-32b:free", "GLM Z1 32B (Free)"),
-                ("microsoft/mai-ds-r1:free", "Microsoft MAI DS R1 (Free)"),
+                ("qwen/qwen3.8-27b:free", "Qwen 3.8 27B (OR Free)"),
             )
+            try:
+                _or_ids = {i["id"] for i in b.openrouter_catalog()}
+            except Exception:
+                _or_ids = set()
             for or_id, or_lbl in or_curated_free:
-                _add_opt("or:" + or_id, or_lbl, or_id)
+                if not _or_ids or or_id in _or_ids or or_id == "openrouter/free":
+                    _add_opt("or:" + or_id, or_lbl, or_id)
             # إضافة جميع الموديلات المجانية المكتشفة ديناميكياً من OpenRouter
             try:
                 for dyn_id in b.free_chat_models(limit=25):
@@ -6915,7 +6966,24 @@ def register(app, b):
         return opts
 
     def client_ip():
-        return (request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or "?")
+        """عنوان العميل لحد محاولات الدخول. أول قيم X-Forwarded-For بيبعتها العميل نفسو (بتتزوّر)،
+        فبناخد القيمة رقم TRUSTED_PROXY_HOPS من آخر الهيدر (يلي أضافها بروكسي موثوق). الافتراضي 1 (Render مباشرة)؛
+        إذا شغّال عبر Cloudflare (_worker.js) حط TRUSTED_PROXY_HOPS=2. 0 = تجاهل الهيدر واستعمل remote_addr."""
+        remote = request.remote_addr or "?"
+        try:
+            hops = max(0, int(os.environ.get("TRUSTED_PROXY_HOPS", "1") or 1))
+        except ValueError:
+            hops = 1
+        if hops <= 0:
+            return remote
+        parts = [p.strip() for p in request.headers.get("X-Forwarded-For", "").split(",") if p.strip()]
+        if len(parts) >= hops:
+            cand = parts[-hops]
+            try:
+                return str(ipaddress.ip_address(cand))
+            except ValueError:
+                return remote
+        return remote
 
     def authed():
         return bool(session.get("ok"))
@@ -6952,7 +7020,7 @@ def register(app, b):
     # ---------- صفحات ثابتة ----------
     @app.get("/")
     def web_index():
-        return Response(INDEX_HTML.replace("__APP_NAME__", APP_NAME).replace("__RYN_DUPLEX_JS__", _load_duplex_js()).replace("__RYN_LIVE_JS__", _load_live_js()), mimetype="text/html")
+        return Response(INDEX_HTML.replace("__APP_NAME__", APP_NAME).replace("__RYN_MEMORY_JS__", _load_memory_js()).replace("__RYN_DUPLEX_JS__", _load_duplex_js()).replace("__RYN_LIVE_JS__", _load_live_js()), mimetype="text/html")
 
     @app.get("/manifest.webmanifest")
     def web_manifest():
@@ -6991,6 +7059,13 @@ def register(app, b):
         recent = [t for t in fails.get(ip, []) if now - t < 600]
         if len(recent) >= 5:
             return jsonify(error="محاولات كتير، جرّب بعد 10 دقايق"), 429
+        try:
+            g_max = max(5, int(os.environ.get("LOGIN_GLOBAL_MAX_FAILS", "30")))
+        except ValueError:
+            g_max = 30
+        g_recent = [t for t in fails.get("*", []) if now - t < 600]
+        if len(g_recent) >= g_max:   # سقف عام: حتى لو الـ IP متغيّر كل مرة
+            return jsonify(error="محاولات كتير من مصادر مختلفة، جرّب بعد شوي"), 429
         given = str((request.get_json(silent=True) or {}).get("password", "")).strip()
         who = None
         for n, pw in users.items():
@@ -7005,6 +7080,11 @@ def register(app, b):
             return jsonify(ok=True)
         recent.append(now)
         fails[ip] = recent
+        g_recent.append(now)
+        fails["*"] = g_recent
+        if len(fails) > 5000:   # لا تكبر الذاكرة بلا حدود (IPs مزوّرة)
+            for k in [k for k, v in fails.items() if k != "*" and not [t for t in v if now - t < 600]][:2000]:
+                fails.pop(k, None)
         time.sleep(0.8)  # يبطّئ التخمين
         return jsonify(error="كلمة السر غلط"), 401
 
@@ -7029,72 +7109,31 @@ def register(app, b):
             out.pop(0)
         return out
 
-    def _is_arabic_query(query_text=""):
-        cleaned = re.sub(r"```[\s\S]*?```", " ", str(query_text or ""))
-        cleaned = re.sub(r"https?://\S+", " ", cleaned)
-        ar = len(re.findall(r"[\u0600-\u06FF]", cleaned))
-        lat = len(re.findall(r"[A-Za-z\u00C0-\u024F\u0400-\u04FF]", cleaned))
-        return ar > 0 and ar >= max(1, int(lat * 0.25))
-
-    def _query_language_suffix(query_text=""):
-        cleaned = re.sub(r"```[\s\S]*?```", " ", str(query_text or ""))
-        cleaned = re.sub(r"https?://\S+", " ", cleaned)
-        ar = len(re.findall(r"[\u0600-\u06FF]", cleaned))
-        lat = len(re.findall(r"[A-Za-z\u00C0-\u024F\u0400-\u04FF]", cleaned))
-        if ar == 0 and lat == 0:
-            return ""
-        if ar >= max(1, int(lat * 0.25)):
-            return "\n\n[قاعدة اللغة: أجب باللغة العربية بالكامل كما تحدث المستخدم، مع إبقاء الكود البرمجي بالإنجليزية.]"
-        return (
-            "\n\n[CRITICAL LANGUAGE RULE: The user wrote this message in a non-Arabic language. "
-            "You MUST reply 100% in the exact same language as the user's message above (e.g. English, French, German, Turkish, etc.). "
-            "Do NOT reply in Arabic unless the user explicitly asked for an Arabic translation.]"
-        )
-
     def build_memory_prompt(raw, query_text=""):
         if not isinstance(raw, dict) or not raw.get("enabled", True):
             return ""
         name = redact_secrets(str(raw.get("name") or "").strip())[:120]
         custom = redact_secrets(str(raw.get("custom") or "").strip())[:2000]
-        raw_facts = [redact_secrets(str(x).strip())[:400] for x in (raw.get("facts") or [])[:60] if str(x).strip()]
-        # Inject only relevant snippets into the model request (Section 5.3)
-        q_words = [w.lower() for w in re.findall(r"[A-Za-z0-9_]{3,}|[\u0600-\u06FF]{3,}", str(query_text or ""))]
-        if q_words and len(raw_facts) > 8:
-            matched = [f for f in raw_facts if any(w in f.lower() for w in q_words)]
-            facts = (matched + [f for f in raw_facts if f not in matched])[:10]
-        else:
-            facts = raw_facts[:12]
-        is_ar = _is_arabic_query(query_text)
+        raw_facts = [redact_secrets(str(x).strip())[:400] for x in (raw.get("facts") or [])[:800] if str(x).strip()]
+        # المتصفح بيرتّب ويبعت الأنسب (≤12) فبنحترم ترتيبو؛ إذا انبعتت ذاكرة أكبر بنرتّبها هون حسب الصلة
+        facts = mem_rank(raw_facts, query_text, 12) if len(raw_facts) > 12 else raw_facts[:12]
+        while len(facts) > 3 and sum(len(f) for f in facts) > 2600:
+            facts.pop()
         lines = []
-        if is_ar:
-            if name:
-                lines.append("• اسم المستخدم: " + name)
-            if custom:
-                lines.append("• تخصيص وتفضيلات المستخدم:\n" + custom)
-            if facts:
-                lines.append("• ذكريات ومعلومات محفوظة على هاتف المستخدم:\n" + "\n".join("  - " + f for f in facts))
-            mem_block = "\n".join(lines) if lines else "(لا توجد معلومات مسبقة بعد)"
-            return (
-                "[ملف التخصيص والذاكرة من هاتف المستخدم]\n"
-                + mem_block
-                + "\n(ملاحظة للنظام: راعِ تفضيلات المستخدم ومعلوماته أعلاه بشكل طبيعي في ردك. "
-                "وإذا طلب منك المستخدم تذكّر أو حفظ معلومة جديدة عنه للمستقبل مثل «تذكر أني...» أو «احفظ عندك...»، "
-                "أضف في آخر ردك السطر التالي بالضبط: [[MEM: المعلومة باختصار]] ليتم حفظها تلقائياً في ملف هاتفه.)\n---\n"
-            )
-        else:
-            if name:
-                lines.append("• User name: " + name)
-            if custom:
-                lines.append("• User preferences:\n" + custom)
-            if facts:
-                lines.append("• Saved user memory facts:\n" + "\n".join("  - " + f for f in facts))
-            mem_block = "\n".join(lines) if lines else "(No prior saved facts)"
-            return (
-                "[User Profile & Local Device Memory]\n"
-                + mem_block
-                + "\n(System Note: Apply the user's preferences naturally, and reply strictly in the language of the user's latest message. "
-                "If the user explicitly asks you to remember a new fact, append [[MEM: concise fact]] at the end of your reply.)\n---\n"
-            )
+        if name:
+            lines.append("• اسم المستخدم: " + name)
+        if custom:
+            lines.append("• تخصيص وتفضيلات المستخدم:\n" + custom)
+        if facts:
+            lines.append("• ذكريات ومعلومات محفوظة على هاتف المستخدم:\n" + "\n".join("  - " + f for f in facts))
+        mem_block = "\n".join(lines) if lines else "(لا توجد معلومات مسبقة بعد)"
+        return (
+            "[ملف التخصيص والذاكرة من هاتف المستخدم]\n"
+            + mem_block
+            + "\n(ملاحظة للنظام: راعِ تفضيلات المستخدم ومعلوماته أعلاه بشكل طبيعي في ردك. "
+            "وإذا طلب منك المستخدم تذكّر أو حفظ معلومة جديدة عنه للمستقبل مثل «تذكر أني...» أو «احفظ عندك...»، "
+            "أضف في آخر ردك السطر التالي بالضبط: [[MEM: المعلومة باختصار]] ليتم حفظها تلقائياً في ملف هاتفه.)\n---\n"
+        )
 
     MOOD_RE = re.compile(r"\[\[MOOD:\s*(upset|happy|ok|sad|worried|excited|touched)\s*(?::\s*(.+?))?\s*\]\]", re.S)
 
@@ -7155,7 +7194,7 @@ def register(app, b):
                 items += doc_code_items(b.get_doc(W))
                 if items:
                     mem_prompt = CODEFIX_RULES + FIX_RULES + diagnose(items) + numbered_listing(items) + mem_prompt
-            full_user_text = ((mem_prompt + text) if mem_prompt else text) + _query_language_suffix(text)
+            full_user_text = (mem_prompt + text) if mem_prompt else text
             ctx = b.get_doc(W)
             # إذا رفع المستخدم صورة وطلب تعديلها مباشرة من الشات، أو طلب الرجوع لنسخة صورة سابقة، نحوّلها للعقل البصري (run_image)
             is_revert_img = bool(re.search(r"(?i)(ارجع\s+للصورة|رجّ?ع\s+الصورة|الصورة\s+القبلها|الصورة\s+السابقة|الصورة\s+الأولى|\b(?:revert\s+image|previous\s+image)\b)", text))
@@ -7290,6 +7329,7 @@ def register(app, b):
                     AIStack.get_quota_tracker().record_usage(u, bucket_used, requests_delta=1, tokens_delta=est_tok)
                 except Exception:
                     _ = None
+            has_gh_action_tags = bool(re.search(r"<github_[a-z_]+", answer or "", re.I))
             if AIStack is not None and answer:
                 try:
                     pol = AIStack.get_response_policy()
@@ -7300,7 +7340,7 @@ def register(app, b):
                 try:
                     parts_ = (mix_meta or {}).get("participants") or []
                     if is_mix_mode and note == "Ryn mix" and not code_req and len(parts_) > 1 and not has_gh_action_tags:
-                        answer = answer.rstrip() + ("\n\n🧩 شاركوا بحل هالسؤال: " + "، ".join(parts_) if _is_arabic_query(text) else "\n\n🧩 Contributed to this answer: " + ", ".join(parts_))
+                        answer = answer.rstrip() + "\n\n🧩 شاركوا بحل هالسؤال: " + "، ".join(parts_)
                 except Exception:
                     _ = None
                 try:
@@ -7708,7 +7748,9 @@ def register(app, b):
                         try:
                             b64_img = base64.b64encode(gen_img_bytes).decode("ascii")
                             g_key = b._env_key("GROQ_API_KEY")
-                            for v_mdl in ("meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"):
+                            # llama-4 scout/maverick انسحبوا من Groq (2026) فكان الطلب بيفشل مرتين بلا فايدة (30 ثانية لكل وحدة).
+                            # حط GROQ_VISION_MODELS (مفصولة بفاصلة) فقط إذا تأكدت إنو في موديل رؤية متاح عندك.
+                            for v_mdl in [m_.strip() for m_ in os.environ.get("GROQ_VISION_MODELS", "").split(",") if m_.strip()]:
                                 vr = b.requests.post(
                                     b.GROQ_BASE + "/chat/completions",
                                     headers={"Authorization": "Bearer " + g_key, "Content-Type": "application/json"},
@@ -8553,15 +8595,32 @@ def register(app, b):
         cur_u = uid()
         mem_svc = AIStack.get_memory_service() if AIStack is not None else None
         mem_status = mem_svc.get_local_memory_status(cur_u) if mem_svc else {"memory_is_local": True, "status_badge": "Memory is local"}
+        # آخر نتيجة اختبارات مسجّلة بـ audit/baseline_tests.json (مو نص ثابت بالكود). حدّثها بعد كل تشغيل للاختبارات.
+        baseline = {}
+        try:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "audit", "baseline_tests.json"), encoding="utf-8") as fh:
+                baseline = (json.load(fh) or {}).get("post_repair_run") or {}
+        except Exception:
+            baseline = {}
+        recorded = str(baseline.get("status") or "UNKNOWN")
+        # تحذيرات إعدادات النشر الشائعة (بتظهر هون بدل ما تكتشفها بعد ما تضيع البيانات أو تنسرق الجلسة)
+        warnings = []
+        if not os.environ.get("WEB_SECRET", "").strip():
+            warnings.append("WEB_SECRET غير مضاف: المفتاح عشوائي ومحفوظ بملف مؤقت؛ ضيف WEB_SECRET عشوائي طويل بـ Render")
+        if not os.environ.get("RYN_DATA_DIR", "").strip():
+            warnings.append("RYN_DATA_DIR غير مضاف: سجل RYN Ultra وبيانات السيرفر بمجلد مؤقت وبتنمسح مع كل نشر")
         return jsonify(
             ok=True,
-            gate_result="PASS",
+            gate_result="PASS" if recorded == "PASSED" and not warnings else ("WARN" if recorded == "PASSED" else "CHECK"),
             project_health={
                 "telegram_removed": True,
                 "github_editing_removed": True,
                 "device_agents_removed": True,
-                "baseline_test_status": "PASSED",
+                "baseline_test_status": recorded,
+                "baseline_total_tests": baseline.get("total_tests"),
+                "baseline_is_recorded_not_live": True,
             },
+            warnings=warnings,
             local_memory=mem_status,
         )
 
