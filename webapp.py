@@ -738,8 +738,9 @@ body{background-color:#131314;background-image:none;color:var(--txt)}
 /* --- الرأس والروبوت التفاعلي --- */
 .top{background:transparent!important;padding:4px 16px 6px;gap:4px}
 .mini{width:40px;height:40px;top:10px;border-radius:50%;background:transparent;border:0;color:var(--txt);transition:background .18s ease}
-#histBtn{right:12px}#menuBtn{left:12px}
+#histBtn{right:12px}#pcLayoutBtn{left:12px!important;right:auto!important;display:flex!important;top:10px}
 html[dir="ltr"] #histBtn{right:auto;left:12px}
+html[dir="ltr"] #pcLayoutBtn{left:auto!important;right:12px!important}
 #app .mini:hover{background:#282a2c;border:0;box-shadow:none}
 .botwrap{width:88px;height:88px;transition:width .28s ease,height .28s ease}
 #app:has(#msgs .hint) .botwrap{width:116px;height:116px}
@@ -836,7 +837,6 @@ html[dir="ltr"] #app .drawer,html[dir="ltr"] #app #drawer{left:0;right:auto;bord
 #app #menu{position:static!important;background:#131314!important;border:1px solid var(--line)!important;border-radius:16px!important;box-shadow:none!important;min-width:0!important;padding:6px!important;z-index:auto!important;width:100%}
 #app #menu button,#app #menu a{border-radius:10px!important;padding:9px 12px!important;color:#c4c7c5;font-size:13px}
 #app #menu button:hover,#app #menu a:hover{background:#282a2c!important;color:#e3e3e3!important}
-#app #menu #pcLayoutBtn{position:static!important;right:auto!important;top:auto!important;display:flex!important;width:100%}
 
 /* --- الأزرار العائمة وقائمة الموديلات --- */
 .dia{transform:none!important;border-radius:50%;background:#1e1f20;border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 16px rgba(0,0,0,.45)}
@@ -943,6 +943,7 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
     <button class="mini" id="histBtn" aria-label="المحادثات السابقة" title="المحادثات السابقة">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg>
     </button>
+    <button class="mini" id="pcLayoutBtn" type="button" aria-label="تبديل عرض الكمبيوتر (PC) / الهاتف" title="تبديل عرض الكمبيوتر (PC) / الهاتف">🖥️</button>
     <div class="botwrap" id="botBox"></div>
     <div id="say"></div>
     <div class="toprow">
@@ -1001,6 +1002,7 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
       <button type="button" id="menuBtn" aria-label="الإعدادات" aria-expanded="false">⚙️ الإعدادات</button>
       <button id="langBtn" type="button" aria-label="Switch language" title="التبديل بين العربية والإنجليزية">🌐 ترجمة</button>
     </div>
+      <div id="menu" hidden>
     <div class="d-actions">
       <button type="button" class="dquota-btn" id="dDlConvBtn">💾 تنزيل المحادثة الحالية (JSON/MD)</button>
       <button type="button" class="dquota-btn" id="dExpAllBtn">📦 تصدير كل المحادثات (Export All)</button>
@@ -1008,8 +1010,6 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
       <input type="file" id="dImpConvFile" hidden accept=".json,application/json">
       <button type="button" class="dquota-btn" id="dQuotaBtn">📊 حدود النماذج وفحص النظام</button>
     </div>
-      <div id="menu" hidden>
-      <button class="mini" id="pcLayoutBtn" type="button" title="تبديل عرض الكمبيوتر (PC) / الهاتف">🖥️</button>
     <button id="mNew">✨ محادثة جديدة</button>
     <button id="mVoiceStudio">🗣️ اختيار الصوت العربي (نبرة الكلمات)</button>
     <button id="mMem">🧠 ملف التخصيص والذاكرة</button>
@@ -6286,6 +6286,31 @@ def describe(mid, ready=True, model=""):
         if "gemma" in m:
             return "Groq مجاني · خفيف وسريع من Google"
         return "Groq مجاني · استجابة فورية"
+    if mid.startswith("freeapi:"):
+        parts = mid.split(":", 2)
+        if len(parts) == 3:
+            slug, m_id = parts[1], parts[2].lower()
+            prov_names = {
+                "mistral": "Mistral AI مجاني",
+                "nvidia": "NVIDIA NIM مجاني",
+                "zai": "Z AI (GLM) مجاني",
+                "hf": "Hugging Face مجاني",
+                "cf": "Cloudflare AI مجاني",
+                "kilo": "Kilo Code مجاني",
+                "ovh": "OVHcloud AI مجاني",
+                "ollama": "Ollama Cloud مجاني",
+                "aion": "Aion Labs مجاني",
+                "modelscope": "ModelScope مجاني",
+                "siliconflow": "SiliconFlow مجاني",
+                "llm7": "LLM7.io مجاني",
+                "cohere": "Cohere مجاني",
+            }
+            pname = prov_names.get(slug, slug)
+            if "coder" in m_id or "codestral" in m_id or "code" in m_id:
+                return f"{pname} · متخصص بالبرمجة وتصحيح الكود"
+            if "r1" in m_id or "reason" in m_id or "ultra" in m_id or "deepseek-v4" in m_id:
+                return f"{pname} · استنتاج عميق وتحليل متقدم"
+            return f"{pname} · نموذج محادثة وبرمجة"
     if mid.startswith("or:"):
         m = (model or mid).lower()
         if m.endswith("openrouter/free"):
@@ -7121,17 +7146,11 @@ def register(app, b):
             {"id": "img:flux", "label": "RYN Visual Brain 🎨", "desc": describe("img:flux", ready=image_ready())},
             {"id": "mix", "label": "Ryn mix 🧩 (العقل الهجين)", "desc": describe("mix")},
             {"id": "gemini", "label": "Gemini Auto ⚡", "desc": describe("gemini")},
-            {"id": "gemini:gemini-3.8-flash", "label": "Gemini 3.8 Flash", "desc": describe("gemini:gemini-3.8-flash")},
-            {"id": "gemini:gemini-4-hydrogen", "label": "Gemini 4 Hydrogen", "desc": describe("gemini:gemini-4-hydrogen")},
-            {"id": "gemini:gemini-4-neon", "label": "Gemini 4 Neon", "desc": describe("gemini:gemini-4-neon")},
-            {"id": "gemini:gemini-4-argon", "label": "Gemini 4 Argon", "desc": describe("gemini:gemini-4-argon")},
             {"id": "gemini:gemini-4-carbon", "label": "Gemini 4 Carbon", "desc": describe("gemini:gemini-4-carbon")},
-            {"id": "gemini:gemini-3.6-flash", "label": "Gemini 3.6 Flash", "desc": describe("gemini:gemini-3.6-flash")},
-            {"id": "gemini:gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite", "desc": describe("gemini:gemini-3.5-flash-lite")},
-            {"id": "gemini:gemini-3.1-flash-lite", "label": "Gemini 3.1 Flash-Lite", "desc": describe("gemini:gemini-3.1-flash-lite")},
-            {"id": "gemini:gemini-3.1-pro-preview", "label": "Gemini 3.1 Pro", "desc": describe("gemini:gemini-3.1-pro-preview")},
-            {"id": "gemini:gemini-3-flash-preview", "label": "Gemini 3 Flash", "desc": describe("gemini:gemini-3-flash-preview")},
-            {"id": "gemini:gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash-Lite", "desc": describe("gemini:gemini-2.5-flash-lite")},
+            {"id": "gemini:gemini-4-argon", "label": "Gemini 4 Argon", "desc": describe("gemini:gemini-4-argon")},
+            {"id": "gemini:gemini-4-neon", "label": "Gemini 4 Neon", "desc": describe("gemini:gemini-4-neon")},
+            {"id": "gemini:gemini-4-hydrogen", "label": "Gemini 4 Hydrogen", "desc": describe("gemini:gemini-4-hydrogen")},
+            {"id": "gemini:gemini-3.8-flash", "label": "Gemini 3.8 Flash", "desc": describe("gemini:gemini-3.8-flash")},
         ]
         seen_ids = {o["id"] for o in opts}
 
@@ -7193,24 +7212,25 @@ def register(app, b):
                     _add_opt("or:" + dyn_id, clean_lbl, dyn_id)
             except Exception:
                 _ = None
-        # 4) كل موديلات Gemini المتاحة بمفتاحك: الموجود ما بيتغيّر، بس بينضاف الناقص
+        # 4) كل مزوّدي الـ API المجانيين الإضافيين (Mistral / NVIDIA NIM / Z AI / HuggingFace / Cloudflare / Kilo / OVH / Ollama / Aion / ModelScope / SiliconFlow / LLM7 / Cohere)
         try:
-            for g_id in (b.discover_gemini_models() or []):
-                g_tail = g_id[len("gemini-"):] if g_id.startswith("gemini-") else g_id
-                _add_opt("gemini:" + g_id, "Gemini " + g_tail.replace("-", " ").title())
+            for slug, cfg in getattr(b, "FREE_API_PROVIDERS", {}).items():
+                if hasattr(b, "free_api_ready") and b.free_api_ready(slug):
+                    for m_id, m_lbl in cfg.get("models", ()):
+                        _add_opt(f"freeapi:{slug}:{m_id}", m_lbl, m_id)
         except Exception:
             _ = None
-        # 5) كل موديلات OpenRouter للمحادثة (المجانية والمدفوعة). المدفوعة بتنخصم من رصيد مفتاحك.
+        # 5) باقي موديلات OpenRouter المجانية للمحادثة (بدون Gemini لأن Gemini حصراً من مفتاح Google)
         try:
             if b._or_key():
-                excl = tuple(getattr(b, "_EXCLUDE", ())) + ("whisper", "tts", "embed", "rerank", "moderation", "image", "audio", "guard", "transcribe", "speech", "decider", "recraft", "span-01")
+                excl = tuple(getattr(b, "_EXCLUDE", ())) + ("whisper", "tts", "embed", "rerank", "moderation", "image", "audio", "guard", "transcribe", "speech", "decider", "recraft", "span-01", "google/gemini")
                 for it in b.openrouter_catalog():
                     o_id = it.get("id", "")
                     if not o_id or any(x in o_id.lower() for x in excl) or ("or:" + o_id) in seen_ids:
                         continue
                     if len(opts) >= 320:
                         break
-                    if it.get("free"):   # مجاني فقط (المدفوعة انشالت بطلب المستخدم)
+                    if it.get("free"):
                         _add_opt("or:" + o_id, o_id.replace(":free", "").split("/")[-1] + " (Free)", o_id)
         except Exception:
             _ = None

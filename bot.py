@@ -378,6 +378,11 @@ def _pname(prov):
         return p[5:]
     if p.startswith("or:"):
         return p[3:].replace(":free", "")
+    if p.startswith("freeapi:"):
+        parts = p.split(":", 2)
+        if len(parts) == 3:
+            info = FREE_API_PROVIDERS.get(parts[1], {})
+            return f"{parts[2].replace(':free', '').split('/')[-1]} ({info.get('name', parts[1])})"
     return p
 
 
@@ -508,7 +513,7 @@ def openrouter_catalog(force=False):
 
 
 _EXCLUDE = ("embed", "guard", "moderation", "whisper", "tts", "image", "audio", "vision", "ocr", "rerank",
-            "lyria", "clip", "veo", "imagen", "sora", "safeguard", "decider", "recraft", "span-01")
+            "lyria", "clip", "veo", "imagen", "sora", "safeguard", "decider", "recraft", "span-01", "google/gemini")
 _HEAVY = ("r1", "pro", "reason", "think", "550b", "280b", "235b", "480b", "120b", "80b", "maverick", "70b", "ultra", "max", "v4", "large", "opus")
 _LIGHT = ("flash", "mini", "small", "lite", "lightning", "8b", "7b", "4b", "3b", "nano", "instruct")
 _FAMILY_ORDER = ("openrouter/free", "ernie", "baidu", "nemotron", "particle", "dots", "ling", "inclusionai", "gemma", "qwen", "deepseek", "gpt-oss", "kimi", "moonshot", "llama", "mistral", "codestral", "glm", "microsoft", "minimax", "trinity")
@@ -796,6 +801,200 @@ def ask_model(chat_id, contents, deep=False, json_mode=False, code=False):
     return ans, (note or pre_note)
 
 
+
+# ============ مزوّدو الـ API المجانية (من awesome-free-llm-apis) ============
+FREE_API_PROVIDERS = {
+    "mistral": {
+        "name": "Mistral AI",
+        "key_env": "MISTRAL_API_KEY",
+        "base": "https://api.mistral.ai/v1",
+        "models": (
+            ("mistral-large-2512", "Mistral Large 2512 (Mistral)"),
+            ("mistral-medium-3-5", "Mistral Medium 3.5 (Mistral)"),
+            ("mistral-small-2603", "Mistral Small 2603 (Mistral)"),
+            ("codestral-2508", "Codestral 2508 (Mistral)"),
+            ("ministral-14b-2512", "Ministral 14B (Mistral)"),
+            ("ministral-8b-2512", "Ministral 8B (Mistral)"),
+            ("ministral-3b-2512", "Ministral 3B (Mistral)"),
+        ),
+    },
+    "nvidia": {
+        "name": "NVIDIA NIM",
+        "key_env": "NVIDIA_API_KEY",
+        "base": "https://integrate.api.nvidia.com/v1",
+        "models": (
+            ("nvidia/llama-3.1-nemotron-ultra-253b-v1", "Nemotron Ultra 253B (NVIDIA)"),
+            ("nvidia/nemotron-3-super-120b-a12b", "Nemotron 3 Super 120B (NVIDIA)"),
+            ("nvidia/nemotron-3-nano-30b-a3b", "Nemotron 3 Nano 30B (NVIDIA)"),
+            ("meta/llama-3.3-70b-instruct", "Llama 3.3 70B (NVIDIA)"),
+            ("google/gemma-4-31b-it", "Gemma 4 31B (NVIDIA)"),
+            ("mistralai/mistral-large-2-instruct", "Mistral Large 2 (NVIDIA)"),
+            ("mistralai/mistral-nemotron", "Mistral Nemotron (NVIDIA)"),
+            ("minimaxai/minimax-m3", "MiniMax M3 (NVIDIA)"),
+        ),
+    },
+    "zai": {
+        "name": "Z AI (GLM)",
+        "key_env": "ZAI_API_KEY",
+        "base": "https://open.bigmodel.cn/api/paas/v4",
+        "models": (
+            ("glm-4.7-flash", "GLM 4.7 Flash (Z AI)"),
+            ("glm-4.6v-flash", "GLM 4.6V Flash (Z AI)"),
+            ("glm-4.5-flash", "GLM 4.5 Flash (Z AI)"),
+        ),
+    },
+    "hf": {
+        "name": "Hugging Face",
+        "key_env": "HF_TOKEN",
+        "base": "https://router.huggingface.co/v1",
+        "models": (
+            ("meta-llama/Llama-3.1-8B-Instruct", "Llama 3.1 8B (HF)"),
+            ("microsoft/phi-4", "Phi-4 (HF)"),
+            ("Qwen/Qwen2.5-Coder-7B-Instruct", "Qwen 2.5 Coder 7B (HF)"),
+            ("Qwen/Qwen2.5-7B-Instruct", "Qwen 2.5 7B (HF)"),
+            ("google/gemma-3-4b-it", "Gemma 3 4B (HF)"),
+        ),
+    },
+    "cf": {
+        "name": "Cloudflare AI",
+        "key_env": "CF_API_TOKEN",
+        "extra_env": "CF_ACCOUNT_ID",
+        "base_tpl": "https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/v1",
+        "models": (
+            ("@cf/openai/gpt-oss-120b", "GPT-OSS 120B (Cloudflare)"),
+            ("@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B (Cloudflare)"),
+            ("@cf/meta/llama-4-scout-17b-16e-instruct", "Llama 4 Scout (Cloudflare)"),
+            ("@cf/google/gemma-4-26b-a4b-it", "Gemma 4 26B (Cloudflare)"),
+            ("@cf/zai-org/glm-4.7-flash", "GLM 4.7 Flash (Cloudflare)"),
+            ("@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1 (Cloudflare)"),
+            ("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", "DeepSeek R1 32B (Cloudflare)"),
+        ),
+    },
+    "kilo": {
+        "name": "Kilo Code",
+        "key_env": "KILO_API_KEY",
+        "base": "https://api.kilo.ai/api/gateway",
+        "models": (
+            ("nvidia/nemotron-3-ultra-550b-a55b:free", "Nemotron 3 Ultra 550B (Kilo)"),
+            ("stepfun/step-3.7-flash:free", "Step 3.7 Flash (Kilo)"),
+            ("nvidia/nemotron-3-super-120b-a12b:free", "Nemotron 3 Super 120B (Kilo)"),
+            ("poolside/laguna-s-2.1:free", "Laguna S 2.1 (Kilo)"),
+            ("poolside/laguna-xs-2.1:free", "Laguna XS 2.1 (Kilo)"),
+            ("cohere/north-mini-code:free", "Cohere North Mini Code (Kilo)"),
+        ),
+    },
+    "ovh": {
+        "name": "OVHcloud AI",
+        "key_env": "OVH_API_KEY",
+        "base": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
+        "models": (
+            ("Qwen3.5-397B-A17B", "Qwen 3.5 397B (OVH)"),
+            ("gpt-oss-120b", "GPT-OSS 120B (OVH)"),
+            ("gpt-oss-20b", "GPT-OSS 20B (OVH)"),
+            ("Meta-Llama-3_3-70B-Instruct", "Llama 3.3 70B (OVH)"),
+            ("Qwen3.6-27B", "Qwen 3.6 27B (OVH)"),
+            ("Qwen3-Coder-30B-A3B-Instruct", "Qwen3 Coder 30B (OVH)"),
+            ("Qwen3-32B", "Qwen3 32B (OVH)"),
+        ),
+    },
+    "ollama": {
+        "name": "Ollama Cloud",
+        "key_env": "OLLAMA_API_KEY",
+        "base": "https://ollama.com/v1",
+        "models": (
+            ("deepseek-v4-pro", "DeepSeek V4 Pro (Ollama)"),
+            ("deepseek-v4-flash", "DeepSeek V4 Flash (Ollama)"),
+            ("kimi-k3", "Kimi K3 (Ollama)"),
+            ("minimax-m3", "MiniMax M3 (Ollama)"),
+            ("gpt-oss:120b", "GPT-OSS 120B (Ollama)"),
+            ("gpt-oss:20b", "GPT-OSS 20B (Ollama)"),
+            ("nemotron-3-ultra", "Nemotron 3 Ultra (Ollama)"),
+            ("mistral-large-3:675b", "Mistral Large 3 675B (Ollama)"),
+        ),
+    },
+    "aion": {
+        "name": "Aion Labs",
+        "key_env": "AION_API_KEY",
+        "base": "https://api.aionlabs.ai/v1",
+        "models": (
+            ("aion-labs/aion-3.0", "Aion 3.0 (Aion)"),
+            ("aion-labs/aion-3.0-mini", "Aion 3.0 Mini (Aion)"),
+            ("aion-labs/aion-2.0", "Aion 2.0 (Aion)"),
+            ("aion-labs/aion-rp-llama-3.1-8b", "Aion RP Llama 8B (Aion)"),
+        ),
+    },
+    "modelscope": {
+        "name": "ModelScope",
+        "key_env": "MODELSCOPE_API_KEY",
+        "base": "https://api-inference.modelscope.cn/v1",
+        "models": (
+            ("Qwen/Qwen3.5-35B-A3B", "Qwen 3.5 35B (ModelScope)"),
+            ("Qwen/Qwen3.5-27B", "Qwen 3.5 27B (ModelScope)"),
+        ),
+    },
+    "siliconflow": {
+        "name": "SiliconFlow",
+        "key_env": "SILICONFLOW_API_KEY",
+        "base": "https://api.siliconflow.cn/v1",
+        "models": (
+            ("Qwen/Qwen3-8B", "Qwen3 8B (SiliconFlow)"),
+        ),
+    },
+    "llm7": {
+        "name": "LLM7.io",
+        "key_env": "LLM7_API_KEY",
+        "base": "https://api.llm7.io/v1",
+        "models": (
+            ("gpt-oss:20b", "GPT-OSS 20B (LLM7)"),
+            ("mistral-Nemo-Instruct-2407", "Mistral Nemo (LLM7)"),
+            ("minimax-m2.7", "MiniMax M2.7 (LLM7)"),
+        ),
+    },
+    "cohere": {
+        "name": "Cohere",
+        "key_env": "COHERE_API_KEY",
+        "base": "https://api.cohere.com/compatibility/v1",
+        "models": (
+            ("command-a-plus-05-2026", "Command A+ (Cohere)"),
+            ("command-a-03-2025", "Command A (Cohere)"),
+            ("command-a-reasoning-08-2025", "Command A Reasoning (Cohere)"),
+            ("command-r-plus-08-2024", "Command R+ (Cohere)"),
+            ("command-r-08-2024", "Command R (Cohere)"),
+        ),
+    },
+}
+
+
+def free_api_ready(slug):
+    cfg = FREE_API_PROVIDERS.get(slug)
+    if not cfg:
+        return False
+    if not _env_key(cfg["key_env"]):
+        return False
+    extra = cfg.get("extra_env")
+    if extra and not _env_key(extra):
+        return False
+    return True
+
+
+def free_api_backend(slug):
+    cfg = FREE_API_PROVIDERS.get(slug)
+    if not cfg:
+        return None
+    base = cfg.get("base")
+    if not base and cfg.get("base_tpl"):
+        extra = cfg.get("extra_env", "")
+        base = cfg["base_tpl"].format(**{extra: _env_key(extra)})
+    return {
+        "name": cfg["name"],
+        "base": base,
+        "key_env": cfg["key_env"],
+        "timeout_fast": 60,
+        "timeout_deep": 140,
+        "compact": True,
+    }
+
+
 def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
     """بيرجّع (الجواب، ملاحظة) مع دعم جميع النماذج المجانية (Gemini / Groq / OpenRouter / Codestral) والتبديل الذكي عند ضغط السيرفر."""
     prov = chat_provider.get(chat_id, DEFAULT_PROVIDER)
@@ -886,6 +1085,35 @@ def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
                 return ans, f"(استخدمت Gemini لأن {_pname(prov)} مضغوط حالياً)"
             raise ProviderError(getattr(e, "code", None), f"{_pname(prov)} ← {e}")
         raise ProviderError(502, f"{_pname(prov)} ← رد فاضي")
+
+
+    if prov.startswith("freeapi:"):
+        parts = prov.split(":", 2)
+        if len(parts) == 3:
+            slug, target_m = parts[1], parts[2]
+            cfg = FREE_API_PROVIDERS.get(slug)
+            if not cfg or not free_api_ready(slug):
+                if client:
+                    ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+                    return ans, f"(احتياط Gemini — مفتاح {cfg['key_env'] if cfg else slug} غير مضاف)"
+                raise ProviderError(401, f"{cfg['key_env'] if cfg else slug} مو مضاف على Render")
+            backend = free_api_backend(slug)
+            all_m = [m[0] for m in cfg.get("models", ())]
+            chain = [target_m] + [m for m in all_m if m != target_m][:3]
+            out_fa = {}
+            try:
+                ans = _call_backend(backend, contents, deep, json_mode, models=chain, out=out_fa)
+                if ans:
+                    used_m = out_fa.get("model") or target_m
+                    note_fa = None if used_m == target_m else f"(تبديل ذكي إلى {used_m})"
+                    return ans, note_fa
+            except Exception as e:
+                if client:
+                    log.warning("FreeAPI %s/%s failed (%s), falling back to Gemini", slug, target_m, e)
+                    ans = ask_gemini(contents, deep=deep, json_mode=json_mode)
+                    return ans, f"(استخدمت Gemini لأن {_pname(prov)} مضغوط حالياً)"
+                raise ProviderError(getattr(e, "code", None), f"{_pname(prov)} ← {e}")
+            raise ProviderError(502, f"{_pname(prov)} ← رد فاضي")
 
     if prov in PROVIDERS and provider_ready(prov):
         try:
