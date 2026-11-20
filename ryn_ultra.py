@@ -260,22 +260,10 @@ def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any
         models = [explicit] if explicit else list(ULTRA_GEMINI_MODELS)
         return {"kind": "gemini", "system": ""}, models, "Google Gemini API"
 
-    # 2) Ollama Cloud (OLLAMA_API_KEY) — يعطي DeepSeek V4 Pro/Flash و Kimi K3 و GPT-OSS 120B مباشرة للبرمجة والتحليل
     free_ready = getattr(b, "free_api_ready", None)
     free_backend = getattr(b, "free_api_backend", None)
-    if callable(free_ready) and callable(free_backend) and free_ready("ollama"):
-        ollama_map = {
-            "deepseek": ["deepseek-v4-pro", "deepseek-v4-flash"],
-            "kimi": ["kimi-k3"],
-            "gpt": ["gpt-oss:120b", "gpt-oss:20b"],
-        }
-        om = [explicit] if explicit else ollama_map.get(agent_id, [])
-        if om:
-            be = free_backend("ollama")
-            if be:
-                return dict(be), om[:5], "Ollama Cloud"
 
-    # 3) Groq LPU — نفضّل 120B لـ GPT و Qwen 3.8 27B للبرمجة والتحليل
+    # 2) Groq LPU أولاً لـ GPT (120B) و Qwen (3.8 27B) — الأسرع والأكثر استقراراً للبرمجة والتحليل
     groq_ready = bool(getattr(b, "_groq_ready", lambda: False)())
     if groq_ready and agent_id in ("gpt", "qwen"):
         try:
@@ -292,6 +280,31 @@ def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any
                 return dict(b.GROQ_CHAT_BACKEND), matches[:5], "Groq"
         except Exception:
             pass
+
+    # 3) Ollama Cloud (OLLAMA_API_KEY) — نتحقق من الكتالوج الحي أولاً لـ DeepSeek و Kimi و GPT
+    if callable(free_ready) and callable(free_backend) and free_ready("ollama"):
+        ollama_cat = []
+        try:
+            ollama_cat = list(getattr(b, "ollama_catalog", lambda: [])() or [])
+        except Exception:
+            ollama_cat = []
+        if ollama_cat:
+            if agent_id == "gpt":
+                om = [m for m in ollama_cat if "gpt-oss" in m.lower()]
+            else:
+                om = [m for m in ollama_cat if any(k in m.lower() for k in agent["match"])]
+            om = [explicit] if explicit else _rank_ultra_models(om)
+        else:
+            ollama_fallback = {
+                "deepseek": ["deepseek-v4.1-flash", "deepseek-v4-flash", "deepseek-v4-pro"],
+                "kimi": ["kimi-k3", "kimi-k2.5:cloud", "kimi-k2.5"],
+                "gpt": ["gpt-oss:120b", "gpt-oss:20b"],
+            }
+            om = [explicit] if explicit else ollama_fallback.get(agent_id, [])
+        if om:
+            be = free_backend("ollama")
+            if be:
+                return dict(be), om[:5], "Ollama Cloud"
 
     # 4) OpenRouter — للنماذج المجانية المتاحة من نفس العائلة (مرتّبة بالأقوى للبرمجة والتحليل)
     provider_name = agent["provider"]

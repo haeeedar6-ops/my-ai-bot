@@ -902,6 +902,7 @@ FREE_API_PROVIDERS = {
         "key_env": "OLLAMA_API_KEY",
         "base": "https://ollama.com/v1",
         "models": (
+            ("deepseek-v4.1-flash", "DeepSeek V4.1 Flash (Ollama)"),
             ("deepseek-v4-pro", "DeepSeek V4 Pro (Ollama)"),
             ("deepseek-v4-flash", "DeepSeek V4 Flash (Ollama)"),
             ("kimi-k3", "Kimi K3 (Ollama)"),
@@ -993,6 +994,42 @@ def free_api_backend(slug):
         "timeout_deep": 140,
         "compact": True,
     }
+
+
+
+_ollama_cache = {"t": 0.0, "ids": [], "fail_t": 0.0}
+
+
+def ollama_catalog(force=False):
+    """جلب قائمة موديلات Ollama Cloud الحقيقية المتاحة حالياً (تُخزن 6 ساعات)."""
+    now = time.time()
+    if not force and ((_ollama_cache["ids"] and now - _ollama_cache["t"] < 6 * 3600) or (now - _ollama_cache.get("fail_t", 0) < 60)):
+        return _ollama_cache["ids"]
+    key = _env_key("OLLAMA_API_KEY")
+    if not key:
+        return []
+    ids = []
+    hdrs = {"Authorization": "Bearer " + key}
+    for url in ("https://ollama.com/v1/models", "https://ollama.com/api/tags"):
+        try:
+            r = requests.get(url, headers=hdrs, timeout=15)
+            if r.status_code == 200:
+                data = r.json()
+                raw = data.get("data") or data.get("models") or []
+                for it in raw:
+                    if isinstance(it, dict):
+                        mid = it.get("id") or it.get("model") or it.get("name")
+                        if mid and mid not in ids:
+                            ids.append(str(mid))
+                if ids:
+                    break
+        except Exception as e:
+            log.warning("Ollama catalog (%s): %s", url, e)
+    if ids:
+        _ollama_cache.update(t=now, ids=ids, fail_t=0.0)
+    else:
+        _ollama_cache["fail_t"] = now
+    return ids or _ollama_cache["ids"]
 
 
 def _ask_model_core(chat_id, contents, deep=False, json_mode=False):
