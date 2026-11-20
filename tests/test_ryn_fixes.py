@@ -547,7 +547,8 @@ class ModelLists(unittest.TestCase):
             self.assertNotIn(m, self.DEAD_GROQ)
         for m in bot.OR_FREE_DEFAULTS:
             self.assertNotIn("deepseek", m)                    # ما عاد في DeepSeek مجاني بـ OpenRouter
-        self.assertNotIn("gemini-3.5-flash", list(bot.FAST_MODELS) + list(bot.DEEP_MODELS))
+        for gone in ("gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-pro"):      # غير موجود / ملغى عند Google
+            self.assertNotIn(gone, list(bot.FAST_MODELS) + list(bot.DEEP_MODELS), gone)
         self.assertEqual(bot.FAST_MODELS[0], os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip())
         with open(os.path.join(ROOT, "webapp.py"), encoding="utf-8") as fh:
             src = fh.read()
@@ -590,3 +591,54 @@ class ModelLists(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ModelListAdditions(Base):
+    """الموديلات الموجودة ما بتتغيّر؛ بس بتنضاف الناقصة من كتالوج OpenRouter وGemini."""
+
+    def test_existing_models_kept_and_missing_ones_added(self):
+        class CatalogBot(FakeBot):
+            def openrouter_catalog(self, force=False):
+                return [
+                    {"id": "deepseek/deepseek-r1:free", "free": True, "ctx": 1000},
+                    {"id": "openai/gpt-4o-mini", "free": False, "ctx": 128000},
+                    {"id": "openai/whisper-large", "free": False, "ctx": 10},
+                ]
+
+            def free_chat_models(self, limit=25):
+                return ["deepseek/deepseek-r1:free"]
+
+            def discover_gemini_models(self):
+                return ["gemini-3.8-flash", "gemini-4-hydrogen"]
+
+        bot = CatalogBot()
+        _app, c, _ = self.make_app(bot)
+        models = c.get("/api/models", headers=H).get_json()
+        items = models["options"]
+        ids = [m["id"] for m in items]
+        # الموجود قبل كان ولسا موجود بنفس الـ id
+        self.assertIn("gemini:gemini-3.8-flash", ids)
+        self.assertIn("or:deepseek/deepseek-r1:free", ids)
+        # الناقص انضاف
+        self.assertIn("gemini:gemini-4-hydrogen", ids)
+        # whisper (صوت مو محادثة) ما بينضاف
+        self.assertNotIn("or:openai/whisper-large", ids)
+        # المدفوعة ما بتنضاف (المستخدم طلب مجاني فقط)
+        self.assertNotIn("or:openai/gpt-4o-mini", ids)
+        # ما في تكرار
+        self.assertEqual(len(ids), len(set(ids)))
+
+
+class DrawerLayout(Base):
+    def test_counters_button_and_translate_sit_under_chats_and_menu_is_collapsed(self):
+        _app, c, _b = self.make_app()
+        html = c.get("/").get_data(as_text=True)
+        self.assertNotIn('id="menuBtn" aria-label="القائمة"', html.split('id="dList"')[0])   # ⋮ مو بالشريط العلوي
+        drawer = html[html.index('id="dList"'):html.index('id="dFoot"')]
+        self.assertLess(drawer.index('id="dList"'), drawer.index('class="dsubbar"'))
+        self.assertLess(drawer.index('class="dsubbar"'), drawer.index('class="d-actions"'))
+        bar = drawer[drawer.index('class="dsubbar"'):drawer.index('class="d-actions"')]
+        self.assertIn('id="menuBtn"', bar)
+        self.assertIn('id="langBtn"', bar)
+        self.assertIn('id="menu" hidden', html)                                               # القائمة مخفية بالأول
+        self.assertIn('id="pcLayoutBtn"', html[html.index('id="menu" hidden'):html.index('id="dFoot"')])

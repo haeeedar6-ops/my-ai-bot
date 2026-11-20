@@ -43,29 +43,32 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("
 PORT = int(os.environ.get("PORT", 10000))
 
 # موديلات سريعة للأسئلة العادية، وموديلات أعمق للأسئلة المركبة.
-# تم التحقق من الأسماء مقابل صفحة Models الرسمية لـ Gemini API (آخر تحديث لها 2026-10-28).
-# gemini-3.5-flash مو موجود بالقائمة الحالية فانشال من الافتراضي (كان بيعمل طلب فاشل بأول كل رد).
+# تم التحقق من الأسماء مقابل صفحة Models الرسمية لـ Gemini API (2026-11).
+# - gemini-3.5-flash مو موجود بالقائمة الحالية (كان بيعمل طلب فاشل بأول كل رد) فانشال.
+# - gemini-2.5-flash و gemini-2.5-pro ملغيين (بيتحوّلو تلقائياً بـ 1/12/2026) فانشالو؛ gemini-2.5-flash-lite لسا شغّال.
+# - عائلة Gemini 4 موجودة (hydrogen للشغل اليومي، argon للتفكير، carbon الأقوى). خلّيت gemini-3.8-flash الأول لأنو
+#   المجرّب عندك؛ لتجرّب الأحدث حط GEMINI_MODEL=gemini-4-hydrogen و GEMINI_DEEP_MODEL=gemini-4-argon بـ Render.
 # ask_gemini بيفلتر هالقوائم بالموديلات المتاحة فعلاً على مفتاحك وبيتذكّر الأسماء الميتة.
 FAST_MODELS = [
     os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip(),
     "gemini-3.8-flash",
+    "gemini-4-hydrogen",
     "gemini-3.6-flash",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
     "gemini-3-flash-preview",
-    "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
 ]
 DEEP_MODELS = [
     os.environ.get("GEMINI_DEEP_MODEL", "gemini-3.8-flash").strip(),
     "gemini-3.8-flash",
     "gemini-4-argon",
+    "gemini-4-carbon",
     "gemini-3.6-flash",
     "gemini-3.1-pro-preview",
+    "gemini-4-hydrogen",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
 ]
 MODELS = FAST_MODELS + DEEP_MODELS  # للعرض بس
 FAST_TIMEOUT_MS = 30000
