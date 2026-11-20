@@ -36,12 +36,15 @@ AGENTS = [
     {"id": "qwen", "name": "Qwen", "role": "Lead Developer", "color": "#fb923c",
      "provider": "qwen", "match": ("qwen",), "env_model": "RYN_ULTRA_QWEN_MODEL",
      "instruction": "Analyze implementation details, code structure, APIs, and practical development steps."},
-    {"id": "deepseek", "name": "DeepSeek", "role": "Critical Reviewer", "color": "#38bdf8",
-     "provider": "deepseek", "match": ("deepseek",), "env_model": "RYN_ULTRA_DEEPSEEK_MODEL",
+    {"id": "deepseek", "name": "Particle-1", "role": "Critical Reviewer", "color": "#38bdf8",
+     "provider": "deepseek", "match": ("particle-1", "deepseek"), "env_model": "RYN_ULTRA_DEEPSEEK_MODEL",
      "instruction": "Critically review claims, detect bugs and security risks, and propose verifiable corrections."},
-    {"id": "kimi", "name": "Kimi", "role": "Context Analyst", "color": "#e2e8f0",
-     "provider": "kimi", "match": ("kimi", "moonshot"), "env_model": "RYN_ULTRA_KIMI_MODEL",
+    {"id": "kimi", "name": "ERNIE 5.5", "role": "Context Analyst", "color": "#f472b6",
+     "provider": "kimi", "match": ("ernie-5.5", "kimi", "moonshot"), "env_model": "RYN_ULTRA_KIMI_MODEL",
      "instruction": "Track requirements and context, analyze long project materials, and find omissions or contradictions."},
+    {"id": "nemotron", "name": "Nemotron", "role": "Deep Reasoner", "color": "#4ade80",
+     "provider": "nemotron", "match": ("nemotron-3-ultra", "nemotron"), "env_model": "RYN_ULTRA_NEMOTRON_MODEL",
+     "instruction": "Perform deep multi-step reasoning, stress-test engineering trade-offs, and verify edge cases."},
 ]
 AGENT_BY_ID = {a["id"]: a for a in AGENTS}
 MAX_TASK_CHARS = 12000
@@ -249,7 +252,7 @@ def _rank_ultra_models(models: List[str]) -> List[str]:
 
 
 def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], List[str], str]:
-    """Resolve a real configured API route and strong/medium coding & analysis models. No silent cross-family fallback."""
+    """Resolve a real configured API route and strong/medium coding & analysis models for each of the 6 giants."""
     agent_id = agent["id"]
     explicit = os.environ.get(agent.get("env_model", ""), "").strip()
 
@@ -281,44 +284,35 @@ def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any
         except Exception:
             pass
 
-    # 3) Ollama Cloud (OLLAMA_API_KEY) — نتحقق من الكتالوج الحي أولاً لـ DeepSeek و Kimi و GPT
-    if callable(free_ready) and callable(free_backend) and free_ready("ollama"):
-        ollama_cat = []
-        try:
-            ollama_cat = list(getattr(b, "ollama_catalog", lambda: [])() or [])
-        except Exception:
-            ollama_cat = []
-        if ollama_cat:
-            if agent_id == "gpt":
-                om = [m for m in ollama_cat if "gpt-oss" in m.lower()]
-            else:
-                om = [m for m in ollama_cat if any(k in m.lower() for k in agent["match"])]
-            om = [explicit] if explicit else _rank_ultra_models(om)
-        else:
-            ollama_fallback = {
-                "deepseek": ["deepseek-v4.1-flash", "deepseek-v4-flash", "deepseek-v4-pro"],
-                "kimi": ["kimi-k3", "kimi-k2.5:cloud", "kimi-k2.5"],
-                "gpt": ["gpt-oss:120b", "gpt-oss:20b"],
-            }
-            om = [explicit] if explicit else ollama_fallback.get(agent_id, [])
-        if om:
-            be = free_backend("ollama")
-            if be:
-                return dict(be), om[:5], "Ollama Cloud"
-
-    # 4) OpenRouter — للنماذج المجانية المتاحة من نفس العائلة (مرتّبة بالأقوى للبرمجة والتحليل)
+    # 3) OpenRouter — العمالقة المجانيون (Particle-1 / ERNIE 5.5 / Nemotron 3 Ultra 550B + باقي العائلات)
     provider_name = agent["provider"]
     or_key = getattr(b, "_or_key", lambda: "")()
     if or_key:
         try:
-            models = [explicit] if explicit else _rank_ultra_models(list(b.or_models_for(provider_name, agent["match"], deep=True) or []))
             backends = getattr(b, "PROVIDERS", {}).get(provider_name, {}).get("backends", [])
+            if not backends and getattr(b, "OR_BACKEND", None):
+                backends = [dict(b.OR_BACKEND)]
+            models: List[str] = []
+            if explicit:
+                models = [explicit]
+            else:
+                # أولاً: العمالقة المجانيون المؤكدون في الكتالوج الحي لـ Particle-1 و ERNIE 5.5 و Nemotron 3 Ultra
+                if agent_id in ("deepseek", "kimi", "nemotron") and hasattr(b, "openrouter_catalog"):
+                    live_free = {it.get("id", "") for it in (b.openrouter_catalog() or []) if isinstance(it, dict) and it.get("free")}
+                    giant_prefs = {
+                        "deepseek": ("particle-ai/particle-1:free", "dots-studio/dots-3-note-preview:free"),
+                        "kimi": ("baidu/ernie-5.5-flash-preview:free", "inclusionai/ling-3.2-flash:free"),
+                        "nemotron": ("nvidia/nemotron-3-ultra-550b-a55b:free", "nvidia/nemotron-3.5-super-vl:free", "nvidia/nemotron-3.5-lightning:free"),
+                    }
+                    models = [m for m in giant_prefs.get(agent_id, ()) if m in live_free]
+                if not models:
+                    models = _rank_ultra_models(list(b.or_models_for(provider_name, agent["match"], deep=True) or []))
             if models and backends:
                 return dict(backends[0]), models[:5], "OpenRouter"
         except Exception:
             pass
 
-    # 5) Groq fallback لبقية العائلات (deepseek / kimi إن وُجدت)
+    # 4) Groq fallback لبقية العائلات إن وجدت
     if groq_ready and agent_id not in ("gpt", "qwen"):
         try:
             catalog = list(getattr(b, "groq_catalog", lambda: [])() or [])
@@ -332,7 +326,14 @@ def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any
         except Exception:
             pass
 
-    # 6) Cloudflare Workers AI (إن كان CF_API_TOKEN + CF_ACCOUNT_ID مضافين) — DeepSeek R1 32B و GPT-OSS 120B
+    # 5) NVIDIA NIM (إن كان NVIDIA_API_KEY مضافاً) لـ Nemotron
+    if agent_id == "nemotron" and callable(free_ready) and callable(free_backend) and free_ready("nvidia"):
+        be = free_backend("nvidia")
+        if be:
+            nm = [explicit] if explicit else ["nvidia/llama-3.1-nemotron-ultra-253b-v1", "nvidia/nemotron-3-super-120b-a12b"]
+            return dict(be), nm[:5], "NVIDIA NIM"
+
+    # 6) Cloudflare Workers AI (إن كان CF_API_TOKEN + CF_ACCOUNT_ID مضافين)
     if callable(free_ready) and callable(free_backend) and free_ready("cf"):
         cf_map = {
             "deepseek": ["@cf/deepseek-ai/deepseek-r1-distill-qwen-32b"],
@@ -345,8 +346,8 @@ def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any
                 return dict(be), cm[:5], "Cloudflare AI"
 
     if not or_key:
-        return None, [], "OPENROUTER_API_KEY / OLLAMA_API_KEY غير متاح"
-    return None, [], "أضف OLLAMA_API_KEY بـ Render لتفعيل DeepSeek V4 و Kimi K3"
+        return None, [], "OPENROUTER_API_KEY / matching provider model غير متاح"
+    return None, [], "لا يوجد موديل متاح من العائلة المطلوبة حالياً"
 
 
 def get_agent_status(b: Any) -> List[Dict[str, Any]]:
@@ -434,8 +435,8 @@ def _memory_block(raw: Any) -> str:
 
 def _reserve_call(session_id: str, user_id: str, agent_id: str, model_id: str = "") -> bool:
     """Atomic request-count budgets per session and per user/day (not a monetary estimate)."""
-    session_limit = _env_int("RYN_ULTRA_SESSION_CALL_LIMIT", 26, 1, 500)
-    daily_limit = _env_int("RYN_ULTRA_DAILY_CALL_LIMIT", 40, 1, 2000)
+    session_limit = _env_int("RYN_ULTRA_SESSION_CALL_LIMIT", 32, 1, 500)
+    daily_limit = _env_int("RYN_ULTRA_DAILY_CALL_LIMIT", 50, 1, 2000)
     now = _now()
     day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
     with _DB_LOCK:
@@ -484,7 +485,7 @@ def _invoke_agent(b: Any, agent: Dict[str, Any], prompt: str, deep: bool = True)
 
 
 def _agent_system(agent: Dict[str, Any]) -> str:
-    return ("You are a real participating agent inside RYN Ultra, a five-model collaborative team. "
+    return ("You are a real participating agent inside RYN Ultra, a six-model collaborative team. "
             f"Your identity is {agent['name']} and your role is {agent['role']}. "
             f"Specialty: {agent['instruction']} "
             "Respond in the exact language used by the user in the task. Be clear, substantive, and technically honest. "
@@ -756,7 +757,7 @@ def _worker(session_id: str, user_id: str, b: Any) -> None:
             return
         _set_status_if(session_id, user_id, "running", ("queued",))   # الحالة الفعلية أثناء الاجتماع (كانت تضل queued)
         _append_event(session_id, user_id, "meeting_started", status="running",
-                      content=f"Meeting started with {len(active)} real AI agents out of five.",
+                      content=f"Meeting started with {len(active)} real AI agents out of 6.",
                       metadata={"online_agents": [a["id"] for a in active], "configured_agents": len(active),
                                 "device_memory": bool(memory_context)})
         # Round 1 is independent; later rounds review the shared transcript.
@@ -1020,7 +1021,7 @@ def register(app: Any, b: Any, guard_fn, uid_fn) -> None:
         agents = get_agent_status(b)
         online = [a for a in agents if a["online"]]
         if len(online) < 2:
-            return jsonify(error=f"At least two agents must be connected. Available: {len(online)}/5.", agents=agents), 503
+            return jsonify(error=f"At least two agents must be connected. Available: {len(online)}/{len(AGENTS)}.", agents=agents), 503
         session_id = "ultra_" + uuid.uuid4().hex[:20]
         now = _now()
         with _DB_LOCK:
@@ -1030,7 +1031,7 @@ def register(app: Any, b: Any, guard_fn, uid_fn) -> None:
                              (session_id, str(uid_fn()), task, project_name, project_context, "queued", rounds, now, now, memory_context))
             conn.close()
         _append_event(session_id, uid_fn(), "session_created", status="queued",
-                      content="RYN Ultra session created. The five-agent team is being prepared.",
+                      content="RYN Ultra session created. The six-agent team is being prepared.",
                       metadata={"max_rounds": rounds, "online_agents": [x["id"] for x in online],
                                 "project_attached": bool(project_context), "device_memory": bool(memory_context)})
         _spawn(session_id, uid_fn(), b)
