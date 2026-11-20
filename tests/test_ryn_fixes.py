@@ -31,7 +31,7 @@ import ryn_ultra as u  # noqa: E402
 H = {"X-Requested-With": "astra"}
 PASSWORD = "pw-test-123456"
 OR_MODELS = {"chatgpt": ["openai/gpt-oss-test"], "qwen": ["qwen/test-a", "qwen/test-b", "qwen/test-c", "qwen/test-d", "qwen/test-e"],
-             "deepseek": ["deepseek/test"], "kimi": ["moonshotai/kimi-test"]}
+             "deepseek": ["deepseek/test"], "kimi": ["moonshotai/kimi-test"], "nemotron": ["nvidia/nemotron-test"]}
 
 
 def wait_for(pred, timeout=20.0, step=0.05):
@@ -62,7 +62,7 @@ class FakeBot:
             return {"backends": [{"name": "OpenRouter", "base": "https://example.invalid", "key_env": "OPENROUTER_API_KEY",
                                   "timeout_fast": 5, "timeout_deep": 5, "prov": prov, "match": match}]}
         self.PROVIDERS = {"chatgpt": be("chatgpt", ("openai/", "gpt-oss")), "qwen": be("qwen", ("qwen",)),
-                          "deepseek": be("deepseek", ("deepseek",)), "kimi": be("kimi", ("kimi",))}
+                          "deepseek": be("deepseek", ("deepseek",)), "kimi": be("kimi", ("kimi",)), "nemotron": be("nemotron", ("nemotron",))}
         self.types = pytypes.SimpleNamespace(Content=lambda **kw: kw, Part=lambda **kw: kw)
         self.chat_provider = {}
         self.code_route_off = set()
@@ -410,7 +410,7 @@ class UltraCommands(Base):
         conn = u._conn()
         targets = {row["target"] for row in conn.execute("SELECT target FROM ultra_commands WHERE session_id=?", (sid,))}
         conn.close()
-        self.assertEqual(targets, {"gemini", "gpt", "qwen"})
+        self.assertEqual(targets, {"gemini", "gpt", "qwen", "nemotron"})
         r = c.post(f"/api/v1/ultra/message/{sid}", json={"message": "hi", "target": "kimi"}, headers=H)
         self.assertEqual(r.status_code, 409)
 

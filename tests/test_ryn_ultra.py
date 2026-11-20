@@ -19,6 +19,7 @@ class FakeBot:
             "qwen": {"backends": [{"name": "OpenRouter", "base": "https://example.invalid", "key_env": "OPENROUTER_API_KEY", "timeout_fast": 5, "timeout_deep": 5, "prov": "qwen", "match": ("qwen",)}]},
             "deepseek": {"backends": [{"name": "OpenRouter", "base": "https://example.invalid", "key_env": "OPENROUTER_API_KEY", "timeout_fast": 5, "timeout_deep": 5, "prov": "deepseek", "match": ("deepseek",)}]},
             "kimi": {"backends": [{"name": "OpenRouter", "base": "https://example.invalid", "key_env": "OPENROUTER_API_KEY", "timeout_fast": 5, "timeout_deep": 5, "prov": "kimi", "match": ("kimi",)}]},
+            "nemotron": {"backends": [{"name": "OpenRouter", "base": "https://example.invalid", "key_env": "OPENROUTER_API_KEY", "timeout_fast": 5, "timeout_deep": 5, "prov": "nemotron", "match": ("nemotron",)}]},
         }
 
     @staticmethod
@@ -32,7 +33,7 @@ class FakeBot:
     @staticmethod
     def or_models_for(provider, match, deep=False):
         return {"chatgpt": ["openai/gpt-oss-test"], "qwen": ["qwen/test"],
-                "deepseek": ["deepseek/test"], "kimi": ["moonshotai/kimi-test"]}.get(provider, [])
+                "deepseek": ["deepseek/test"], "kimi": ["moonshotai/kimi-test"], "nemotron": ["nvidia/nemotron-test"]}.get(provider, [])
 
 
 class TestRynUltra(unittest.TestCase):
@@ -97,8 +98,8 @@ class TestRynUltra(unittest.TestCase):
         status = self.client.get("/api/v1/ultra/status", headers=h)
         self.assertEqual(status.status_code, 200)
         data = status.get_json()
-        self.assertEqual(len(data["agents"]), 5)
-        self.assertEqual(data["online_count"], 5)
+        self.assertEqual(len(data["agents"]), 6)
+        self.assertEqual(data["online_count"], 6)
         self.assertFalse(data["features"]["file_writes"])
 
     def test_start_requires_at_least_two_real_agents(self):
@@ -108,7 +109,7 @@ class TestRynUltra(unittest.TestCase):
         self.bot._groq_ready = lambda: False
         response = self.client.post("/api/v1/ultra/start", json={"task": "Analyze this project"}, headers=h)
         self.assertEqual(response.status_code, 503)
-        self.assertIn("Available: 0/5", response.get_json()["error"])
+        self.assertIn("Available: 0/6", response.get_json()["error"])
 
     def test_real_session_pipeline_records_agent_events_and_report(self):
         h = self.login()
@@ -136,8 +137,8 @@ class TestRynUltra(unittest.TestCase):
             data = wait_completed(sid)
             self.assertEqual(data["session"]["status"], "completed")
             messages = [e for e in data["events"] if e["type"] == "agent_message"]
-            self.assertEqual({e["agent_id"] for e in messages}, {"gemini", "gpt", "qwen", "deepseek", "kimi"})
-            self.assertEqual(len(messages), 5)
+            self.assertEqual({e["agent_id"] for e in messages}, {"gemini", "gpt", "qwen", "deepseek", "kimi", "nemotron"})
+            self.assertEqual(len(messages), 6)
             self.assertTrue(data["session"]["final_report"])
             self.assertTrue(any(e["type"] == "agent_final" for e in data["events"]))
 
@@ -146,7 +147,7 @@ class TestRynUltra(unittest.TestCase):
             data = wait_completed(sid)
             self.assertEqual(data["session"]["status"], "completed")
             messages = [e for e in data["events"] if e["type"] == "agent_message"]
-            self.assertEqual(len(messages), 10)
+            self.assertEqual(len(messages), 12)
             self.assertTrue(any("DISCUSSION SO FAR" in prompt for _agent, prompt, _deep in prompts))
 
     def test_project_zip_inspection_skips_secrets_and_redacts_inline_keys(self):
