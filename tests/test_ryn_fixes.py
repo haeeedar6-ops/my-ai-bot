@@ -641,4 +641,4 @@ class DrawerLayout(Base):
         self.assertIn('id="menuBtn"', bar)
         self.assertIn('id="langBtn"', bar)
         self.assertIn('id="menu" hidden', html)                                               # القائمة مخفية بالأول
-        self.assertIn('id="pcLayoutBtn"', html[html.index('id="menu" hidden'):html.index('id="dFoot"')])
+        self.assertIn('id="pcLayoutBtn"', html[:html.index('id="drawer"')])
