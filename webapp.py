@@ -176,7 +176,7 @@ INDEX_HTML = r'''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#070816">
+<meta name="theme-color" content="#131314">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -712,45 +712,176 @@ textarea::placeholder{color:var(--sub)}
  html:not([data-layout="mobile"]) #app footer{padding:6px 8px}
 }
 
-/* RYN visual refresh: emerald glass, calmer contrast, smoother controls */
-:root{--g:#35e69a;--g-rgb:53,230,154;--bg1:#06120c;--bg2:#0b1c12;--txt:#effff6;--sub:rgba(226,248,236,.66)}
-[data-theme=green]{--acc:#22c982;--acc-rgb:34,201,130;--me1:#075331;--me2:#063b25;--bg1:#04100a;--bg2:#092017}
-body{background-color:var(--bg1);background-image:radial-gradient(circle at 12% 12%,rgba(var(--g-rgb),.15),transparent 42%),radial-gradient(circle at 90% 85%,rgba(var(--acc-rgb),.12),transparent 40%),linear-gradient(rgba(var(--g-rgb),.025) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--g-rgb),.025) 1px,transparent 1px);background-size:100% 100%,100% 100%,38px 38px,38px 38px}
-#app{background:linear-gradient(180deg,rgba(8,25,16,.96),rgba(5,16,10,.98));border-color:rgba(var(--g-rgb),.16);box-shadow:0 24px 80px #0008}
-.bubble{backdrop-filter:blur(14px);line-height:1.82;transition:transform .18s ease,border-color .18s ease}
-.bot{background:linear-gradient(145deg,rgba(12,39,25,.96),rgba(8,26,17,.96));border-color:rgba(var(--g-rgb),.5);box-shadow:0 8px 26px #0005,0 0 18px rgba(var(--g-rgb),.12)}
-.me{background:linear-gradient(135deg,#0d6942,#08462d);border-color:rgba(var(--g-rgb),.65);box-shadow:0 8px 26px #0005,0 0 18px rgba(var(--g-rgb),.15)}
-#menu,.mbox{background:rgba(6,23,14,.97);border-color:rgba(var(--g-rgb),.45);box-shadow:0 16px 50px #0008}
-#menu button:hover,.mbtns button:hover{background:rgba(var(--g-rgb),.12)}
-button,.mini,.ib,.dbtn{transition:transform .16s ease,filter .16s ease,background .16s ease}
-button:active,.mini:active,.ib:active,.dbtn:active{transform:scale(.97)}
-#inp:focus,.minp:focus,.mtxt:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(var(--g-rgb),.12)}
-#say{color:var(--g)}
-#langBtn{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);right:56px;z-index:35;min-width:40px;height:34px;border:1px solid rgba(var(--g-rgb),.45);border-radius:11px;background:rgba(5,24,14,.86);color:var(--g);font-weight:800;font-size:11px}
+/* ===== Gemini Studio Dark Theme (with Interactive RYN Robot) ===== */
+:root,[data-theme]{
+ --bg1:#131314;--bg2:#1e1f20;--surf:#1e1f20;--surf2:#282a2c;--line:rgba(255,255,255,.09);
+ --pop:#1e1f20;--txt:#e3e3e3;--sub:#9aa0a6;--g:#8ab4f8;--g-rgb:138,180,248;
+ --acc:#8ab4f8;--acc-rgb:138,180,248;--red:#f28b82;--me1:#282a2c;--me2:#282a2c;
+ --gem-grad:linear-gradient(135deg,#4285f4 0%,#9b72cb 52%,#d96570 100%);
+}
+[data-theme=violet]{--g:#8ab4f8;--g-rgb:138,180,248;--acc:#a8c7fa;--acc-rgb:168,199,250}
+[data-theme=blue]{--g:#7cacf8;--g-rgb:124,172,248;--acc:#4285f4;--acc-rgb:66,133,244}
+[data-theme=orange]{--g:#fbbc04;--g-rgb:251,188,4;--acc:#f29900;--acc-rgb:242,153,0}
+[data-theme=green]{--g:#81c995;--g-rgb:129,201,149;--acc:#34a853;--acc-rgb:52,168,83}
+
+*{font-family:'Google Sans','Inter','Segoe UI',Tahoma,'Noto Sans Arabic',system-ui,sans-serif}
+body{background-color:#131314;background-image:none;color:var(--txt)}
+#app{
+ max-width:none;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;
+ padding:calc(env(safe-area-inset-top,0px) + 8px) 0 0;
+ background:radial-gradient(ellipse 65% 36% at 50% -10%,rgba(66,133,244,.13),transparent 65%),
+            radial-gradient(ellipse 40% 28% at 85% 100%,rgba(155,114,203,.08),transparent 60%),#131314;
+}
+.grid3d{display:none!important}
+#fx{opacity:.35}
+
+/* --- الرأس والروبوت التفاعلي --- */
+.top{background:transparent!important;padding:4px 16px 6px;gap:4px}
+.mini{width:40px;height:40px;top:10px;border-radius:50%;background:transparent;border:0;color:var(--txt);transition:background .18s ease}
+#histBtn{right:12px}#menuBtn{left:12px}
+html[dir="ltr"] #histBtn{right:auto;left:12px}
+#app .mini:hover{background:#282a2c;border:0;box-shadow:none}
+.botwrap{width:88px;height:88px;transition:width .28s ease,height .28s ease}
+#app:has(#msgs .hint) .botwrap{width:116px;height:116px}
+.botwrap::before{
+ content:"";position:absolute;inset:3px;border-radius:50%;border:0;padding:2px;
+ background:conic-gradient(from 0deg,rgba(66,133,244,.55),rgba(155,114,203,.55),rgba(217,101,112,.45),rgba(66,133,244,.55));
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+ animation:spin 16s linear infinite;opacity:.75;
+}
+.botwrap::after{
+ inset:0;border-radius:50%;
+ box-shadow:0 0 28px rgba(66,133,244,.18),inset 0 0 18px rgba(155,114,203,.08);
+ background:radial-gradient(circle,rgba(66,133,244,.10) 0%,transparent 70%);
+}
+#say{color:var(--sub);text-shadow:none;font-size:13px;font-weight:500}
+.toprow{gap:8px;margin-top:2px}
+#mname{
+ background:transparent!important;border:0!important;font-size:16px!important;font-weight:600!important;
+ color:var(--txt)!important;padding:5px 12px;border-radius:999px;transition:background .18s ease
+}
+#mname::after{content:" ⌄";opacity:.65;font-size:13px}
+#app #mname:hover{background:#282a2c!important}
+#memBtn{
+ font-size:12px;color:#c4c7c5;background:#1e1f20;border:1px solid var(--line);
+ border-radius:999px;padding:4px 12px;transition:background .18s ease,border-color .18s ease
+}
+#memBtn.off{color:var(--sub);background:transparent;border-color:var(--line)}
+#app #memBtn:hover{background:#282a2c;border-color:rgba(138,180,248,.45);color:#e3e3e3;box-shadow:none}
+
+/* --- منطقة الرسائل (أسلوب Gemini) --- */
+#app main#msgs{gap:22px;padding:10px max(16px,calc((100% - 780px)/2)) 28px}
+#app .bubble{padding:0;border-radius:0;font-size:15.5px;line-height:1.82;backdrop-filter:none;box-shadow:none;transition:none}
+#app .bubble.bot{
+ align-self:flex-start;max-width:94%;background:transparent!important;border:0!important;
+ box-shadow:none!important;color:#e3e3e3!important;padding:2px 4px
+}
+#app .bubble.me{
+ align-self:flex-end;background:#282a2c!important;border:0!important;box-shadow:none!important;
+ border-radius:22px 22px 6px 22px!important;padding:11px 18px!important;max-width:80%!important;color:#e3e3e3!important
+}
+html[dir="ltr"] #app .bubble.me{border-radius:22px 22px 22px 6px!important}
+.hint{color:var(--sub);font-size:15px}
+.hint b{
+ font-size:26px;font-weight:600;display:inline-block;margin-bottom:4px;
+ background:var(--gem-grad);-webkit-background-clip:text;background-clip:text;color:transparent
+}
+.code{background:#18191b;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.ch{background:#242628;color:#c4c7c5;padding:9px 14px;font-size:12px}
+.bubble code{background:#282a2c;color:#e3e3e3;border:0;border-radius:6px;padding:2px 6px}
+
+/* --- شريط الكتابة (Gemini Pill Composer) --- */
+#app footer{
+ width:calc(100% - 28px);max-width:780px;margin:0 auto calc(env(safe-area-inset-bottom,0px) + 14px);
+ padding:6px 10px;gap:6px;background:#1e1f20;border:1px solid rgba(255,255,255,.10);
+ border-radius:28px;box-shadow:0 4px 20px rgba(0,0,0,.32);transition:border-color .18s ease,box-shadow .18s ease
+}
+#app footer:focus-within{border-color:rgba(138,180,248,.42);box-shadow:0 4px 24px rgba(0,0,0,.4),0 0 0 1px rgba(138,180,248,.18)}
+#app .pill{background:transparent!important;border:0!important;box-shadow:none!important;min-height:46px!important}
+#app .pill:focus-within{border:0!important;box-shadow:none!important}
+#app footer .pill textarea{background:transparent!important;color:#e3e3e3;font-size:15.5px;border:0!important;box-shadow:none!important}
+textarea::placeholder{color:#8e918f}
+.dbtn{width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:#c4c7c5;transition:background .16s ease}
+.dbtn:hover{background:#282a2c}
+.dbtn svg{width:20px;height:20px;stroke:#c4c7c5;filter:none}
+#app #send{background:#e3e3e3;border:0;box-shadow:none}
+#app #send:hover{background:#ffffff}
+#app #send svg{stroke:#131314;filter:none}
+#app #send.stop{background:#f28b82}
+#app #send.stop svg{fill:#131314;stroke:#131314}
+.ib svg{stroke:#9aa0a6;filter:none}
+.ib:hover svg{stroke:#e3e3e3}
+#chip{background:#1e1f20;border:1px solid var(--line);border-radius:16px;width:calc(100% - 28px);max-width:780px;margin:0 auto 8px}
+
+/* --- الدرج الجانبي (Gemini Sidebar) --- */
+#app .drawer,#app #drawer{background:#1e1f20!important;border-left:1px solid var(--line)!important;border-right:0;box-shadow:none!important;backdrop-filter:none}
+html[dir="ltr"] #app .drawer,html[dir="ltr"] #app #drawer{left:0;right:auto;border-left:0!important;border-right:1px solid var(--line)!important}
+.dh{color:#e3e3e3;font-size:15px;font-weight:600}
+.dnew{background:#282a2c;border:0;color:#e3e3e3;border-radius:999px;font-weight:600;padding:10px 16px;box-shadow:none;transition:background .16s ease}
+.dnew:hover{background:#333537}
+.dsearch{background:#131314;border:1px solid var(--line);border-radius:999px}
+.ci{border:0;background:transparent;border-radius:999px;padding:9px 14px;color:#c4c7c5}
+.ci:hover{background:#282a2c;color:#e3e3e3}
+.ci.on{background:rgba(138,180,248,.16);color:#d3e3fd}
+.dsubbar{display:flex;gap:8px;padding:8px 0}
+.dsubbar button{
+ flex:1;min-width:0;height:40px;border-radius:999px!important;border:1px solid var(--line);
+ background:#282a2c;color:#e3e3e3;font-weight:600;font-size:13px;
+ display:inline-flex!important;align-items:center;justify-content:center;gap:6px;
+ position:static!important;right:auto!important;top:auto!important;transition:background .16s ease,border-color .16s ease
+}
+.dsubbar button:hover{background:#333537;border-color:rgba(138,180,248,.4)}
+.dquota-btn{background:transparent;border:1px solid var(--line);border-radius:12px;color:#c4c7c5;font-weight:500;box-shadow:none}
+.dquota-btn:hover{background:#282a2c;color:#e3e3e3;border-color:rgba(255,255,255,.16);transform:none}
+#app #menu{position:static!important;background:#131314!important;border:1px solid var(--line)!important;border-radius:16px!important;box-shadow:none!important;min-width:0!important;padding:6px!important;z-index:auto!important;width:100%}
+#app #menu button,#app #menu a{border-radius:10px!important;padding:9px 12px!important;color:#c4c7c5;font-size:13px}
+#app #menu button:hover,#app #menu a:hover{background:#282a2c!important;color:#e3e3e3!important}
+#app #menu #pcLayoutBtn{position:static!important;right:auto!important;top:auto!important;display:flex!important;width:100%}
+
+/* --- الأزرار العائمة وقائمة الموديلات --- */
+.dia{transform:none!important;border-radius:50%;background:#1e1f20;border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 16px rgba(0,0,0,.45)}
+.dia span{transform:none!important}
+.dia:hover,.dia.on{background:#282a2c;border-color:var(--acc);box-shadow:0 6px 20px rgba(66,133,244,.22)}
+.dia.ultra-launch{
+ border-color:rgba(138,180,248,.55);
+ background:linear-gradient(135deg,rgba(66,133,244,.28),rgba(155,114,203,.28));
+ box-shadow:0 4px 20px rgba(66,133,244,.28);transform:none!important
+}
+.dia.ultra-launch span{color:#e3e3e3;text-shadow:none}
+.dia.ultra-launch:hover{background:linear-gradient(135deg,rgba(66,133,244,.42),rgba(155,114,203,.42));transform:scale(1.06)!important}
+#sheet{background:#1e1f20;border:1px solid rgba(255,255,255,.12);border-radius:20px;box-shadow:0 16px 48px rgba(0,0,0,.6)}
+#sheet button{border-radius:12px}
+#sheet button:hover,#sheet button.on{background:#282a2c;color:#e3e3e3}
+
+/* --- النوافذ وشاشة الدخول --- */
+#memModal,#aboutModal,#quotaModal,#voiceModal{background:rgba(0,0,0,.68);backdrop-filter:blur(8px)}
+.mbox,.box{background:#1e1f20;border:1px solid rgba(255,255,255,.11);border-radius:24px;box-shadow:0 24px 64px rgba(0,0,0,.65)}
+.mh,.msec label{color:#e3e3e3}
+.msec,.mitem,.qm-item,.alist li{background:#131314;border:1px solid var(--line);border-radius:14px}
+.minp,.mtxt,.sys-box,.box input{background:#131314;border:1px solid rgba(255,255,255,.12);color:#e3e3e3;border-radius:12px}
+.minp:focus,.mtxt:focus,.box input:focus{border-color:#8ab4f8;box-shadow:0 0 0 3px rgba(138,180,248,.16)}
+.msave,.box button,.madd button,#lbSave{background:#8ab4f8;color:#062e6f;border:0;border-radius:999px;font-weight:700;box-shadow:none}
+.msave:hover,.box button:hover,.madd button:hover{background:#a8c7fa}
+.syscheck-btn{background:#282a2c;border:1px solid var(--line);border-radius:12px;color:#e3e3e3}
+.syscheck-btn:hover{background:#8ab4f8;color:#062e6f;border-color:#8ab4f8}
+.overlay{background:#131314;background-image:radial-gradient(circle at 50% 20%,rgba(66,133,244,.16),transparent 52%)}
+.chips span{background:#282a2c;border:1px solid var(--line);border-radius:999px;color:#c4c7c5}
+#toast{background:#282a2c;border:1px solid rgba(255,255,255,.14);color:#e3e3e3;border-radius:999px}
+
+/* --- شاشة الكمبيوتر (RTL و LTR) --- */
+@media(min-width:960px){
+ html:not([data-layout="mobile"]) #app{max-width:none!important;width:100%!important;height:100vh!important;height:100dvh!important;border-radius:0!important;border:0!important;box-shadow:none!important;padding:8px 280px 0 0}
+ html[dir="ltr"]:not([data-layout="mobile"]) #app{padding:8px 0 0 280px}
+ html:not([data-layout="mobile"]) #app #drawer{width:280px;background:#1e1f20!important}
+ html:not([data-layout="mobile"]) #app .floating{right:296px;left:auto;bottom:96px}
+ html[dir="ltr"]:not([data-layout="mobile"]) #app .floating{right:auto;left:296px}
+ html:not([data-layout="mobile"]) #app #sheet{right:296px;left:16px;max-width:560px}
+ html[dir="ltr"]:not([data-layout="mobile"]) #app #sheet{left:296px;right:16px;max-width:560px}
+ html:not([data-layout="mobile"]) main#msgs{padding:14px max(24px,calc((100% - 780px)/2)) 32px;gap:24px}
+}
 html[dir="ltr"] #app{direction:ltr}html[dir="rtl"] #app{direction:rtl}
 html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .mtxt{text-align:left}
-@media(max-width:520px){#langBtn{right:52px;top:calc(env(safe-area-inset-top,0px) + 7px)}}
-
-/* RYN visual refresh: emerald glass, clearer desktop spacing */
-#app{background:linear-gradient(160deg,rgba(8,31,21,.98),rgba(4,12,9,.99) 62%,rgba(7,25,17,.98));}
-@media(min-width:960px){
- html:not([data-layout="mobile"]) #app{max-width:min(1440px,97vw);height:min(940px,96vh);border-color:rgba(52,245,162,.28);box-shadow:0 28px 80px rgba(0,0,0,.72),0 0 46px rgba(16,185,129,.16),inset 0 0 30px rgba(52,245,162,.045)}
- html:not([data-layout="mobile"]) main#msgs{padding:20px 26px 32px;gap:24px}
-}
-.mini,#memBtn,.pill,.dbtn,.dia,#sheet,.drawer{backdrop-filter:blur(16px)}
-.mini{background:linear-gradient(145deg,rgba(16,185,129,.19),rgba(5,30,19,.78));border-color:rgba(52,245,162,.38)}
-#menu{background:rgba(5,20,13,.97);border:1px solid rgba(52,245,162,.32);box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 24px rgba(16,185,129,.12)}
-#menu button,#menu a{border-radius:12px;transition:background .18s ease,color .18s ease}
-#menu button:hover,#menu a:hover{background:rgba(16,185,129,.14);color:#7dffc1}
-.dia.ultra-launch{border-color:#35f0a0;background:linear-gradient(145deg,rgba(16,185,129,.38),rgba(4,35,22,.96));box-shadow:0 0 22px rgba(16,185,129,.38),inset 0 0 14px rgba(52,245,162,.15);transform:rotate(45deg) scale(1.04)}
-.dia.ultra-launch span{color:#baffd8;text-shadow:0 0 10px rgba(52,245,162,.35)}
-.dia.ultra-launch:hover{background:rgba(16,185,129,.42);transform:rotate(45deg) scale(1.1)}
-#sheet{background:rgba(4,19,12,.97);border-color:rgba(52,245,162,.48);box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 28px rgba(16,185,129,.16)}
-#sheet button:hover,#sheet button.on{background:rgba(16,185,129,.15);color:#72ffbd}
-.pill{border-color:rgba(52,245,162,.35);background:rgba(5,24,16,.92)}
-.pill:focus-within{border-color:#35f0a0;box-shadow:0 0 18px rgba(16,185,129,.22)}
-#send{background:linear-gradient(145deg,rgba(16,185,129,.22),rgba(4,35,22,.75))}
-@media(prefers-reduced-motion:reduce){.dia,.mini,#menu button,#menu a{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.dia,.mini,#menu button,#menu a,.botwrap::before{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -803,22 +934,7 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
 </svg>
 </template>
 
-<style id="geminiLook">
-/* ===== شكل الدردشة قريب من Gemini ===== */
-#app .top{background:transparent!important}
-#app #mname{background:transparent!important;border:0!important;font-size:18px!important;font-weight:500!important}
-#app .bubble.me{background:#2b2d31!important;border:0!important;border-radius:22px!important;padding:11px 18px!important;max-width:78%!important;color:#e8eaed!important;box-shadow:none!important}
-#app .bubble.bot{color:#e8eaed!important;font-size:16px!important;line-height:1.75!important}
-#app .pill{background:#1e1f20!important;border:0!important;border-radius:28px!important;box-shadow:0 1px 6px rgba(0,0,0,.35)!important;min-height:52px!important}
-#app footer .pill textarea{background:transparent!important}
-#app #drawer{background:#1e1f20!important;border-left:0!important;box-shadow:none!important}
-#app #menu{position:static!important;background:transparent!important;border:0!important;box-shadow:none!important;min-width:0!important;padding:0!important;z-index:auto!important;width:100%}
-#app #menu button,#app #menu a{border-radius:14px!important;padding:10px 12px!important}
-#app #menu #pcLayoutBtn{position:static!important;right:auto!important;top:auto!important;display:flex!important;width:100%}
-.dsubbar{display:flex;gap:8px;padding:8px 0}
-.dsubbar button{flex:1;min-width:0;height:42px;border-radius:14px!important;border:1px solid rgba(var(--g-rgb),.45);background:rgba(255,255,255,.06);color:inherit;font-weight:700;font-size:14px;display:inline-flex!important;align-items:center;justify-content:center;position:static!important;right:auto!important;top:auto!important}
-.dsec-title{font-size:12px;font-weight:700;opacity:.7;padding:10px 4px 4px}
-</style>
+
 <div id="app">
   <div class="grid3d"></div>
   <div id="fx" class="fx-gemini"></div>
@@ -882,7 +998,7 @@ html[dir="ltr"] .bubble{text-align:left}html[dir="ltr"] .minp,html[dir="ltr"] .m
     </div>
     <div id="dList"></div>
     <div class="dsubbar">
-      <button type="button" id="menuBtn" aria-label="عدادات" aria-expanded="false">⚙️ عدادات</button>
+      <button type="button" id="menuBtn" aria-label="الإعدادات" aria-expanded="false">⚙️ الإعدادات</button>
       <button id="langBtn" type="button" aria-label="Switch language" title="التبديل بين العربية والإنجليزية">🌐 ترجمة</button>
     </div>
     <div class="d-actions">
@@ -2759,7 +2875,13 @@ const rynUiText={
  '🔊 قراءة تلقائية لردود Ryn (Auto-Read)':['🔊 Auto-read Ryn replies','🔊 قراءة تلقائية لردود Ryn (Auto-Read)'],
  '🔊 تجربة الصوت المختار الآن':['🔊 Preview selected voice','🔊 تجربة الصوت المختار الآن'],
  '🗣️ تغيير الصوت':['🗣️ Change voice','🗣️ تغيير الصوت'],
- '📊 حدود النماذج وفحص المنظومة':['📊 Model limits & system diagnostics','📊 حدود النماذج وفحص المنظومة']
+ '📊 حدود النماذج وفحص المنظومة':['📊 Model limits & system diagnostics','📊 حدود النماذج وفحص المنظومة'],
+ '⚙️ الإعدادات':['⚙️ Settings','⚙️ الإعدادات'],
+ 'الإعدادات':['Settings','الإعدادات'],
+ '⚙️ عدادات':['⚙️ Settings','⚙️ عدادات'],
+ 'عدادات':['Settings','عدادات'],
+ '🌐 ترجمة':['🌐 العربية','🌐 ترجمة'],
+ 'Live Voice Chat':['Live Voice Chat','المحادثة الصوتية الحية']
 };
 Object.assign(rynUiText,{"(PDF وغيره).": ["(PDF and more).", "(PDF وغيره)."], "0 معلومة": ["0 facts", "0 معلومة"], ": Gemini 2.5 Pro/Flash/2.0 و GPT-OSS 120B/20B و Qwen3 32B/235B/Coder و DeepSeek R1/V3 و Kimi K2 و Llama 4 Maverick/Scout و Llama 3.3 70B و Gemma 3 و Mistral/Codestral و Nemotron": [": Gemini 2.5 Pro/Flash/2.0, GPT-OSS 120B/20B, Qwen3 32B/235B/Coder, DeepSeek R1/V3, Kimi K2, Llama 4 Maverick/Scout, Llama 3.3 70B, Gemma 3, Mistral/Codestral and Nemotron", ": Gemini 2.5 Pro/Flash/2.0 و GPT-OSS 120B/20B و Qwen3 32B/235B/Coder و DeepSeek R1/V3 و Kimi K2 و Llama 4 Maverick/Scout و Llama 3.3 70B و Gemma 3 و Mistral/Codestral و Nemotron"], ": بيفرح وبيزعل وبتقدر تراضيه.": [": He can be happy or upset, and you can calm him down.", ": بيفرح وبيزعل وبتقدر تراضيه."], ": بيقرا روابط المواقع وفيديوهات يوتيوب، وبيدوّر ويبعتلك روابط لما تطلب فيديو أو موقع.": [": He reads website links and YouTube videos, and searches and sends you links when you ask for a video or a site.", ": بيقرا روابط المواقع وفيديوهات يوتيوب، وبيدوّر ويبعتلك روابط لما تطلب فيديو أو موقع."], ": دخول بكلمة سر، وملف التخصيص محفوظ على جهازك.": [": Sign in with a password; your profile is saved on your device.", ": دخول بكلمة سر، وملف التخصيص محفوظ على جهازك."], ": فحص آلي للصياغة، وبيصلّح، وبيتأكد إنو الكود المصحّح سليم قبل ما يعطيك ياه.": [": Automatic syntax check; it fixes issues and verifies the corrected code before giving it to you.", ": فحص آلي للصياغة، وبيصلّح، وبيتأكد إنو الكود المصحّح سليم قبل ما يعطيك ياه."], ": كتابة وشرح كود بكل اللغات، وبيقرا كود طويل وملفات ومشاريع zip كاملة.": [": Writes and explains code in every language, and reads long code, files and full zip projects.", ": كتابة وشرح كود بكل اللغات، وبيقرا كود طويل وملفات ومشاريع zip كاملة."], "Ryn mix المحسّن": ["Enhanced Ryn mix", "Ryn mix المحسّن"], "، أو ارفع صورة 📷 أو ملف 📎،": [", or upload a photo 📷 or a file 📎,", "، أو ارفع صورة 📷 أو ملف 📎،"], "أهلاً فيك 👋": ["Welcome 👋", "أهلاً فيك 👋"], "أو اطلب كود وبيتكتب تلقائياً.": ["or ask for code and it will be written automatically.", "أو اطلب كود وبيتكتب تلقائياً."], "إنترنت": ["Internet", "إنترنت"], "إنستغرام @haydar_xe": ["Instagram @haydar_xe", "إنستغرام @haydar_xe"], "احفظ نسخة كملف حقيقي على هاتفك أو استرجعها بأي وقت لو غيرت الجهاز أو المتصفح.": ["Save a copy as a real file on your phone and restore it anytime if you change your device or browser.", "احفظ نسخة كملف حقيقي على هاتفك أو استرجعها بأي وقت لو غيرت الجهاز أو المتصفح."], "اسأل أي سؤال": ["Ask any question", "اسأل أي سؤال"], "اشترك · تواصل": ["Subscribe · Contact", "اشترك · تواصل"], "الكود بينزل بملف": ["Code downloads as a file", "الكود بينزل بملف"], "المحادثات": ["Chats", "المحادثات"], "الموديلات": ["Models", "الموديلات"], "الموقع: تخزين الجهاز المحلي (IndexedDB / LocalStorage) · الحجم: 0 KB · آخر نسخ احتياطي: لم يتم بعد · لا يتم حفظ الذاكرة الشخصية على السيرفر.": ["Site: local device storage (IndexedDB / LocalStorage) · Size: 0 KB · Last backup: not yet · Personal memory is never saved on the server.", "الموقع: تخزين الجهاز المحلي (IndexedDB / LocalStorage) · الحجم: 0 KB · آخر نسخ احتياطي: لم يتم بعد · لا يتم حفظ الذاكرة الشخصية على السيرفر."], "برمجة": ["Coding", "برمجة"], "بيتحوّل لنص، و⬇️": ["is converted to text, and ⬇️", "بيتحوّل لنص، و⬇️"], "بيقرا الصور والملفات": ["Reads images and files", "بيقرا الصور والملفات"], "تابعني ←": ["Follow me →", "تابعني ←"], "تحت أي رسالة وفي وضع": ["under any message and in", "تحت أي رسالة وفي وضع"], "تحدث مباشرة وكأنك تحكي مع صديقك...": ["Talk directly, as if you're chatting with a friend...", "تحدث مباشرة وكأنك تحكي مع صديقك..."], "تسجيل صوت": ["Voice recording", "تسجيل صوت"], "تصحيح الكود": ["Fix code", "تصحيح الكود"], "تعذر تشغيل الفحص الشامل.": ["Couldn't run the full check.", "تعذر تشغيل الفحص الشامل."], "تعذر جلب حدود الاستخدام حالياً.": ["Couldn't load usage limits right now.", "تعذر جلب حدود الاستخدام حالياً."], "تلقائياً.": ["automatically.", "تلقائياً."], "توليد صور": ["Image generation", "توليد صور"], "جرّب كلمة تانية": ["Try another word", "جرّب كلمة تانية"], "حفظ التخصيص على الجهاز ✅": ["Profile saved on device ✅", "حفظ التخصيص على الجهاز ✅"], "خاص": ["Private", "خاص"], "دخول": ["Sign in", "دخول"], "رسم": ["Draw", "رسم"], "سرعة القراءة:": ["Reading speed:", "سرعة القراءة:"], "عم أسمعك... احكي براحتك 🎙️": ["I'm listening... go ahead 🎙️", "عم أسمعك... احكي براحتك 🎙️"], "كل": ["All", "كل"], "كل النماذج المجانية بمكان واحد": ["All free models in one place", "كل النماذج المجانية بمكان واحد"], "لا توجد بيانات حالياً.": ["No data right now.", "لا توجد بيانات حالياً."], "ما في محادثة بهذا البحث 🔍": ["No chat matches this search 🔍", "ما في محادثة بهذا البحث 🔍"], "محفوظة على هالجهاز (حتى 100 محادثة)": ["Saved on this device (up to 100 chats)", "محفوظة على هالجهاز (حتى 100 محادثة)"], "مساعد برمجي بالذكاء الاصطناعي بالعربي: بيكتب الكود وبيصلّحو وبيشرحو، وبيجاوب كمان على أي سؤال عام.": ["An Arabic AI coding assistant: it writes, fixes and explains code, and also answers any general question.", "مساعد برمجي بالذكاء الاصطناعي بالعربي: بيكتب الكود وبيصلّحو وبيشرحو، وبيجاوب كمان على أي سؤال عام."], "مساعدك البرمجي الذكي: كود وتحليل وأي سؤال": ["Your smart coding assistant: code, analysis and any question", "مساعدك البرمجي الذكي: كود وتحليل وأي سؤال"], "ملف مرفق 📎": ["Attached file 📎", "ملف مرفق 📎"], "من تطوير": ["Developed by", "من تطوير"], "نسخ": ["Copy", "نسخ"], "نسخ الرد": ["Copy reply", "نسخ الرد"], "واقعية حسب وصفك.": ["realistic, based on your description.", "واقعية حسب وصفك."], "وضع المشاعر": ["Emotions mode", "وضع المشاعر"], "يُستخدم هذا الصوت عند الضغط على": ["This voice is used when you press", "يُستخدم هذا الصوت عند الضغط على"], "ℹ️ تعرّف على __APP_NAME__ · موقع خاص بكلمة سر": ["ℹ️ Learn about __APP_NAME__ · private site with a password", "ℹ️ تعرّف على __APP_NAME__ · موقع خاص بكلمة سر"], "ℹ️ عن __APP_NAME__": ["ℹ️ About __APP_NAME__", "ℹ️ عن __APP_NAME__"], "⚙️ الإعدادات والأدوات": ["⚙️ Settings & tools", "⚙️ الإعدادات والأدوات"], "⚡ جاري جلب إحصائيات وحدود النماذج...": ["⚡ Loading model statistics and limits...", "⚡ جاري جلب إحصائيات وحدود النماذج..."], "⚡ حمدان — خليجي إماراتي": ["⚡ Hamdan — Gulf Emirati", "⚡ حمدان — خليجي إماراتي"], "✏️ تعديل": ["✏️ Edit", "✏️ تعديل"], "✨ محادثة جديدة": ["✨ New chat", "✨ محادثة جديدة"], "⬇️ تنزيل الكود تلقائياً: شغّال": ["⬇️ Auto-download code: on", "⬇️ تنزيل الكود تلقائياً: شغّال"], "＋ محادثة جديدة": ["＋ New chat", "＋ محادثة جديدة"], "🇪🇬 عربي مصري (ar-EG)": ["🇪🇬 Egyptian Arabic (ar-EG)", "🇪🇬 عربي مصري (ar-EG)"], "🇸🇦 عربي فصيح (ar-SA)": ["🇸🇦 Modern Standard Arabic (ar-SA)", "🇸🇦 عربي فصيح (ar-SA)"], "🇸🇾 عربي شامي (ar-SY)": ["🇸🇾 Levantine Arabic (ar-SY)", "🇸🇾 عربي شامي (ar-SY)"], "🌊 ليلى — شامية ساحلية/لبنانية (سلسة وحيوية)": ["🌊 Layla — coastal Levantine/Lebanese (smooth and lively)", "🌊 ليلى — شامية ساحلية/لبنانية (سلسة وحيوية)"], "🌍 لغة التعرّف الصوتي (ASR):": ["🌍 Speech recognition language (ASR):", "🌍 لغة التعرّف الصوتي (ASR):"], "🌐 تلقائي (Auto-Detect)": ["🌐 Auto-detect", "🌐 تلقائي (Auto-Detect)"], "🌲 رامي — شامي ساحلي/لبناني (هادئ وعفوي)": ["🌲 Rami — coastal Levantine/Lebanese (calm and natural)", "🌲 رامي — شامي ساحلي/لبناني (هادئ وعفوي)"], "🌷 أماني — شامية دمشقية (دافئة وناعمة)": ["🌷 Amani — Damascene Levantine (warm and soft)", "🌷 أماني — شامية دمشقية (دافئة وناعمة)"], "🌸 سلمى — مصرية معبّرة": ["🌸 Salma — expressive Egyptian", "🌸 سلمى — مصرية معبّرة"], "🌿 سناء — شامية أردنية (قريبة ودافئة)": ["🌿 Sanaa — Jordanian Levantine (close and warm)", "🌿 سناء — شامية أردنية (قريبة ودافئة)"], "🎙️ اختر شخصية وصوت Ryn المفضل": ["🎙️ Choose your favorite Ryn voice and personality", "🎙️ اختر شخصية وصوت Ryn المفضل"], "🎙️ ليث — شامي دمشقي (شبابي طبيعي وسلس)": ["🎙️ Laith — Damascene Levantine (young, natural and smooth)", "🎙️ ليث — شامي دمشقي (شبابي طبيعي وسلس)"], "🎧 شاكر — مصري ودود": ["🎧 Shaker — friendly Egyptian", "🎧 شاكر — مصري ودود"], "🎨 توليد صور": ["🎨 Image generation", "🎨 توليد صور"], "🐞 تصحيح كود": ["🐞 Fix code", "🐞 تصحيح كود"], "👤 اسمك وملف تخصيصك": ["👤 Your name and profile", "👤 اسمك وملف تخصيصك"], "💗 وضع المشاعر: طافي": ["💗 Emotions mode: off", "💗 وضع المشاعر: طافي"], "💡 فينك تضيف هون يدوياً، أو تقول بالشات «تذكر أني...» وبيحفظها تلقائياً!": ["💡 You can add facts here manually, or say «remember that...» in the chat and it will be saved automatically!", "💡 فينك تضيف هون يدوياً، أو تقول بالشات «تذكر أني...» وبيحفظها تلقائياً!"], "💻 برمجة": ["💻 Coding", "💻 برمجة"], "💾 تنزيل المحادثة الحالية (JSON/MD)": ["💾 Download current chat (JSON/MD)", "💾 تنزيل المحادثة الحالية (JSON/MD)"], "💾 تنزيل الملف للهاتف": ["💾 Download file to phone", "💾 تنزيل الملف للهاتف"], "💾 حفظ الصورة": ["💾 Save image", "💾 حفظ الصورة"], "📂 استيراد / استعادة محادثة": ["📂 Import / restore chat", "📂 استيراد / استعادة محادثة"], "📂 رفع ملف من الهاتف": ["📂 Upload file from phone", "📂 رفع ملف من الهاتف"], "📊 حدود النماذج وفحص المنظومة": ["📊 Model limits & system check", "📊 حدود النماذج وفحص المنظومة"], "📊 حدود النماذج وفحص النظام": ["📊 Model limits & system check", "📊 حدود النماذج وفحص النظام"], "📌 ذكريات محفوظة على هاتفك": ["📌 Memories saved on your phone", "📌 ذكريات محفوظة على هاتفك"], "📎 حذف الملف المرفق": ["📎 Remove attached file", "📎 حذف الملف المرفق"], "📖 زارية — فصيحة هادئة": ["📖 Zarya — calm Modern Standard Arabic", "📖 زارية — فصيحة هادئة"], "📦 تصدير كل المحادثات (Export All)": ["📦 Export all chats (Export All)", "📦 تصدير كل المحادثات (Export All)"], "📱 ملف الذاكرة على جهازك (.json)": ["📱 Memory file on your device (.json)", "📱 ملف الذاكرة على جهازك (.json)"], "📸 تواصل · إنستغرام @haydar_xe": ["📸 Contact · Instagram @haydar_xe", "📸 تواصل · إنستغرام @haydar_xe"], "🔊 استماع": ["🔊 Listen", "🔊 استماع"], "🔊 الأصوات المستقبلية: شغّالة": ["🔊 Future sounds: on", "🔊 الأصوات المستقبلية: شغّالة"], "🔊 تجربة الصوت المختار الآن": ["🔊 Test the selected voice now", "🔊 تجربة الصوت المختار الآن"], "🔊 قراءة تلقائية لردود Ryn (Auto-Read)": ["🔊 Auto-read Ryn's replies (Auto-Read)", "🔊 قراءة تلقائية لردود Ryn (Auto-Read)"], "🔍 جاري فحص جميع الأنظمة الـ 10...": ["🔍 Checking all 10 systems...", "🔍 جاري فحص جميع الأنظمة الـ 10..."], "🗣️ اختيار الصوت العربي (نبرة الكلمات)": ["🗣️ Arabic voice selection (word tone)", "🗣️ اختيار الصوت العربي (نبرة الكلمات)"], "🗣️ اختيار الصوت العربي وسرعة النطق": ["🗣️ Arabic voice and speaking speed", "🗣️ اختيار الصوت العربي وسرعة النطق"], "🗣️ تغيير الصوت": ["🗣️ Change voice", "🗣️ تغيير الصوت"], "🚪 تسجيل خروج": ["🚪 Sign out", "🚪 تسجيل خروج"], "🟢 Memory is local — الذاكرة محلية على جهازك فقط": ["🟢 Memory is local — stored on your device only", "🟢 Memory is local — الذاكرة محلية على جهازك فقط"], "🦁 حامد — فصيح جهوري قوي": ["🦁 Hamed — strong, booming Modern Standard Arabic", "🦁 حامد — فصيح جهوري قوي"], "🦅 تيم — شامي أردني (رزين وواضح)": ["🦅 Tim — Jordanian Levantine (calm and clear)", "🦅 تيم — شامي أردني (رزين وواضح)"], "🧠 ذاكرتي": ["🧠 My memory", "🧠 ذاكرتي"], "🧠 ملف التخصيص والذاكرة": ["🧠 Profile & memory", "🧠 ملف التخصيص والذاكرة"], "🧠 ملف التخصيص وذاكرة جهازك المحلية": ["🧠 Profile & your device's local memory", "🧠 ملف التخصيص وذاكرة جهازك المحلية"], "🧪 فحص شامل للتأكد أن كل الأنظمة الـ 10 شغّالة": ["🧪 Full check to confirm all 10 systems are running", "🧪 فحص شامل للتأكد أن كل الأنظمة الـ 10 شغّالة"], "Gemini Live: محادثة حية مباشرة (متل ChatGPT)": ["Gemini Live: live direct conversation (like ChatGPT)", "Gemini Live: محادثة حية مباشرة (متل ChatGPT)"], "RYN Ultra · فريق الذكاء الاصطناعي": ["RYN Ultra · AI team", "RYN Ultra · فريق الذكاء الاصطناعي"], "أخضر": ["Green", "أخضر"], "أزرق": ["Blue", "أزرق"], "أضف معلومة يتذكرها عنك دايماً...": ["Add a fact to always remember about you...", "أضف معلومة يتذكرها عنك دايماً..."], "إرسال": ["Send", "إرسال"], "إضافة": ["Add", "إضافة"], "إغلاق": ["Close", "إغلاق"], "إنهاء المكالمة الصوتية والعودة للدردشة": ["End voice call and return to chat", "إنهاء المكالمة الصوتية والعودة للدردشة"], "ابحث بالعناوين والرسائل...": ["Search titles and messages...", "ابحث بالعناوين والرسائل..."], "اختيار موديل": ["Choose model", "اختيار موديل"], "اسمك أو لقبك (مثال: حيدر)": ["Your name or nickname (e.g. Haydar)", "اسمك أو لقبك (مثال: حيدر)"], "اضغط لتحميل الملف": ["Tap to download the file", "اضغط لتحميل الملف"], "اضغط للتحدث الآن أو مقاطعة الرد": ["Tap to speak now or interrupt the reply", "اضغط للتحدث الآن أو مقاطعة الرد"], "اكتب رسالة...": ["Type a message...", "اكتب رسالة..."], "التبديل بين العربية والإنجليزية": ["Switch between Arabic and English", "التبديل بين العربية والإنجليزية"], "القائمة": ["Menu", "القائمة"], "المحادثات السابقة": ["Previous chats", "المحادثات السابقة"], "النزول لآخر رسالة": ["Scroll to the latest message", "النزول لآخر رسالة"], "برتقالي": ["Orange", "برتقالي"], "بنفسجي": ["Purple", "بنفسجي"], "تابعني على إنستغرام": ["Follow me on Instagram", "تابعني على إنستغرام"], "تبديل الموديل": ["Switch model", "تبديل الموديل"], "تبديل عرض الكمبيوتر (PC) / الهاتف": ["Switch between desktop (PC) and phone layout", "تبديل عرض الكمبيوتر (PC) / الهاتف"], "حذف": ["Delete", "حذف"], "حذف المرفق": ["Remove attachment", "حذف المرفق"], "حذف من الجهاز": ["Delete from device", "حذف من الجهاز"], "رفع صورة": ["Upload image", "رفع صورة"], "رفع ملف": ["Upload file", "رفع ملف"], "صورة": ["Image", "صورة"], "كتم / تشغيل الميكروفون": ["Mute / unmute microphone", "كتم / تشغيل الميكروفون"], "كلمة السر": ["Password", "كلمة السر"], "كيف بتحب Ryn يجاوبك؟ شو اهتماماتك أو مجالك؟ (مثال: جاوبني باختصار، بهتم ببايثون وجافاسكربت...)": ["How would you like Ryn to answer? What are your interests or field? (e.g. answer briefly, I care about Python and JavaScript...)", "كيف بتحب Ryn يجاوبك؟ شو اهتماماتك أو مجالك؟ (مثال: جاوبني باختصار، بهتم ببايثون وجافاسكربت...)"], "محادثة صوتية حية مع الروبوت": ["Live voice chat with the robot", "محادثة صوتية حية مع الروبوت"], "مسح البحث": ["Clear search", "مسح البحث"], "ملف التخصيص وذاكرة الجهاز": ["Profile & device memory", "ملف التخصيص وذاكرة الجهاز"], "🔎 ابحث بالذاكرة...": ["🔎 Search memory...", "🔎 ابحث بالذاكرة..."], "Gemini Live ما اشتغل": ["Gemini Live didn't start", "Gemini Live ما اشتغل"], "Gemini Live مو متاح هلأ — فتحنا Live Voice": ["Gemini Live isn't available right now — opened Live Voice", "Gemini Live مو متاح هلأ — فتحنا Live Voice"], "التسجيل قصير": ["Recording is too short", "التسجيل قصير"], "الصق الكودك بين العلامتين (أو ارفع الملف بالمشبك 📎)": ["Paste your code between the markers (or attach the file with 📎)", "الصق الكودك بين العلامتين (أو ارفع الملف بالمشبك 📎)"], "المتصفح ما بيدعم تسجيل الصوت": ["Your browser doesn't support audio recording", "المتصفح ما بيدعم تسجيل الصوت"], "الملف مو صالح أو تالف ❌": ["The file is invalid or corrupted ❌", "الملف مو صالح أو تالف ❌"], "انضافت للذاكرة 🧠": ["Added to memory 🧠", "انضافت للذاكرة 🧠"], "انقطع جزء من الملف لأنه كبير جداً": ["Part of the file was cut because it's too large", "انقطع جزء من الملف لأنه كبير جداً"], "اننسخ ✅": ["Copied ✅", "اننسخ ✅"], "تخطّيت: ": ["Skipped: ", "تخطّيت: "], "تم استرجاع ملف التخصيص والذاكرة بنجاح 📂": ["Profile and memory restored successfully 📂", "تم استرجاع ملف التخصيص والذاكرة بنجاح 📂"], "تم الإلغاء": ["Cancelled", "تم الإلغاء"], "تم تنزيل ملف التخصيص والذاكرة على هاتفك 💾": ["Profile and memory file downloaded to your phone 💾", "تم تنزيل ملف التخصيص والذاكرة على هاتفك 💾"], "تم حفظ ملف التخصيص على جهازك ✅": ["Profile saved on your device ✅", "تم حفظ ملف التخصيص على جهازك ✅"], "عم أفرّغ الصوت...": ["Transcribing audio...", "عم أفرّغ الصوت..."], "فشل إرسال الصوت": ["Failed to send audio", "فشل إرسال الصوت"], "فشل الرفع: ": ["Upload failed: ", "فشل الرفع: "], "لازم تسمح للميكروفون": ["You need to allow the microphone", "لازم تسمح للميكروفون"], "ما قدرت أفتح الميكروفون (اسمح بالإذن من إعدادات المتصفح)": ["Couldn't open the microphone (allow permission in browser settings)", "ما قدرت أفتح الميكروفون (اسمح بالإذن من إعدادات المتصفح)"], "ما قدرت أقرا: ": ["Couldn't read: ", "ما قدرت أقرا: "], "يرجى السماح بإذن الميكروفون للمحادثة الصوتية": ["Please allow microphone permission for voice chat", "يرجى السماح بإذن الميكروفون للمحادثة الصوتية"], "⏹️ تم إيقاف القراءة الصوتية": ["⏹️ Voice reading stopped", "⏹️ تم إيقاف القراءة الصوتية"], "⚠️ الصوت الحقيقي ما اشتغل (": ["⚠️ Real voice didn't play (", "⚠️ الصوت الحقيقي ما اشتغل ("], "⚠️ الهاتف منع تشغيل الصوت: اضغط على الشاشة مرة وجرّب، وتأكد من صوت الوسائط": ["⚠️ The phone blocked audio playback: tap the screen once and try again, and check the media volume", "⚠️ الهاتف منع تشغيل الصوت: اضغط على الشاشة مرة وجرّب، وتأكد من صوت الوسائط"], "⚠️ تعذر تشغيل القراءة الصوتية": ["⚠️ Couldn't play voice reading", "⚠️ تعذر تشغيل القراءة الصوتية"], "⚠️ صوت المتصفح فشل: ": ["⚠️ Browser voice failed: ", "⚠️ صوت المتصفح فشل: "], "⚠️ مساحة تخزين المتصفح ممتلية: ما قدرت أحفظ الذاكرة، نزّل نسخة احتياطية أو امسح محادثات قديمة": ["⚠️ Browser storage is full: couldn't save memory. Download a backup or delete old chats", "⚠️ مساحة تخزين المتصفح ممتلية: ما قدرت أحفظ الذاكرة، نزّل نسخة احتياطية أو امسح محادثات قديمة"], "⚠️ هالمتصفح ما بيدعم القراءة الصوتية": ["⚠️ This browser doesn't support voice reading", "⚠️ هالمتصفح ما بيدعم القراءة الصوتية"], "⛔ تم رفض حفظ نص يحتوي على مفتاح سري أو كلمة مرور بالذاكرة": ["⛔ Refused to save text containing a secret key or password to memory", "⛔ تم رفض حفظ نص يحتوي على مفتاح سري أو كلمة مرور بالذاكرة"], "✅ الفحص الشامل: كل الأنظمة الـ 10 شغّالة 100%": ["✅ Full check: all 10 systems are running at 100%", "✅ الفحص الشامل: كل الأنظمة الـ 10 شغّالة 100%"], "✅ تم اختيار الصوت: ": ["✅ Voice selected: ", "✅ تم اختيار الصوت: "], "✅ تم استيراد المحادثة والتحقق منها (": ["✅ Chat imported and verified (", "✅ تم استيراد المحادثة والتحقق منها ("], "❌ ملف المحادثة غير صالح": ["❌ Invalid chat file", "❌ ملف المحادثة غير صالح"], "🎙️ عم أسجّل... اضغط الميكروفون مرة تانية للإيقاف": ["🎙️ Recording... tap the mic again to stop", "🎙️ عم أسجّل... اضغط الميكروفون مرة تانية للإيقاف"], "💾 جاري تنزيل المحادثة الحالية...": ["💾 Downloading current chat...", "💾 جاري تنزيل المحادثة الحالية..."], "📦 جاري تصدير أرشيف RYN_Conversations.zip...": ["📦 Exporting RYN_Conversations.zip archive...", "📦 جاري تصدير أرشيف RYN_Conversations.zip..."], "🔊 جاري توليد الصوت...": ["🔊 Generating audio...", "🔊 جاري توليد الصوت..."], "🧠 انحفظت معلومة جديدة بذاكرة جهازك": ["🧠 New fact saved to your device memory", "🧠 انحفظت معلومة جديدة بذاكرة جهازك"], ": Gemini 2.5 Pro/Flash/2.0 و GPT-OSS 120B/20B و Qwen3 32B/235B/Coder و DeepSeek R1/V3 و Kimi K2 و Llama 4 Maverick/Scout و Llama 3.3 70B و Gemma 3 و Mistral/Codestral و Nemotron 253B و GLM Z1.": [": Gemini 2.5 Pro/Flash/2.0, GPT-OSS 120B/20B, Qwen3 32B/235B/Coder, DeepSeek R1/V3, Kimi K2, Llama 4 Maverick/Scout, Llama 3.3 70B, Gemma 3, Mistral/Codestral, Nemotron 253B and GLM Z1.", ": Gemini 2.5 Pro/Flash/2.0 و GPT-OSS 120B/20B و Qwen3 32B/235B/Coder و DeepSeek R1/V3 و Kimi K2 و Llama 4 Maverick/Scout و Llama 3.3 70B و Gemma 3 و Mistral/Codestral و Nemotron 253B و GLM Z1."], "ℹ️ تعرّف على Ryn · موقع خاص بكلمة سر": ["ℹ️ Learn about Ryn · private site with a password", "ℹ️ تعرّف على Ryn · موقع خاص بكلمة سر"], "ℹ️ عن Ryn": ["ℹ️ About Ryn", "ℹ️ عن Ryn"], "انتهى صوت المتصفح": ["Browser audio ended", "انتهى صوت المتصفح"], "▶️ بدأ التشغيل فعلاً (لو ما سمعت: ارفع صوت الوسائط، وتأكد إنو الهاتف مو بوضع صامت للوسائط/البلوتوث)": ["▶️ Playback started (if you can't hear it: raise the media volume and make sure the phone isn't in silent mode for media/Bluetooth)", "▶️ بدأ التشغيل فعلاً (لو ما سمعت: ارفع صوت الوسائط، وتأكد إنو الهاتف مو بوضع صامت للوسائط/البلوتوث)"], "(10 دقايق)": ["(10 minutes)", "(10 دقايق)"], "(30 دقيقة)": ["(30 minutes)", "(30 دقيقة)"], "KB | النوع:": ["KB | Type:", "KB | النوع:"], "KB · آخر نسخ احتياطي:": ["KB · Last backup:", "KB · آخر نسخ احتياطي:"], "التوكنات:": ["Tokens:", "التوكنات:"], "السرعة:": ["Speed:", "السرعة:"], "المزود:": ["Provider:", "المزود:"], "خطأ:": ["Error:", "خطأ:"], "المتبقي:": ["Remaining:", "المتبقي:"], "ثانية)": ["seconds)", "ثانية)"], "حرف)": ["chars)", "حرف)"], "د": ["m", "د"], "رسالة)": ["messages)", "رسالة)"], "رسالة": ["messages", "رسالة"], "س": ["s", "س"], "صور 👀": ["images 👀", "صور 👀"], "طلب": ["request", "طلب"], "كود برمجي جاهز بالشات.": ["Code is ready in the chat.", "كود برمجي جاهز بالشات."], "معلومة محلية": ["Local fact", "معلومة محلية"], "ملفات 📎": ["Files 📎", "ملفات 📎"], "ملفات...": ["Files...", "ملفات..."], "يوم": ["day", "يوم"], "— رجعنا لـ Live Voice": ["— back to Live Voice", "— رجعنا لـ Live Voice"], "(رد فاضي)": ["(empty reply)", "(رد فاضي)"], ") — رح أقرأ بصوت الجهاز": [") — I'll read it with the device voice", ") — رح أقرأ بصوت الجهاز"], "1) طلب الصوت من السيرفر...": ["1) Requesting audio from the server...", "1) طلب الصوت من السيرفر..."], "2) تشغيل الصوت على جهازك...": ["2) Playing audio on your device...", "2) تشغيل الصوت على جهازك..."], ": أكبر من 30 ميجا": [": larger than 30 MB", ": أكبر من 30 ميجا"], "💾 ملف جاهز للتحميل": ["💾 File ready to download", "💾 ملف جاهز للتحميل"], "RYN · مساعد ذكي": ["RYN · Smart assistant", "RYN · مساعد ذكي"], "أماني — شامية دمشقية": ["Amani — Damascene Levantine", "أماني — شامية دمشقية"], "أنت: «": ["You: «", "أنت: «"], "أهلاً بك في رين": ["Welcome to Ryn", "أهلاً بك في رين"], "أهلاً بك يا صديقي، أنا رين.": ["Welcome, my friend, I'm Ryn.", "أهلاً بك يا صديقي، أنا رين."], "أهلاً فيك يا غالي، أنا رين، جاهز نحكي سوا بأي شغلة ببالك.": ["Welcome, dear friend, I'm Ryn, ready to talk about anything on your mind.", "أهلاً فيك يا غالي، أنا رين، جاهز نحكي سوا بأي شغلة ببالك."], "أهلاً فيك! 👋 كيف بقدر ساعدك؟": ["Welcome! 👋 How can I help you?", "أهلاً فيك! 👋 كيف بقدر ساعدك؟"], "أهلاً! اسألني أي شي 🤖": ["Hi! Ask me anything 🤖", "أهلاً! اسألني أي شي 🤖"], "إلغاء": ["Cancel", "إلغاء"], "احكي مرة ثانية... 🎙️": ["Say it again... 🎙️", "احكي مرة ثانية... 🎙️"], "احكي... 🎙️": ["Speak... 🎙️", "احكي... 🎙️"], "استلمت": ["Received", "استلمت"], "استلمت الملف 📎 شو بدك منه؟": ["I received the file 📎 what do you want to do with it?", "استلمت الملف 📎 شو بدك منه؟"], "اسم المستخدم:": ["Username:", "اسم المستخدم:"], "اطلب كود وبكتبه 💻": ["Ask for code and I'll write it 💻", "اطلب كود وبكتبه 💻"], "الآن": ["Now", "الآن"], "التبديل إلى الإنجليزية": ["Switch to English", "التبديل إلى الإنجليزية"], "التبديل إلى واجهة الكمبيوتر العريضة (PC)": ["Switch to the wide desktop (PC) layout", "التبديل إلى واجهة الكمبيوتر العريضة (PC)"], "التبديل إلى واجهة الهاتف المدمجة": ["Switch to the compact phone layout", "التبديل إلى واجهة الهاتف المدمجة"], "الصوت المختار:": ["Selected voice:", "الصوت المختار:"], "الميكروفون مكتوم 🔇": ["Microphone muted 🔇", "الميكروفون مكتوم 🔇"], "انتهت صلاحية الطلب، جرّب تاني.": ["The request expired, try again.", "انتهت صلاحية الطلب، جرّب تاني."], "تحدث الآن... أنا أسمعك مباشرة 👋": ["Speak now... I'm hearing you directly 👋", "تحدث الآن... أنا أسمعك مباشرة 👋"], "تحدث الآن... أنا أسمعك 👋": ["Speak now... I'm listening 👋", "تحدث الآن... أنا أسمعك 👋"], "تحدث الآن... عم أسمعك 🎙️": ["Speak now... I'm listening 🎙️", "تحدث الآن... عم أسمعك 🎙️"], "تفضّل الصورة 🎨": ["Here's the image 🎨", "تفضّل الصورة 🎨"], "تفضّل! 🙂": ["Go ahead! 🙂", "تفضّل! 🙂"], "تم إيقاف التنزيل التلقائي (بيضل زر التحميل)": ["Auto-download stopped (the download button stays)", "تم إيقاف التنزيل التلقائي (بيضل زر التحميل)"], "تم تفعيل الواجهة العربية": ["Arabic interface enabled", "تم تفعيل الواجهة العربية"], "تم تفعيل:": ["Enabled:", "تم تفعيل:"], "تم كتم الميكروفون مؤقتاً — اضغط 🔇 لإعادة تشغيله": ["Microphone muted temporarily — tap 🔇 to unmute", "تم كتم الميكروفون مؤقتاً — اضغط 🔇 لإعادة تشغيله"], "تم ✅": ["Done ✅", "تم ✅"], "تمام! صرت": ["Great! I'm now", "تمام! صرت"], "تيم — شامي أردني": ["Tim — Jordanian Levantine", "تيم — شامي أردني"], "جاري فهم كلامك...": ["Understanding you...", "جاري فهم كلامك..."], "جاهز للمساعدة 💚": ["Ready to help 💚", "جاهز للمساعدة 💚"], "جهزتلك ملف التحميل 💾": ["Your download file is ready 💾", "جهزتلك ملف التحميل 💾"], "حامد — فصيح قوي": ["Hamed — strong Modern Standard Arabic", "حامد — فصيح قوي"], "حفظت تخصيصك بذاكرة جهازك 🧠": ["Saved your profile to your device memory 🧠", "حفظت تخصيصك بذاكرة جهازك 🧠"], "حمدان — إماراتي": ["Hamdan — Emirati", "حمدان — إماراتي"], "خطأ": ["Error", "خطأ"], "ذاكرتي": ["My memory", "ذاكرتي"], "راجع الكود وصحّح أي أخطاء فيه، وقلّي شو كان الغلط.": ["Review the code, fix any errors, and tell me what the mistake was.", "راجع الكود وصحّح أي أخطاء فيه، وقلّي شو كان الغلط."], "رامي — شامي ساحلي": ["Rami — coastal Levantine", "رامي — شامي ساحلي"], "رجعت كل ذكرياتك وتخصيصك من الملف! 💚": ["Restored all your memories and profile from the file! 💚", "رجعت كل ذكرياتك وتخصيصك من الملف! 💚"], "رين يحكي معك الآن... (احكي أو اضغط 🗣️ للمقاطعة)": ["Ryn is talking to you now... (speak or tap 🗣️ to interrupt)", "رين يحكي معك الآن... (احكي أو اضغط 🗣️ للمقاطعة)"], "رين:": ["Ryn:", "رين:"], "زارية — فصيحة هادئة": ["Zarya — calm Modern Standard Arabic", "زارية — فصيحة هادئة"], "سلمى — مصرية": ["Salma — Egyptian", "سلمى — مصرية"], "سمعتك 🎧 راجع النص وابعتو": ["I heard you 🎧 review the text and send it", "سمعتك 🎧 راجع النص وابعتو"], "سمعتك 🎧 عم أجاوبك بصوت مباشر...": ["I heard you 🎧 answering you with direct voice...", "سمعتك 🎧 عم أجاوبك بصوت مباشر..."], "سمعتك... احكي 🎙️": ["I heard you... go on 🎙️", "سمعتك... احكي 🎙️"], "سناء — شامية أردنية": ["Sanaa — Jordanian Levantine", "سناء — شامية أردنية"], "شاكر — مصري": ["Shaker — Egyptian", "شاكر — مصري"], "شفت": ["I saw", "شفت"], "شفت الصورة 👀 شو بدك فيها؟": ["I saw the image 👀 what do you want with it?", "شفت الصورة 👀 شو بدك فيها؟"], "شو بالصورة؟ اشرحلي إياها.": ["What's in the image? Explain it to me.", "شو بالصورة؟ اشرحلي إياها."], "صار خطأ": ["An error occurred", "صار خطأ"], "صار خطأ بسيط، احكيلي مرة ثانية.": ["A small error occurred, tell me again.", "صار خطأ بسيط، احكيلي مرة ثانية."], "صار خطأ، جرّب تاني": ["An error occurred, try again", "صار خطأ، جرّب تاني"], "صحّح هالكود وقلّي شو كان الغلط:": ["Fix this code and tell me what the error was:", "صحّح هالكود وقلّي شو كان الغلط:"], "صورة مرفقة": ["Attached image", "صورة مرفقة"], "عدّل رسالتك وبعتها ✏️": ["Edit your message and send it ✏️", "عدّل رسالتك وبعتها ✏️"], "عدّل هالصورة وخلّي تفاصيلها وإضاءتها وملامحها واقعية طبيعية 100%.": ["Edit this image and keep its details, lighting and features realistic and natural 100%.", "عدّل هالصورة وخلّي تفاصيلها وإضاءتها وملامحها واقعية طبيعية 100%."], "عربي": ["Arabic", "عربي"], "عم أجهّز": ["Preparing", "عم أجهّز"], "عم أجهّز الملف...": ["Preparing the file...", "عم أجهّز الملف..."], "عم أرسم 🎨...": ["Drawing 🎨...", "عم أرسم 🎨..."], "عم أفكّر بجوابك... 🧠": ["Thinking about your answer... 🧠", "عم أفكّر بجوابك... 🧠"], "عم أفكّر...": ["Thinking...", "عم أفكّر..."], "عم أقرا المرفق 📎": ["Reading the attachment 📎", "عم أقرا المرفق 📎"], "عم أكتب الكود 💻": ["Writing the code 💻", "عم أكتب الكود 💻"], "عم ألغي...": ["Cancelling...", "عم ألغي..."], "عم نعيد الاتصال... ⏳": ["Reconnecting... ⏳", "عم نعيد الاتصال... ⏳"], "عم نوصّل بـ Gemini Live... ⏳": ["Connecting to Gemini Live... ⏳", "عم نوصّل بـ Gemini Live... ⏳"], "عم نوصّل... ⏳": ["Connecting... ⏳", "عم نوصّل... ⏳"], "عندك ملف؟ ارفعه وبقراه 📎": ["Got a file? Upload it and I'll read it 📎", "عندك ملف؟ ارفعه وبقراه 📎"], "غلط": ["Wrong", "غلط"], "غير معروف": ["Unknown", "غير معروف"], "فشل استيراد المحادثة": ["Failed to import the chat", "فشل استيراد المحادثة"], "فشل الرفع (": ["Upload failed (", "فشل الرفع ("], "قارنلي بين هالصور واشرحلي كل وحدة.": ["Compare these images and explain each one.", "قارنلي بين هالصور واشرحلي كل وحدة."], "قاطعت الصوت — تفضّل احكي أنا عم أسمعك 🎙️": ["You interrupted the voice — go ahead, I'm listening 🎙️", "قاطعت الصوت — تفضّل احكي أنا عم أسمعك 🎙️"], "قبل": ["Before", "قبل"], "لخّصلي هالملفات واذكر أهم النقاط.": ["Summarize these files and list the key points.", "لخّصلي هالملفات واذكر أهم النقاط."], "لم يتم بعد": ["Not yet", "لم يتم بعد"], "ليث — شامي دمشقي": ["Laith — Damascene Levantine", "ليث — شامي دمشقي"], "ليلى — شامية ساحلية": ["Layla — coastal Levantine", "ليلى — شامية ساحلية"], "ما انبدّل": ["Not changed", "ما انبدّل"], "ما في اتصال": ["No connection", "ما في اتصال"], "ما في ذكريات مضافة بعد.": ["No memories added yet.", "ما في ذكريات مضافة بعد."], "ما قدرت أفرّغ الصوت": ["I couldn't transcribe the audio", "ما قدرت أفرّغ الصوت"], "ما قدرت أوصل للسيرفر، تأكد من الإنترنت وجرّب تاني.": ["I couldn't reach the server, check your internet and try again.", "ما قدرت أوصل للسيرفر، تأكد من الإنترنت وجرّب تاني."], "ما لقيت شي بهالبحث.": ["Nothing found for this search.", "ما لقيت شي بهالبحث."], "محادثة جديدة": ["New chat", "محادثة جديدة"], "محادثة جديدة، تفضّل 🙂": ["New chat, go ahead 🙂", "محادثة جديدة، تفضّل 🙂"], "مشكلة بالمكالمة الحية": ["Problem with the live call", "مشكلة بالمكالمة الحية"], "ملف": ["File", "ملف"], "نزّلتلك الكود بملف 💾": ["I downloaded the code to a file for you 💾", "نزّلتلك الكود بملف 💾"], "هاد اللي لقيته 💚": ["Here's what I found 💚", "هاد اللي لقيته 💚"], "→ رح يشتغل صوت المتصفح فقط (وقد يفشل إذا جهازك ما عنده محرك قراءة).": ["→ Only browser voice will work (it may fail if your device has no speech engine).", "→ رح يشتغل صوت المتصفح فقط (وقد يفشل إذا جهازك ما عنده محرك قراءة)."], "⏳ تأخر الرد كتير، جرّب تاني.": ["⏳ The reply is taking too long, try again.", "⏳ تأخر الرد كتير، جرّب تاني."], "⏹️ إيقاف": ["⏹️ Stop", "⏹️ إيقاف"], "⚠️ بعض الأنظمة تحتاج مراجعة": ["⚠️ Some systems need review", "⚠️ بعض الأنظمة تحتاج مراجعة"], "⚠️ تعذر الاتصال، احكي مرة ثانية...": ["⚠️ Connection failed, speak again...", "⚠️ تعذر الاتصال، احكي مرة ثانية..."], "✅ انتهى التشغيل (مدة": ["✅ Playback finished (duration", "✅ انتهى التشغيل (مدة"], "✅ جميع الأنظمة تعمل بنجاح (": ["✅ All systems are working (", "✅ جميع الأنظمة تعمل بنجاح ("], "✅ وصل الصوت:": ["✅ Audio received:", "✅ وصل الصوت:"], "❌ السيرفر ما رجّع صوت. السبب:": ["❌ The server returned no audio. Reason:", "❌ السيرفر ما رجّع صوت. السبب:"], "❌ المتصفح رفض التشغيل:": ["❌ The browser refused playback:", "❌ المتصفح رفض التشغيل:"], "❌ فشل الاتصال بالسيرفر:": ["❌ Failed to connect to the server:", "❌ فشل الاتصال بالسيرفر:"], "❌ فشل تشغيل الملف. كود الخطأ:": ["❌ Failed to play the file. Error code:", "❌ فشل تشغيل الملف. كود الخطأ:"], "⬇️ الكود رح ينزل بملف تلقائياً": ["⬇️ Code will download as a file automatically", "⬇️ الكود رح ينزل بملف تلقائياً"], "⬇️ تنزيل الكود تلقائياً: طافي": ["⬇️ Auto-download code: off", "⬇️ تنزيل الكود تلقائياً: طافي"], "💗 صار عندي مشاعر هلق": ["💗 I have feelings now", "💗 صار عندي مشاعر هلق"], "📱 تم تفعيل عرض الهاتف المدمج": ["📱 Compact phone layout enabled", "📱 تم تفعيل عرض الهاتف المدمج"], "🔄 عم أكمل طلبك اللي كان شغّال بالخلفية...": ["🔄 Continuing your request that was running in the background...", "🔄 عم أكمل طلبك اللي كان شغّال بالخلفية..."], "🔄 عم استنى الشبكة، طلبك لسا شغّال بالخلفية...": ["🔄 Waiting for the network, your request is still running in the background...", "🔄 عم استنى الشبكة، طلبك لسا شغّال بالخلفية..."], "🔇 الأصوات المستقبلية: طافية": ["🔇 Future sounds: off", "🔇 الأصوات المستقبلية: طافية"], "🔇 تم كتم الأصوات": ["🔇 Sounds muted", "🔇 تم كتم الأصوات"], "🔊 تم تفعيل الأصوات المستقبلية": ["🔊 Future sounds enabled", "🔊 تم تفعيل الأصوات المستقبلية"], "🖥️ تم تفعيل واجهة الكمبيوتر العريضة (PC)": ["🖥️ Wide desktop (PC) layout enabled", "🖥️ تم تفعيل واجهة الكمبيوتر العريضة (PC)"], "🖼️ صورة مرفقة (10 دقايق)": ["🖼️ Attached image (10 minutes)", "🖼️ صورة مرفقة (10 دقايق)"], "😄 يلا نحكي!": ["😄 Let's talk!", "😄 يلا نحكي!"], "😊 رجع مبسوط!": ["😊 Happy again!", "😊 رجع مبسوط!"], "😤 أنا زعلان... راضيني!": ["😤 I'm upset... make up with me!", "😤 أنا زعلان... راضيني!"], "🟢 Memory is local · التخزين: جهازك المحلي فقط · الحجم:": ["🟢 Memory is local · Storage: your device only · Size:", "🟢 Memory is local · التخزين: جهازك المحلي فقط · الحجم:"], "⚙️ عدادات": ["⚙️ Counters", "⚙️ عدادات"], "🌐 ترجمة": ["🌐 Translate", "🌐 ترجمة"], "🖥️": ["🖥️", "🖥️"]});
 const rynUiPrefixKeys=Object.keys(rynUiText).filter(k=>/[\s:(]$/.test(k)).sort((a,b)=>b.length-a.length);
@@ -2811,22 +2933,22 @@ function rynFixAttrs(root){
   });
 }
 function rynApplyDom(){
-  const root=document.getElementById('app');if(!root)return;
+  const root=document.body||document.getElementById('app');if(!root)return;
   const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
-  while((n=w.nextNode())){if(n.parentElement&&n.parentElement.closest('script,style'))continue;rynFixNode(n)}
+  while((n=w.nextNode())){if(n.parentElement&&n.parentElement.closest('script,style,template,svg'))continue;rynFixNode(n)}
   rynFixAttrs(root);
 }
 let rynDomRaf=0;
 const rynObs=new MutationObserver(()=>{
   if(rynUiLang!=='en'||rynDomRaf)return;
-  rynDomRaf=requestAnimationFrame(()=>{rynDomRaf=0;rynObs.disconnect();try{rynApplyDom()}finally{const r=document.getElementById('app');if(r)rynObs.observe(r,{childList:true,subtree:true,characterData:true})}});
+  rynDomRaf=requestAnimationFrame(()=>{rynDomRaf=0;rynObs.disconnect();try{rynApplyDom()}finally{const r=document.body||document.getElementById('app');if(r)rynObs.observe(r,{childList:true,subtree:true,characterData:true})}});
 });
-{const r0=document.getElementById('app');if(r0)rynObs.observe(r0,{childList:true,subtree:true,characterData:true})}
-function applyRynUiLanguage(){const en=rynUiLang==='en';document.documentElement.lang=en?'en':'ar';document.documentElement.dir=en?'ltr':'rtl';document.title=en?'RYN · AI Assistant':'RYN · مساعد ذكي';const btn=document.getElementById('langBtn');if(btn){btn.textContent=en?'🌐 Translate':'🌐 ترجمة';btn.title=en?'Switch to Arabic':'التبديل إلى الإنجليزية'};const inp=document.getElementById('inp');if(inp)inp.placeholder=en?'Write a message...':'اكتب رسالة...';
+{const r0=document.body||document.getElementById('app');if(r0)rynObs.observe(r0,{childList:true,subtree:true,characterData:true})}
+function applyRynUiLanguage(){const en=rynUiLang==='en';document.documentElement.lang=en?'en':'ar';document.documentElement.dir=en?'ltr':'rtl';document.title=en?'RYN · AI Assistant':'RYN · مساعد ذكي';const btn=document.getElementById('langBtn');if(btn){btn.textContent=en?'🌐 العربية':'🌐 English';btn.title=en?'Switch to Arabic':'التبديل إلى الإنجليزية'};const inp=document.getElementById('inp');if(inp)inp.placeholder=en?'Write a message...':'اكتب رسالة...';
  rynApplyDom();
 const mem=document.getElementById('memBtn');if(mem&&mem.childNodes.length){const first=mem.childNodes[0];if(first.nodeType===Node.TEXT_NODE)first.nodeValue=en?'🧠 My memory ':'🧠 ذاكرتي '}
 }
-if(document.getElementById('langBtn'))document.getElementById('langBtn').onclick=()=>{rynUiLang=rynUiLang==='ar'?'en':'ar';try{localStorage.setItem('ryn_ui_lang',rynUiLang)}catch(e){}applyRynUiLanguage();toast(rynUiLang==='en'?'English interface enabled':'تم تفعيل الواجهة العربية')};
+if(document.getElementById('langBtn'))document.getElementById('langBtn').onclick=()=>{rynUiLang=rynUiLang==='ar'?'en':'ar';try{localStorage.setItem('ryn_ui_lang',rynUiLang);localStorage.setItem('ryn_ultra_lang',rynUiLang)}catch(e){}applyRynUiLanguage();toast(rynUiLang==='en'?'English interface enabled':'تم تفعيل الواجهة العربية')};
 applyRynUiLanguage();
 
 /* ===== الدخول ===== */
@@ -6122,6 +6244,12 @@ def describe(mid, ready=True, model=""):
         return "تلقائي ذكي · دردشة شاملة وصور وملفات وGitHub"
     if mid.startswith("gemini:"):
         gm = mid[7:].lower()
+        if "4-carbon" in gm or "carbon" in gm:
+            return "بمفتاح Gemini على Render · أقوى نموذج في الجيل الرابع للبرمجة والاستنتاج (1M)"
+        if "4-neon" in gm or "neon" in gm:
+            return "بمفتاح Gemini على Render · الجيل الرابع سريع وقوي للهندسة والعلوم (1M)"
+        if "4-hydrogen" in gm or "hydrogen" in gm:
+            return "بمفتاح Gemini على Render · الجيل الرابع السريع للشغل اليومي والبرمجة (1M)"
         if "4-argon" in gm or "argon" in gm:
             return "بمفتاح Gemini على Render · الجيل الرابع للاستنتاج وسياق 1M"
         if "3.8" in gm:
@@ -6176,8 +6304,22 @@ def describe(mid, ready=True, model=""):
             return "OpenRouter مجاني · كود ونصوص متعدّدة اللغات"
         if "glm" in m or "z-ai" in m:
             return "OpenRouter مجاني · تفكير منطقي وبرمجة"
+        if "ernie" in m or "baidu" in m:
+            return "OpenRouter مجاني · Baidu ERNIE 5.5 Flash (280B MoE · سياق 1M)"
+        if "nemotron-3-ultra" in m:
+            return "OpenRouter مجاني · NVIDIA Nemotron 3 Ultra (550B MoE · استنتاج عميق)"
+        if "nemotron-3.5-super" in m:
+            return "OpenRouter مجاني · NVIDIA Nemotron 3.5 Super VL (120B · متعدد الوسائط)"
         if "nemotron" in m:
-            return "OpenRouter مجاني · نموذج NVIDIA الضخم 253B للتحليل"
+            return "OpenRouter مجاني · نموذج NVIDIA Nemotron السريع بسياق 1M"
+        if "particle" in m:
+            return "OpenRouter مجاني · Particle-1 للبرمجة والوكلاء (سياق 1M)"
+        if "dots-3" in m or "dots3" in m:
+            return "OpenRouter مجاني · Dots3-Note (280B MoE · سياق 512K)"
+        if "ling-3" in m or "inclusionai" in m:
+            return "OpenRouter مجاني · Ling 3.2 Flash للاستنتاج الهجين (سياق 1M)"
+        if "gemma-4" in m:
+            return "OpenRouter مجاني · Google Gemma 4 26B A4B (سياق 256K)"
         if "mai-ds" in m or "microsoft" in m:
             return "OpenRouter مجاني · نسخة Microsoft المطورة من DeepSeek R1"
         if "maverick" in m or "llama-4" in m:
@@ -6980,13 +7122,16 @@ def register(app, b):
             {"id": "mix", "label": "Ryn mix 🧩 (العقل الهجين)", "desc": describe("mix")},
             {"id": "gemini", "label": "Gemini Auto ⚡", "desc": describe("gemini")},
             {"id": "gemini:gemini-3.8-flash", "label": "Gemini 3.8 Flash", "desc": describe("gemini:gemini-3.8-flash")},
+            {"id": "gemini:gemini-4-hydrogen", "label": "Gemini 4 Hydrogen", "desc": describe("gemini:gemini-4-hydrogen")},
+            {"id": "gemini:gemini-4-neon", "label": "Gemini 4 Neon", "desc": describe("gemini:gemini-4-neon")},
             {"id": "gemini:gemini-4-argon", "label": "Gemini 4 Argon", "desc": describe("gemini:gemini-4-argon")},
+            {"id": "gemini:gemini-4-carbon", "label": "Gemini 4 Carbon", "desc": describe("gemini:gemini-4-carbon")},
             {"id": "gemini:gemini-3.6-flash", "label": "Gemini 3.6 Flash", "desc": describe("gemini:gemini-3.6-flash")},
-            {"id": "gemini:gemini-3.5-flash", "label": "Gemini 3.5 Flash", "desc": describe("gemini:gemini-3.5-flash")},
             {"id": "gemini:gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite", "desc": describe("gemini:gemini-3.5-flash-lite")},
             {"id": "gemini:gemini-3.1-flash-lite", "label": "Gemini 3.1 Flash-Lite", "desc": describe("gemini:gemini-3.1-flash-lite")},
-            {"id": "gemini:gemini-2.5-pro", "label": "Gemini 2.5 Pro", "desc": describe("gemini:gemini-2.5-pro")},
-            {"id": "gemini:gemini-2.5-flash", "label": "Gemini 2.5 Flash", "desc": describe("gemini:gemini-2.5-flash")},
+            {"id": "gemini:gemini-3.1-pro-preview", "label": "Gemini 3.1 Pro", "desc": describe("gemini:gemini-3.1-pro-preview")},
+            {"id": "gemini:gemini-3-flash-preview", "label": "Gemini 3 Flash", "desc": describe("gemini:gemini-3-flash-preview")},
+            {"id": "gemini:gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash-Lite", "desc": describe("gemini:gemini-2.5-flash-lite")},
         ]
         seen_ids = {o["id"] for o in opts}
 
@@ -7024,6 +7169,14 @@ def register(app, b):
             # والباقي بيتضاف تلقائياً من الكتالوج الحي تحت (free_chat_models).
             or_curated_free = (
                 ("openrouter/free", "OpenRouter Auto Free"),
+                ("baidu/ernie-5.5-flash-preview:free", "ERNIE 5.5 Flash (Free)"),
+                ("nvidia/nemotron-3-ultra-550b-a55b:free", "Nemotron 3 Ultra 550B (Free)"),
+                ("nvidia/nemotron-3.5-super-vl:free", "Nemotron 3.5 Super VL (Free)"),
+                ("nvidia/nemotron-3.5-lightning:free", "Nemotron 3.5 Lightning (Free)"),
+                ("particle-ai/particle-1:free", "Particle-1 Coding (Free)"),
+                ("dots-studio/dots-3-note-preview:free", "Dots3-Note 280B (Free)"),
+                ("inclusionai/ling-3.2-flash:free", "Ling 3.2 Flash (Free)"),
+                ("google/gemma-4-26b-a4b-it:free", "Gemma 4 26B A4B (Free)"),
                 ("qwen/qwen3.8-27b:free", "Qwen 3.8 27B (OR Free)"),
             )
             try:
@@ -7035,7 +7188,7 @@ def register(app, b):
                     _add_opt("or:" + or_id, or_lbl, or_id)
             # إضافة جميع الموديلات المجانية المكتشفة ديناميكياً من OpenRouter
             try:
-                for dyn_id in b.free_chat_models(limit=25):
+                for dyn_id in b.free_chat_models(limit=80):
                     clean_lbl = dyn_id.replace(":free", "").split("/")[-1] + " (Free)"
                     _add_opt("or:" + dyn_id, clean_lbl, dyn_id)
             except Exception:
@@ -7050,7 +7203,7 @@ def register(app, b):
         # 5) كل موديلات OpenRouter للمحادثة (المجانية والمدفوعة). المدفوعة بتنخصم من رصيد مفتاحك.
         try:
             if b._or_key():
-                excl = tuple(getattr(b, "_EXCLUDE", ())) + ("whisper", "tts", "embed", "rerank", "moderation", "image", "audio", "guard", "transcribe", "speech")
+                excl = tuple(getattr(b, "_EXCLUDE", ())) + ("whisper", "tts", "embed", "rerank", "moderation", "image", "audio", "guard", "transcribe", "speech", "decider", "recraft", "span-01")
                 for it in b.openrouter_catalog():
                     o_id = it.get("id", "")
                     if not o_id or any(x in o_id.lower() for x in excl) or ("or:" + o_id) in seen_ids:

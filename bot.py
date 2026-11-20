@@ -53,6 +53,7 @@ FAST_MODELS = [
     os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip(),
     "gemini-3.8-flash",
     "gemini-4-hydrogen",
+    "gemini-4-neon",
     "gemini-3.6-flash",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
@@ -64,6 +65,7 @@ DEEP_MODELS = [
     "gemini-3.8-flash",
     "gemini-4-argon",
     "gemini-4-carbon",
+    "gemini-4-neon",
     "gemini-3.6-flash",
     "gemini-3.1-pro-preview",
     "gemini-4-hydrogen",
@@ -505,14 +507,14 @@ def openrouter_catalog(force=False):
     return items or _or_cache["items"]
 
 
-_EXCLUDE = ("embed", "guard", "moderation", "whisper", "tts", "image", "audio", "vision", "-vl", "ocr", "rerank",
-            "lyria", "clip", "veo", "imagen", "sora", "safeguard")
-_HEAVY = ("r1", "pro", "reason", "think", "235b", "480b", "120b", "80b", "maverick", "70b", "max", "v4", "large", "opus")
-_LIGHT = ("flash", "mini", "small", "lite", "8b", "7b", "4b", "3b", "nano", "instruct")
-_FAMILY_ORDER = ("openrouter/free", "deepseek", "qwen", "gpt-oss", "kimi", "moonshot", "llama", "mistral", "codestral", "gemma", "nemotron", "glm", "microsoft", "minimax", "trinity")
+_EXCLUDE = ("embed", "guard", "moderation", "whisper", "tts", "image", "audio", "vision", "ocr", "rerank",
+            "lyria", "clip", "veo", "imagen", "sora", "safeguard", "decider", "recraft", "span-01")
+_HEAVY = ("r1", "pro", "reason", "think", "550b", "280b", "235b", "480b", "120b", "80b", "maverick", "70b", "ultra", "max", "v4", "large", "opus")
+_LIGHT = ("flash", "mini", "small", "lite", "lightning", "8b", "7b", "4b", "3b", "nano", "instruct")
+_FAMILY_ORDER = ("openrouter/free", "ernie", "baidu", "nemotron", "particle", "dots", "ling", "inclusionai", "gemma", "qwen", "deepseek", "gpt-oss", "kimi", "moonshot", "llama", "mistral", "codestral", "glm", "microsoft", "minimax", "trinity")
 
 
-def free_chat_models(limit=40):
+def free_chat_models(limit=80):
     """كل الموديلات المجانية الصالحة للمحادثة، مرتبة (العائلات المعروفة أول)."""
     items = [i for i in openrouter_catalog()
              if i["free"] and not any(x in i["id"].lower() for x in _EXCLUDE)]
@@ -680,6 +682,14 @@ GROQ_FREE_DEFAULTS = GROQ_CODE_PREF
 # OpenRouter: قائمة المجاني بتتبدّل كل شوي (DeepSeek ما عاد عندو نسخة مجانية)؛ الاختيار الفعلي من الكتالوج الحي بـ or_models_for().
 OR_FREE_DEFAULTS = (
     "openrouter/free",
+    "baidu/ernie-5.5-flash-preview:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "nvidia/nemotron-3.5-super-vl:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "particle-ai/particle-1:free",
+    "dots-studio/dots-3-note-preview:free",
+    "inclusionai/ling-3.2-flash:free",
+    "google/gemma-4-26b-a4b-it:free",
     "qwen/qwen3.8-27b:free",
 )
 GROQ_CHAT_BACKEND = {**GROQ_BACKEND, "system": None, "compact": True}
