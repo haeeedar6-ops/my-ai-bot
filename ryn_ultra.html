@@ -147,9 +147,34 @@ a{color:#8ab4f8;text-decoration:none}
 .danger{border-color:rgba(242,139,130,.35);background:rgba(242,139,130,.12);color:#f28b82}
 .danger:hover{background:rgba(242,139,130,.22);border-color:#f28b82}
 .transcript{
- padding:18px;overflow:auto;flex:1;min-height:290px;max-height:660px;
- display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth;overscroll-behavior:contain;scrollbar-gutter:stable
+ padding:16px;overflow-y:auto;flex:1;min-height:290px;max-height:68vh;
+ display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch;scrollbar-width:thin
 }
+.msg-content.collapsed{
+ max-height:115px;overflow:hidden;position:relative;
+ -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent 100%);
+ mask-image:linear-gradient(180deg,#000 55%,transparent 100%)
+}
+.msg-toggle{
+ margin-top:8px;padding:4px 11px;font-size:11.5px;border-radius:999px;
+ background:#282a2c;border:1px solid var(--line);color:#8ab4f8;font-weight:600
+}
+.msg-toggle:hover{background:#333537}
+.scroll-fab{
+ position:fixed;bottom:18px;inset-inline-end:16px;z-index:60;
+ display:flex;flex-direction:column;gap:8px;pointer-events:none
+}
+.scroll-fab button{
+ pointer-events:auto;width:42px;height:42px;padding:0;border-radius:50%;
+ background:#1e1f20;border:1px solid rgba(255,255,255,.16);color:#e3e3e3;
+ box-shadow:0 6px 20px rgba(0,0,0,.5);display:grid;place-items:center;font-size:16px;position:relative
+}
+.scroll-fab button:hover{background:#282a2c;border-color:#8ab4f8}
+.scroll-fab .new-dot{
+ position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;
+ background:#8ab4f8;box-shadow:0 0 8px #8ab4f8;display:none
+}
+.scroll-fab button.has-new .new-dot{display:block}
 .empty{text-align:center;margin:auto;max-width:400px;color:var(--muted);padding:32px 16px}
 .empty .orb{font-size:38px;margin-bottom:10px;background:var(--gem-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .empty strong{display:block;color:var(--text);font-size:16px;margin-bottom:6px}
@@ -200,8 +225,8 @@ body[dir="rtl"] .msg{direction:rtl}body[dir="ltr"] .msg{direction:ltr}
 @media(max-width:920px){
  .layout{grid-template-columns:minmax(0,1fr)}
  .right{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
- .meeting-panel{min-height:430px}
- .transcript{max-height:none;min-height:320px}
+ .meeting-panel{min-height:320px;overflow:visible}
+ .transcript{max-height:none;min-height:220px;overflow:visible}
 }
 @media(max-width:620px){
  .shell{padding:12px;gap:12px}
@@ -262,7 +287,7 @@ body[dir="rtl"] .msg{direction:rtl}body[dir="ltr"] .msg{direction:ltr}
     <div class="options"><label><span data-i18n="rounds">جولات النقاش</span> <select id="rounds"><option value="1">1 · تحليل مستقل</option><option value="2" selected>2 · تحليل ونقاش</option><option value="3">3 · مراجعة موسعة</option><option value="4">4 · مراجعة عميقة</option><option value="5">5 · أقصى مراجعة</option></select></label><label class="file-label">＋ <span data-i18n="attach">إرفاق مشروع ZIP</span> <input id="projectFile" type="file" accept=".zip,application/zip"></label><span class="subtle" id="projectLabel" data-i18n="readonly">تحليل المشروع للقراءة فقط</span></div>
    </section>
    <section class="panel meeting-panel">
-    <div class="meeting-head"><div><h2 data-i18n="liveTitle">سجل النقاش المباشر</h2><div class="subtle" id="meetingMeta" data-i18n="noActive">لا يوجد اجتماع نشط</div></div><div class="controls"><button id="pause" data-i18n="pause" disabled>Ⅱ إيقاف مؤقت</button><button id="resume" data-i18n="resume" disabled>▶ متابعة</button><button id="another" data-i18n="another" disabled>＋ جولة إضافية</button><button id="stop" class="danger" data-i18n="stop" disabled>■ إنهاء</button></div></div>
+    <div class="meeting-head"><div><h2 data-i18n="liveTitle">سجل النقاش المباشر</h2><div class="subtle" id="meetingMeta" data-i18n="noActive">لا يوجد اجتماع نشط</div></div><div class="controls"><button id="pause" data-i18n="pause" disabled>Ⅱ إيقاف مؤقت</button><button id="resume" data-i18n="resume" disabled>▶ متابعة</button><button id="another" data-i18n="another" disabled>＋ جولة إضافية</button><button id="collapseAll" type="button" data-i18n="collapseAll">↕ طي الردود</button><button id="stop" class="danger" data-i18n="stop" disabled>■ إنهاء</button></div></div>
     <div class="transcript" id="transcript"><div class="empty"><div class="orb">✦</div><strong>فريقك جاهز للاجتماع.</strong><p>ابدأ مهمة وشاهد النماذج الحقيقية وهي تحلل وتناقش وتراجع.</p></div></div>
     <div class="chat-row"><input class="field" id="message" placeholder="أرسل توجيهاً للفريق أو لنموذج محدد…" data-placeholder-ar="أرسل توجيهاً للفريق أو لنموذج محدد…" data-placeholder-en="Send a direction to the team or a selected agent…" disabled><select id="target" class="field" style="max-width:130px" disabled><option value="all" data-ar="كل النماذج" data-en="All agents">كل النماذج</option><option value="gemini">Gemini</option><option value="gpt">GPT</option><option value="qwen">Qwen</option><option value="deepseek">DeepSeek</option><option value="kimi">Kimi</option></select><button id="send" disabled data-i18n="send">إرسال</button></div>
    </section>
@@ -272,13 +297,48 @@ body[dir="rtl"] .msg{direction:rtl}body[dir="ltr"] .msg{direction:ltr}
    <section class="panel side-panel"><div class="section-head"><h2 data-i18n="recent">الاجتماعات السابقة</h2><button id="refreshSessions" style="padding:5px 10px;font-size:11px">↻</button></div><div class="recent" id="recent"><div class="subtle">لا توجد اجتماعات محفوظة بعد.</div></div></section>
   </aside>
  </div>
- <div class="footnote" data-i18n="footnote">RYN Ultra يحلل المشاريع دون تعديل ملفاتها تلقائياً.</div>
+ <div class="scroll-fab" id="scrollFab" hidden>
+ <button type="button" id="scrollTopBtn" title="الأعلى" aria-label="Scroll to top">⬆</button>
+ <button type="button" id="scrollBotBtn" title="آخر رسالة" aria-label="Scroll to latest">⬇<i class="new-dot"></i></button>
+</div>
+<div class="footnote" data-i18n="footnote">RYN Ultra يحلل المشاريع دون تعديل ملفاتها تلقائياً.</div>
 </div>
 <script>
 __RYN_MEMORY_JS__
 </script>
 <script>
-const $=s=>document.querySelector(s);const esc=s=>String(s||'');let sessionId=null,source=null,project=null,meetingStatus='idle',lastEvent=0,lastAgents=null;
+const $=s=>document.querySelector(s);const esc=s=>String(s||'');let sessionId=null,source=null,project=null,meetingStatus='idle',lastEvent=0,lastAgents=null,allCollapsed=false;
+function isMobileScroll(){return window.innerWidth<=920}
+function isNearBottom(){
+ if(isMobileScroll()){return (window.innerHeight+window.scrollY)>=document.documentElement.scrollHeight-180}
+ const box=$('#transcript');return !box||(box.scrollHeight-box.scrollTop-box.clientHeight)<140;
+}
+function scrollToLatest(smooth=true){
+ const sb=$('#scrollBotBtn');if(sb)sb.classList.remove('has-new');
+ const box=$('#transcript');if(!box)return;
+ if(isMobileScroll()){
+  const last=box.lastElementChild;
+  if(last)last.scrollIntoView({behavior:smooth?'smooth':'auto',block:'end'});
+ }else{
+  box.scrollTo({top:box.scrollHeight,behavior:smooth?'smooth':'auto'});
+ }
+}
+function scrollToTop(){
+ const box=$('#transcript');
+ if(isMobileScroll()){
+  const mp=document.querySelector('.meeting-panel');
+  if(mp)mp.scrollIntoView({behavior:'smooth',block:'start'});
+  else window.scrollTo({top:0,behavior:'smooth'});
+ }else if(box){
+  box.scrollTo({top:0,behavior:'smooth'});
+ }
+}
+function updateScrollFab(){
+ const fab=$('#scrollFab'),box=$('#transcript');
+ if(!fab||!box)return;
+ const hasMsgs=!!box.querySelector('.msg');
+ fab.hidden=!hasMsgs;
+}
 const headers={'Content-Type':'application/json','X-Requested-With':'astra'};
 const ultraI18n={
  ar:{
@@ -286,7 +346,7 @@ const ultraI18n={
   startTitle:'ابدأ اجتماع الفريق',startHint:'مهمة واحدة · سياق مشترك · نقاش منظم',startBtn:'ابدأ الاجتماع ↗',
   rounds:'جولات النقاش',attach:'إرفاق مشروع ZIP',readonly:'تحليل المشروع للقراءة فقط',
   liveTitle:'سجل النقاش المباشر',noActive:'لا يوجد اجتماع نشط',
-  pause:'Ⅱ إيقاف مؤقت',resume:'▶ متابعة',another:'＋ جولة إضافية',stop:'■ إنهاء',
+  pause:'Ⅱ إيقاف مؤقت',resume:'▶ متابعة',another:'＋ جولة إضافية',stop:'■ إنهاء',collapseAll:'↕ طي الردود',expandAll:'↕ توسيع الكل',showMore:'قراءة كامل الرد ⌄',showLess:'طي الرد ⌃',scrollTop:'الانتقال للأعلى',scrollBot:'الانتقال لآخر رسالة',
   report:'التقرير النهائي للفريق',recent:'الاجتماعات السابقة',send:'إرسال',
   empty:'فريقك جاهز للاجتماع.',emptyHint:'ابدأ مهمة وشاهد النماذج الحقيقية وهي تحلل وتناقش وتراجع.',
   footnote:'RYN Ultra يحلل المشاريع دون تعديل ملفاتها تلقائياً.',
@@ -303,7 +363,7 @@ const ultraI18n={
   startTitle:'Start a team session',startHint:'One task · shared context · structured debate',startBtn:'Start meeting ↗',
   rounds:'Discussion rounds',attach:'Attach project ZIP',readonly:'Read-only project analysis',
   liveTitle:'Live meeting transcript',noActive:'No active meeting',
-  pause:'Ⅱ Pause',resume:'▶ Resume',another:'＋ Another round',stop:'■ Stop',
+  pause:'Ⅱ Pause',resume:'▶ Resume',another:'＋ Another round',stop:'■ Stop',collapseAll:'↕ Collapse replies',expandAll:'↕ Expand all',showMore:'Read full reply ⌄',showLess:'Collapse ⌃',scrollTop:'Scroll to top',scrollBot:'Scroll to latest',
   report:'Final team report',recent:'Recent sessions',send:'Send',
   empty:'Your AI team is ready to meet.',emptyHint:'Start a task and watch real models analyze, debate, and review.',
   footnote:'RYN Ultra analyzes projects in read-only mode without modifying files.',
@@ -334,7 +394,19 @@ function addEvent(e){const eid=Number(e.id||0);if(eid&&eid<=lastEvent)return;las
  if(e.type==='round_started')$('#meetingMeta').textContent=t('round')+' '+e.round+(uiLang==='ar'?' · نقاش الفريق جارٍ':' · Team discussion in progress');if(e.type==='agent_message')$('#meetingMeta').textContent=t('round')+' '+e.round+' · '+e.agent_name+(uiLang==='ar'?' شارك':' contributed');if(e.type==='meeting_completed')$('#meetingMeta').textContent=uiLang==='ar'?'اكتمل الاجتماع · راجع التقرير النهائي':'Completed · Review the final team report';
 }
 function appendMessage(e){const box=$('#transcript');const empty=box.querySelector('.empty');if(empty)empty.remove();const div=document.createElement('div');let type=e.type==='user_message'?'user':(['meeting_started','round_started','round_completed','control','warning','error','synthesis_started','session_created'].includes(e.type)?'system':'agent');div.className='msg '+type;const avatar=document.createElement('div');avatar.className='msg-avatar';avatar.textContent=type==='user'?(uiLang==='ar'?'أنت':'YOU'):type==='system'?'RYN':(e.agent_name||'AI').slice(0,2).toUpperCase();const card=document.createElement('div');card.className='msg-card';if(type==='agent'&&e.agent_id){const ag=agentCard(e.agent_id);if(ag){card.style.setProperty('--agent',getComputedStyle(ag).getPropertyValue('--agent')||'#8ab4f8');}}
- const meta=document.createElement('div');meta.className='msg-meta';const strong=document.createElement('strong');strong.textContent=type==='user'?t('you'):type==='system'?'RYN Ultra':(e.agent_name+' · '+(e.role||''));meta.append(strong);if(e.round){const round=document.createElement('span');round.textContent=t('round')+' '+e.round;meta.append(round)}const time=document.createElement('span');time.className='msg-time';time.textContent=e.created_at?new Date(e.created_at).toLocaleTimeString():'';meta.append(time);const content=document.createElement('div');content.className='msg-content';content.textContent=e.content||'';content.dir='auto';content.style.whiteSpace='pre-wrap';card.append(meta,content);div.append(avatar,card);box.append(div);box.scrollTop=box.scrollHeight}
+ const meta=document.createElement('div');meta.className='msg-meta';const strong=document.createElement('strong');strong.textContent=type==='user'?t('you'):type==='system'?'RYN Ultra':(e.agent_name+' · '+(e.role||''));meta.append(strong);if(e.round){const round=document.createElement('span');round.textContent=t('round')+' '+e.round;meta.append(round)}const time=document.createElement('span');time.className='msg-time';time.textContent=e.created_at?new Date(e.created_at).toLocaleTimeString():'';meta.append(time);const content=document.createElement('div');content.className='msg-content';content.textContent=e.content||'';content.dir='auto';content.style.whiteSpace='pre-wrap';card.append(meta,content);
+ if(type==='agent'&&(e.content||'').length>380){
+  const tbtn=document.createElement('button');tbtn.type='button';tbtn.className='msg-toggle';
+  if(allCollapsed){content.classList.add('collapsed');tbtn.textContent=t('showMore')}else{tbtn.textContent=t('showLess')}
+  tbtn.onclick=()=>{const c=content.classList.toggle('collapsed');tbtn.textContent=c?t('showMore'):t('showLess')};
+  card.append(tbtn);
+ }
+ div.append(avatar,card);
+ const wasNear=isNearBottom();
+ box.append(div);
+ updateScrollFab();
+ if(wasNear){scrollToLatest(false)}else{const sb=$('#scrollBotBtn');if(sb)sb.classList.add('has-new')}
+}
 function syncControls(){const active=!!sessionId&&['queued','running','paused'].includes(meetingStatus);$('#pause').disabled=!active||meetingStatus==='paused';$('#resume').disabled=!active||meetingStatus!=='paused';$('#stop').disabled=!active;$('#another').disabled=!sessionId||meetingStatus==='running'||meetingStatus==='queued';$('#message').disabled=!active;$('#target').disabled=!active;$('#send').disabled=!active}
 function emptyTranscript(){$('#transcript').innerHTML='<div class="empty"><div class="orb">✦</div><strong>'+t('empty')+'</strong><p>'+t('emptyHint')+'</p></div>'}
 function openEvents(){if(source)source.close();source=new EventSource('/api/v1/ultra/events/'+encodeURIComponent(sessionId)+'?after='+lastEvent);source.onmessage=e=>{try{addEvent(JSON.parse(e.data))}catch(_){}};source.addEventListener('end',e=>{try{const s=JSON.parse(e.data).status;if(['completed','stopped','error'].includes(s))meetingStatus=s}catch(_){}syncControls();if(source){source.close();source=null}refreshSessions()});source.onerror=()=>{if(['completed','stopped','error'].includes(meetingStatus)){if(source){source.close();source=null}refreshSessions()}}}
@@ -367,7 +439,7 @@ function applyUltraLanguage(){
  document.querySelectorAll('[data-placeholder-ar]').forEach(el=>el.placeholder=uiLang==='ar'?el.dataset.placeholderAr:el.dataset.placeholderEn);
  $('#langToggle').textContent=uiLang==='ar'?'EN':'عربي';
  $('#langToggle').title=uiLang==='ar'?'Switch to English':'التبديل إلى العربية';
- if($('#memToggle'))$('#memToggle').title=d.memTitle;
+ if($('#memToggle'))$('#memToggle').title=d.memTitle;if($('#scrollTopBtn'))$('#scrollTopBtn').title=d.scrollTop;if($('#scrollBotBtn'))$('#scrollBotBtn').title=d.scrollBot;if($('#collapseAll'))$('#collapseAll').textContent=allCollapsed?d.expandAll:d.collapseAll;document.querySelectorAll('#transcript .msg-toggle').forEach(b=>{const c=b.previousElementSibling;if(c)b.textContent=c.classList.contains('collapsed')?d.showMore:d.showLess});
  if(!sessionId&&$('#decision'))$('#decision').textContent=d.reportEmpty;
  const empty=$('#transcript .empty');if(empty){empty.querySelector('strong').textContent=d.empty;empty.querySelector('p').textContent=d.emptyHint}
  const recent=$('#recent');if(recent&&(!recent.children.length||recent.querySelector('.subtle'))){recent.innerHTML='<div class="subtle">'+d.noSessions+'</div>'}
@@ -382,6 +454,20 @@ const originalEmptyTranscript=emptyTranscript;emptyTranscript=function(){origina
 applyUltraLanguage();
 async function init(){try{const d=await api('/api/v1/ultra/status',{headers:{}});renderAgents(d.agents);for(const a of d.agents)if(!a.online&&a.reason){const c=agentCard(a.id);if(c)c.title=a.reason}}catch(e){$('#overallStatus').textContent=t('unableCheck')}refreshSessions()}
 if(window.RynMem)window.RynMem.mountButton($('#memToggle'),$('#memCount'));
+$('#scrollTopBtn').onclick=scrollToTop;
+$('#scrollBotBtn').onclick=()=>scrollToLatest(true);
+$('#collapseAll').onclick=()=>{
+ allCollapsed=!allCollapsed;
+ document.querySelectorAll('#transcript .msg.agent').forEach(m=>{
+  const c=m.querySelector('.msg-content'),b=m.querySelector('.msg-toggle');
+  if(!c||!b)return;
+  c.classList.toggle('collapsed',allCollapsed);
+  b.textContent=allCollapsed?t('showMore'):t('showLess');
+ });
+ $('#collapseAll').textContent=allCollapsed?t('expandAll'):t('collapseAll');
+};
+$('#transcript').addEventListener('scroll',()=>{if(isNearBottom()){const sb=$('#scrollBotBtn');if(sb)sb.classList.remove('has-new')}},{passive:true});
+window.addEventListener('scroll',()=>{if(isNearBottom()){const sb=$('#scrollBotBtn');if(sb)sb.classList.remove('has-new')}},{passive:true});
 init();
 </script>
 </body></html>
