@@ -823,11 +823,13 @@ FREE_API_PROVIDERS = {
         "key_env": "NVIDIA_API_KEY",
         "base": "https://integrate.api.nvidia.com/v1",
         "models": (
+            ("deepseek-ai/deepseek-v4.1-flash", "DeepSeek V4.1 Flash (NVIDIA)"),
+            ("nvidia/nemotron-3-ultra-550b-a55b", "Nemotron 3 Ultra 550B (NVIDIA)"),
             ("nvidia/llama-3.1-nemotron-ultra-253b-v1", "Nemotron Ultra 253B (NVIDIA)"),
             ("nvidia/nemotron-3-super-120b-a12b", "Nemotron 3 Super 120B (NVIDIA)"),
             ("nvidia/nemotron-3-nano-30b-a3b", "Nemotron 3 Nano 30B (NVIDIA)"),
-            ("meta/llama-3.3-70b-instruct", "Llama 3.3 70B (NVIDIA)"),
             ("google/gemma-4-31b-it", "Gemma 4 31B (NVIDIA)"),
+            ("meta/llama-3.3-70b-instruct", "Llama 3.3 70B (NVIDIA)"),
             ("mistralai/mistral-large-2-instruct", "Mistral Large 2 (NVIDIA)"),
             ("mistralai/mistral-nemotron", "Mistral Nemotron (NVIDIA)"),
             ("minimaxai/minimax-m3", "MiniMax M3 (NVIDIA)"),
@@ -836,7 +838,7 @@ FREE_API_PROVIDERS = {
     "zai": {
         "name": "Z AI (GLM)",
         "key_env": "ZAI_API_KEY",
-        "base": "https://open.bigmodel.cn/api/paas/v4",
+        "base": os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4").strip().rstrip("/"),
         "models": (
             ("glm-4.7-flash", "GLM 4.7 Flash (Z AI)"),
             ("glm-4.6v-flash", "GLM 4.6V Flash (Z AI)"),
@@ -857,9 +859,11 @@ FREE_API_PROVIDERS = {
     },
     "cf": {
         "name": "Cloudflare AI",
-        "key_env": "CF_API_TOKEN",
-        "extra_env": "CF_ACCOUNT_ID",
-        "base_tpl": "https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/v1",
+        "key_env": "CLOUDFLARE_API_TOKEN",
+        "key_env_alt": "CF_API_TOKEN",
+        "extra_env": "CLOUDFLARE_ACCOUNT_ID",
+        "extra_env_alt": "CF_ACCOUNT_ID",
+        "base_tpl": "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1",
         "models": (
             ("@cf/openai/gpt-oss-120b", "GPT-OSS 120B (Cloudflare)"),
             ("@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B (Cloudflare)"),
@@ -895,22 +899,6 @@ FREE_API_PROVIDERS = {
             ("Qwen3.6-27B", "Qwen 3.6 27B (OVH)"),
             ("Qwen3-Coder-30B-A3B-Instruct", "Qwen3 Coder 30B (OVH)"),
             ("Qwen3-32B", "Qwen3 32B (OVH)"),
-        ),
-    },
-    "ollama": {
-        "name": "Ollama Cloud",
-        "key_env": "OLLAMA_API_KEY",
-        "base": "https://ollama.com/v1",
-        "models": (
-            ("deepseek-v4.1-flash", "DeepSeek V4.1 Flash (Ollama)"),
-            ("deepseek-v4-pro", "DeepSeek V4 Pro (Ollama)"),
-            ("deepseek-v4-flash", "DeepSeek V4 Flash (Ollama)"),
-            ("kimi-k3", "Kimi K3 (Ollama)"),
-            ("minimax-m3", "MiniMax M3 (Ollama)"),
-            ("gpt-oss:120b", "GPT-OSS 120B (Ollama)"),
-            ("gpt-oss:20b", "GPT-OSS 20B (Ollama)"),
-            ("nemotron-3-ultra", "Nemotron 3 Ultra (Ollama)"),
-            ("mistral-large-3:675b", "Mistral Large 3 675B (Ollama)"),
         ),
     },
     "aion": {
@@ -966,14 +954,17 @@ FREE_API_PROVIDERS = {
 }
 
 
+def _cfg_key(cfg, primary, alt):
+    return _env_key(cfg.get(primary, "")) or (cfg.get(alt) and _env_key(cfg[alt])) or ""
+
+
 def free_api_ready(slug):
     cfg = FREE_API_PROVIDERS.get(slug)
     if not cfg:
         return False
-    if not _env_key(cfg["key_env"]):
+    if not _cfg_key(cfg, "key_env", "key_env_alt"):
         return False
-    extra = cfg.get("extra_env")
-    if extra and not _env_key(extra):
+    if cfg.get("extra_env") and not _cfg_key(cfg, "extra_env", "extra_env_alt"):
         return False
     return True
 
@@ -984,12 +975,13 @@ def free_api_backend(slug):
         return None
     base = cfg.get("base")
     if not base and cfg.get("base_tpl"):
-        extra = cfg.get("extra_env", "")
-        base = cfg["base_tpl"].format(**{extra: _env_key(extra)})
+        acc = _cfg_key(cfg, "extra_env", "extra_env_alt")
+        base = cfg["base_tpl"].format(ACCOUNT_ID=acc)
+    key_env = cfg["key_env"] if _env_key(cfg["key_env"]) else (cfg.get("key_env_alt") or cfg["key_env"])
     return {
         "name": cfg["name"],
         "base": base,
-        "key_env": cfg["key_env"],
+        "key_env": key_env,
         "timeout_fast": 60,
         "timeout_deep": 140,
         "compact": True,
