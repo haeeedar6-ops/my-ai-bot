@@ -218,29 +218,66 @@ def _get_session(session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
+# نماذج البرمجة والتحليل القوية والمتوسطة فقط لـ RYN Ultra (بدون نماذج الاستخدام اليومي الخفيفة مثل lite/mini/7b)
+ULTRA_GEMINI_MODELS = (
+    "gemini-4-carbon",
+    "gemini-4-argon",
+    "gemini-4-neon",
+    "gemini-3.8-flash",
+)
+_ULTRA_WEAK_TOKENS = ("lite", "nano", "3b", "4b", "7b", "8b", "9b", "safeguard", "guard", "whisper", "tts", "embed")
+_ULTRA_STRONG_ORDER = (
+    "4-carbon", "4-argon", "4-neon", "3.8-flash",
+    "v4-pro", "deepseek-v4", "r1", "kimi-k3", "397b", "235b", "120b", "70b", "35b", "32b", "30b", "27b", "coder", "pro", "20b",
+)
+
+
+def _rank_ultra_models(models: List[str]) -> List[str]:
+    """ترتيب النماذج بتفضيل القوية والمتوسطة للبرمجة والتحليل واستبعاد الخفيفة ما أمكن."""
+    clean = [m for m in models if m and not any(x in m.lower() for x in ("safeguard", "guard", "whisper", "tts", "embed"))]
+    strong = [m for m in clean if not any(w in m.lower() for w in _ULTRA_WEAK_TOKENS)]
+    pool = strong if strong else clean
+
+    def _score(m: str) -> Tuple[int, int]:
+        ml = m.lower()
+        for idx, tok in enumerate(_ULTRA_STRONG_ORDER):
+            if tok in ml:
+                return (idx, len(ml))
+        return (len(_ULTRA_STRONG_ORDER), len(ml))
+
+    return sorted(dict.fromkeys(pool), key=_score)
+
+
 def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], List[str], str]:
-    """Resolve a real configured API route and model IDs. No silent provider fallback."""
+    """Resolve a real configured API route and strong/medium coding & analysis models. No silent cross-family fallback."""
     agent_id = agent["id"]
     explicit = os.environ.get(agent.get("env_model", ""), "").strip()
+
+    # 1) Gemini — أقوى نماذج الجيل الرابع و 3.8 Flash المخصصة للبرمجة والتحليل فقط
     if agent_id == "gemini":
         if getattr(b, "client", None) is None or not getattr(b, "GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")):
             return None, [], "GEMINI_API_KEY / Gemini client غير متاح"
-        return {"kind": "gemini", "system": ""}, ([explicit] if explicit else ["auto"]), "Google Gemini API"
+        models = [explicit] if explicit else list(ULTRA_GEMINI_MODELS)
+        return {"kind": "gemini", "system": ""}, models, "Google Gemini API"
 
-    provider_name = agent["provider"]
-    or_key = getattr(b, "_or_key", lambda: "")()
-    if or_key:
-        try:
-            models = [explicit] if explicit else list(b.or_models_for(provider_name, agent["match"], deep=True) or [])
-            backends = getattr(b, "PROVIDERS", {}).get(provider_name, {}).get("backends", [])
-            if models and backends:
-                return dict(backends[0]), models[:5], "OpenRouter"
-        except Exception:
-            pass
+    # 2) Ollama Cloud (OLLAMA_API_KEY) — يعطي DeepSeek V4 Pro/Flash و Kimi K3 و GPT-OSS 120B مباشرة للبرمجة والتحليل
+    free_ready = getattr(b, "free_api_ready", None)
+    free_backend = getattr(b, "free_api_backend", None)
+    if callable(free_ready) and callable(free_backend) and free_ready("ollama"):
+        ollama_map = {
+            "deepseek": ["deepseek-v4-pro", "deepseek-v4-flash"],
+            "kimi": ["kimi-k3"],
+            "gpt": ["gpt-oss:120b", "gpt-oss:20b"],
+        }
+        om = [explicit] if explicit else ollama_map.get(agent_id, [])
+        if om:
+            be = free_backend("ollama")
+            if be:
+                return dict(be), om[:5], "Ollama Cloud"
 
-    # GPT-OSS, Qwen, DeepSeek and Kimi may also be available through the existing Groq route.
+    # 3) Groq LPU — نفضّل 120B لـ GPT و Qwen 3.8 27B للبرمجة والتحليل
     groq_ready = bool(getattr(b, "_groq_ready", lambda: False)())
-    if groq_ready:
+    if groq_ready and agent_id in ("gpt", "qwen"):
         try:
             catalog = list(getattr(b, "groq_catalog", lambda: [])() or [])
             if agent_id == "gpt":
@@ -249,14 +286,54 @@ def _provider_for(b: Any, agent: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any
                 matches = [m for m in catalog if any(k in m.lower() for k in agent["match"])]
             if explicit:
                 matches = [explicit] if explicit in catalog else []
+            else:
+                matches = _rank_ultra_models(matches)
             if matches and getattr(b, "GROQ_CHAT_BACKEND", None):
                 return dict(b.GROQ_CHAT_BACKEND), matches[:5], "Groq"
         except Exception:
             pass
 
+    # 4) OpenRouter — للنماذج المجانية المتاحة من نفس العائلة (مرتّبة بالأقوى للبرمجة والتحليل)
+    provider_name = agent["provider"]
+    or_key = getattr(b, "_or_key", lambda: "")()
+    if or_key:
+        try:
+            models = [explicit] if explicit else _rank_ultra_models(list(b.or_models_for(provider_name, agent["match"], deep=True) or []))
+            backends = getattr(b, "PROVIDERS", {}).get(provider_name, {}).get("backends", [])
+            if models and backends:
+                return dict(backends[0]), models[:5], "OpenRouter"
+        except Exception:
+            pass
+
+    # 5) Groq fallback لبقية العائلات (deepseek / kimi إن وُجدت)
+    if groq_ready and agent_id not in ("gpt", "qwen"):
+        try:
+            catalog = list(getattr(b, "groq_catalog", lambda: [])() or [])
+            matches = [m for m in catalog if any(k in m.lower() for k in agent["match"])]
+            if explicit:
+                matches = [explicit] if explicit in catalog else []
+            else:
+                matches = _rank_ultra_models(matches)
+            if matches and getattr(b, "GROQ_CHAT_BACKEND", None):
+                return dict(b.GROQ_CHAT_BACKEND), matches[:5], "Groq"
+        except Exception:
+            pass
+
+    # 6) Cloudflare Workers AI (إن كان CF_API_TOKEN + CF_ACCOUNT_ID مضافين) — DeepSeek R1 32B و GPT-OSS 120B
+    if callable(free_ready) and callable(free_backend) and free_ready("cf"):
+        cf_map = {
+            "deepseek": ["@cf/deepseek-ai/deepseek-r1-distill-qwen-32b"],
+            "gpt": ["@cf/openai/gpt-oss-120b"],
+        }
+        cm = [explicit] if explicit else cf_map.get(agent_id, [])
+        if cm:
+            be = free_backend("cf")
+            if be:
+                return dict(be), cm[:5], "Cloudflare AI"
+
     if not or_key:
-        return None, [], "OPENROUTER_API_KEY / matching provider model غير متاح"
-    return None, [], "لا يوجد موديل متاح من العائلة المطلوبة حالياً"
+        return None, [], "OPENROUTER_API_KEY / OLLAMA_API_KEY غير متاح"
+    return None, [], "أضف OLLAMA_API_KEY بـ Render لتفعيل DeepSeek V4 و Kimi K3"
 
 
 def get_agent_status(b: Any) -> List[Dict[str, Any]]:
